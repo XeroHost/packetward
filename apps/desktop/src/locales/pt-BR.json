@@ -1,0 +1,80 @@
+{
+  "app": {
+    "name": "PacketWard",
+    "byXeroHost": "por XeroHost",
+    "contactSupport": "Falar com o suporte da XeroHost"
+  },
+  "nav": {
+    "label": "Navegação principal",
+    "dashboard": "Painel",
+    "traffic": "Tráfego",
+    "connections": "Conexões",
+    "capture": "Captura",
+    "guardian": "Guardian",
+    "firewall": "Firewall",
+    "diagnostics": "Diagnóstico",
+    "speedTest": "Teste de velocidade",
+    "threatIntel": "Inteligência de ameaças",
+    "logs": "Registros",
+    "settings": "Configurações",
+    "about": "Sobre"
+  },
+  "topbar": {
+    "agent": {
+      "label": "Agente",
+      "unknown": "Sem conexão",
+      "connected": "Conectado",
+      "disconnected": "Parado"
+    },
+    "guardian": {
+      "label": "Guardian",
+      "unknown": "Desconhecido",
+      "off": "Desligado",
+      "monitor": "Monitor",
+      "active": "Ativo"
+    }
+  },
+  "placeholder": {
+    "title": "Em breve",
+    "description": "Esta seção faz parte de uma etapa posterior. A estrutura do app está pronta; os dados aparecerão aqui quando o agente estiver conectado."
+  },
+  "settings": {
+    "title": "Configurações",
+    "appearance": {
+      "title": "Aparência",
+      "description": "As mudanças são aplicadas na hora e salvas para o seu usuário do Windows.",
+      "theme": "Tema",
+      "themeDark": "Escuro",
+      "themeLight": "Claro",
+      "themeSystem": "Sistema",
+      "monoFont": "Fonte monoespaçada",
+      "monoJetbrains": "JetBrains Mono",
+      "monoGeist": "Geist Mono",
+      "monoSystem": "Sistema (Consolas)",
+      "monoPreview": "203.0.113.42:3389  ESTABLISHED  svchost.exe",
+      "density": "Densidade",
+      "densityComfortable": "Confortável",
+      "densityCompact": "Compacta",
+      "textSize": "Tamanho do texto",
+      "reduceMotion": "Reduzir movimento",
+      "reduceMotionHint": "Desativa pulsos, arcos e transições. Também é ativado quando o Windows pede movimento reduzido."
+    },
+    "language": {
+      "title": "Idioma",
+      "description": "Automático segue o idioma de exibição do Windows.",
+      "label": "Idioma da interface",
+      "auto": "Automático",
+      "en": "English",
+      "es": "Español",
+      "ptBR": "Português (Brasil)"
+    }
+  },
+  "about": {
+    "title": "Sobre o PacketWard",
+    "tagline": "Defesa e diagnóstico de rede para VPS e máquinas RDP com Windows Server.",
+    "version": "Versão",
+    "license": "Licença",
+    "licenseValue": "GPL-3.0-or-later",
+    "madeBy": "Criado pela XeroHost e publicado como código aberto."
+  }
+}

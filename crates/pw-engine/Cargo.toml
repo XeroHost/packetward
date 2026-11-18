@@ -1,0 +1,12 @@
+[package]
+name = "pw-engine"
+description = "Orchestrator: wires every crate together, owns tasks and state, exposes the API."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lints]
+workspace = true

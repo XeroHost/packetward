@@ -1,0 +1,5 @@
+[build]
+# Windows x64 is the product target; Linux builds the platform-agnostic crates and fakes.
+
+[target.'cfg(windows)']
+rustflags = ["-C", "target-feature=+crt-static"]

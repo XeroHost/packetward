@@ -1,0 +1,33 @@
+[workspace]
+resolver = "2"
+members = [
+  "crates/*",
+  "apps/agent",
+  "apps/cli",
+  "apps/desktop/src-tauri",
+  "tools/speed-server",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.100"
+license = "GPL-3.0-or-later"
+repository = "https://github.com/XeroHost/packetward"
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+unused_must_use = "deny"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+unwrap_used = "deny"
+expect_used = "deny"
+dbg_macro = "deny"
+todo = "warn"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
+panic = "abort"

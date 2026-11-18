@@ -1,0 +1,16 @@
+[package]
+name = "packetward-cli"
+description = "Basic command line client for emergency recovery and scripting."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[[bin]]
+name = "pwctl"
+path = "src/main.rs"
+
+[lints]
+workspace = true

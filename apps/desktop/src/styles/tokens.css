@@ -1,0 +1,82 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/*
+ * PacketWard design tokens — "Crimson Sentinel" (docs/DESIGN.md).
+ * Components use the semantic tokens only, never raw hex.
+ * Crimson means threat or guard; legitimate traffic is cyan.
+ */
+
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0b0d12;
+  --surface: #11141b;
+  --surface-2: #171b24;
+  --surface-3: #1f2430;
+  --border: #262c38;
+  --text: #e8eaf0;
+  --text-muted: #8a93a6;
+  --brand: #e8173f;
+  --brand-hover: #c40e34;
+  --brand-fg: #ff4d6a;
+  --on-brand: #ffffff;
+  --danger: #ff4d6a;
+  --warning: #f5a524;
+  --success: #2dd4a0;
+  --info: #22d3ee;
+  --glow: rgb(232 23 63 / 0.35);
+  --shadow-card: none;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #eef0f4;
+  --surface-3: #e4e7ec;
+  --border: #dce0e7;
+  --text: #12151c;
+  --text-muted: #5a6376;
+  --brand: #c40e34;
+  --brand-hover: #960c28;
+  --brand-fg: #c40e34;
+  --on-brand: #ffffff;
+  --danger: #c40e34;
+  --warning: #b45309;
+  --success: #047857;
+  --info: #0e7490;
+  --glow: rgb(196 14 52 / 0.18);
+  --shadow-card: 0 1px 2px rgb(18 21 28 / 0.06);
+}
+
+/* Chart palette (DESIGN.md). Meaning is never carried by colour alone. */
+:root {
+  --chart-in: var(--info);
+  --chart-out: #a78bfa;
+  --chart-blocked: var(--danger);
+  --chart-warning: var(--warning);
+  --chart-tcp: #22d3ee;
+  --chart-udp: #a78bfa;
+  --chart-icmp: #f5a524;
+  --chart-other: #8a93a6;
+
+  /* Density: comfortable (default). */
+  --row-h: 2.25rem; /* 36 px */
+  --card-p: 1rem; /* 16 px */
+  --table-fs: 0.8125rem; /* 13 px */
+}
+
+:root[data-density='compact'] {
+  --row-h: 1.75rem; /* 28 px */
+  --card-p: 0.75rem; /* 12 px */
+  --table-fs: 0.75rem; /* 12 px */
+}
+
+/* Reduced motion: no pulses, arcs or transitions. Set by the Appearance store (setting or OS). */
+:root[data-motion='reduced'] *,
+:root[data-motion='reduced'] *::before,
+:root[data-motion='reduced'] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}

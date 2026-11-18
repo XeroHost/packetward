@@ -1,0 +1,80 @@
+{
+  "app": {
+    "name": "PacketWard",
+    "byXeroHost": "by XeroHost",
+    "contactSupport": "Contact XeroHost support"
+  },
+  "nav": {
+    "label": "Main navigation",
+    "dashboard": "Dashboard",
+    "traffic": "Traffic",
+    "connections": "Connections",
+    "capture": "Capture",
+    "guardian": "Guardian",
+    "firewall": "Firewall",
+    "diagnostics": "Diagnostics",
+    "speedTest": "Speed Test",
+    "threatIntel": "Threat Intel",
+    "logs": "Logs",
+    "settings": "Settings",
+    "about": "About"
+  },
+  "topbar": {
+    "agent": {
+      "label": "Agent",
+      "unknown": "Not connected",
+      "connected": "Connected",
+      "disconnected": "Not running"
+    },
+    "guardian": {
+      "label": "Guardian",
+      "unknown": "Unknown",
+      "off": "Off",
+      "monitor": "Monitor",
+      "active": "Active"
+    }
+  },
+  "placeholder": {
+    "title": "Coming soon",
+    "description": "This section is part of a later milestone. The app shell is ready; the data will appear here once the agent is connected."
+  },
+  "settings": {
+    "title": "Settings",
+    "appearance": {
+      "title": "Appearance",
+      "description": "Changes apply immediately and are saved for your Windows user.",
+      "theme": "Theme",
+      "themeDark": "Dark",
+      "themeLight": "Light",
+      "themeSystem": "System",
+      "monoFont": "Monospace font",
+      "monoJetbrains": "JetBrains Mono",
+      "monoGeist": "Geist Mono",
+      "monoSystem": "System (Consolas)",
+      "monoPreview": "203.0.113.42:3389  ESTABLISHED  svchost.exe",
+      "density": "Density",
+      "densityComfortable": "Comfortable",
+      "densityCompact": "Compact",
+      "textSize": "Text size",
+      "reduceMotion": "Reduce motion",
+      "reduceMotionHint": "Turns off pulses, arcs and transitions. Also enabled when Windows asks for reduced motion."
+    },
+    "language": {
+      "title": "Language",
+      "description": "Automatic follows the Windows display language.",
+      "label": "Interface language",
+      "auto": "Automatic",
+      "en": "English",
+      "es": "Español",
+      "ptBR": "Português (Brasil)"
+    }
+  },
+  "about": {
+    "title": "About PacketWard",
+    "tagline": "Network defense and diagnostics for Windows Server VPS and RDP machines.",
+    "version": "Version",
+    "license": "License",
+    "licenseValue": "GPL-3.0-or-later",
+    "madeBy": "Built by XeroHost and released as open source."
+  }
+}

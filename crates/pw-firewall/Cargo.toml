@@ -1,0 +1,12 @@
+[package]
+name = "pw-firewall"
+description = "Windows Firewall (COM INetFwPolicy2) behind a trait; batching; reconcile."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lints]
+workspace = true

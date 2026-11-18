@@ -1,0 +1,7 @@
+node_modules
+dist
+src-tauri
+pnpm-lock.yaml
+src/components/ui
+src/assets/brand
+*.md

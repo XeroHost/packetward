@@ -1,0 +1,12 @@
+[package]
+name = "pw-detect"
+description = "Pure detection engine: flow table, sliding windows, detectors. No OS dependencies."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lints]
+workspace = true

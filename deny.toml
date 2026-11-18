@@ -1,0 +1,44 @@
+# cargo-deny configuration. PacketWard is GPL-3.0-or-later, so every dependency must be
+# GPLv3-compatible (docs/DECISIONS.md). Add a license here only after checking compatibility.
+
+[graph]
+targets = [
+  { triple = "x86_64-pc-windows-msvc" },
+  { triple = "x86_64-unknown-linux-gnu" },
+]
+
+[advisories]
+version = 2
+yanked = "deny"
+# Unmaintained notices (not vulnerabilities) only matter for crates we depend on directly. Tauri pulls
+# several transitive ones on Linux (gtk3 stack, zbus via the opener plugin) that we cannot upgrade.
+unmaintained = "workspace"
+
+[licenses]
+version = 2
+confidence-threshold = 0.93
+allow = [
+  "MIT",
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "Zlib",
+  "MPL-2.0",
+  "Unicode-3.0",
+  "Unicode-DFS-2016",
+]
+
+[licenses.private]
+# Workspace crates are GPL-3.0-or-later and unpublished; only third-party crates are checked.
+ignore = true
+
+[bans]
+multiple-versions = "warn"
+wildcards = "allow"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

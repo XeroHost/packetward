@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="512" height="512" fill="none">
+  <path
+    d="M 30 8 L 46 8 L 56 18 L 56 38 L 36 58 L 30 58 L 10 38 L 10 32"
+    stroke="#F8FAFC"
+    stroke-width="4"
+    stroke-linecap="square"
+    stroke-linejoin="miter"
+  />
+  <path
+    d="M 49 20 L 49 35 L 35 49"
+    stroke="#F8FAFC"
+    stroke-opacity="0.4"
+    stroke-width="2"
+    stroke-linecap="square"
+  />
+  <path d="M 21 12 L 31 22" stroke="#F8FAFC" stroke-width="3.8" stroke-linecap="square" />
+  <path d="M 11 13 L 28 30" stroke="#F8FAFC" stroke-width="3.8" stroke-linecap="square" />
+  <polygon
+    points="35,29.5 42.5,37 35,44.5 27.5,37"
+    fill="none"
+    stroke="#F8FAFC"
+    stroke-width="3.6"
+    stroke-linejoin="miter"
+  />
+  <polygon points="35,34 38,37 35,40 32,37" fill="#F8FAFC" />
+  <path d="M 11 24 L 21 34" stroke="#F8FAFC" stroke-width="3.8" stroke-linecap="square" />
+</svg>

@@ -1,0 +1,12 @@
+[package]
+name = "pw-ipc"
+description = "IPC transport (named pipe and in-memory), framing, client/server, subscriptions."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lints]
+workspace = true

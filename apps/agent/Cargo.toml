@@ -1,0 +1,16 @@
+[package]
+name = "packetward-agent"
+description = "Windows service host for pw-engine (install, uninstall, run)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[[bin]]
+name = "packetward-agent"
+path = "src/main.rs"
+
+[lints]
+workspace = true

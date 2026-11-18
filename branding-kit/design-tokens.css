@@ -1,0 +1,46 @@
+/**
+ * PacketWard — Official Design System & Brand Tokens (CSS Custom Properties)
+ * Visual Direction: Modern Cyber-Defense / 45° Hexagonal Bevel / Diagonal Packet Stream
+ */
+
+:root {
+  /* === BRAND CORE COLORS === */
+  --pw-bg-obsidian: #060911;       /* Outer canvas & deep background */
+  --pw-bg-armor: #0B0F19;          /* Primary surface / window background */
+  --pw-bg-elevated: #0F172A;       /* Cards, headers & telemetry bars */
+  --pw-border-slate: #1E293B;      /* Hairline structural borders */
+
+  /* === BRAND ACCENTS (WARD & PACKETS) === */
+  --pw-cyan-primary: #38BDF8;      /* "Ward" Logotype & Central Packet Stream */
+  --pw-cyan-core: #0EA5E9;         /* Shield top-mid gradient & active focus */
+  --pw-cyan-deep: #0284C7;         /* Shield lower gradient & light-mode accent */
+  --pw-node-blocked: #F43F5E;      /* Intercepted central node / blocked threat pulse */
+  --pw-status-active: #22C55E;     /* Active custody / healthy service state */
+  --pw-status-warn: #F59E0B;       /* Heuristic anomaly / rate-limit threshold */
+
+  /* === NEUTRALS & TYPOGRAPHY === */
+  --pw-text-primary: #F8FAFC;      /* "Packet" Logotype & lateral packet strokes */
+  --pw-text-secondary: #CBD5E1;    /* UI labels & active telemetry */
+  --pw-text-muted: #94A3B8;        /* Subtitles & secondary descriptions */
+  --pw-text-dim: #64748B;          /* Technical coordinates & metadata */
+
+  /* === LIGHT MODE OVERRIDES === */
+  --pw-light-bg: #FFFFFF;
+  --pw-light-surface: #F8FAFC;
+  --pw-light-border: #E2E8F0;
+  --pw-light-text: #0F172A;
+  --pw-light-accent: #0284C7;
+  --pw-light-node: #E11D48;
+
+  /* === TYPOGRAPHY SYSTEM === */
+  --pw-font-logo: 'Bricolage Grotesque', sans-serif;
+  --pw-font-heading: 'Bricolage Grotesque', sans-serif;
+  --pw-font-body: 'Geist', 'Geist Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --pw-font-mono: 'Geist Mono', 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+
+  /* === LOGOTYPE WEIGHTS & TRACKING === */
+  --pw-weight-packet: 600;         /* SemiBold */
+  --pw-weight-ward: 700;           /* Bold */
+  --pw-tracking-wordmark: -0.025em;
+  --pw-tracking-uppercase: 0.12em;
+}

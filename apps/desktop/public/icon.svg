@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="512" height="512" fill="none">
+  <!--
+    PacketWard — Isotipo Oficial (Trazos Diagonales 45° + Escudo Hexagonal Biselado + Nodo Bloqueado)
+    Simetría axial exacta sobre el eje diagonal de 45° (y - x = 2) con separación limpia en ambos flancos.
+  -->
+  <defs>
+    <linearGradient id="pw-shield" x1="12" y1="6" x2="56" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38BDF8" />
+      <stop offset="50%" stop-color="#0EA5E9" />
+      <stop offset="100%" stop-color="#0284C7" />
+    </linearGradient>
+    <linearGradient id="pw-fill" x1="14" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0EA5E9" stop-opacity="0.16" />
+      <stop offset="100%" stop-color="#0284C7" stop-opacity="0.02" />
+    </linearGradient>
+  </defs>
+
+  <!-- Relleno translúcido del escudo biselado -->
+  <path
+    d="M 30 8 L 46 8 L 56 18 L 56 38 L 36 58 L 30 58 L 10 38 L 10 32 Z"
+    fill="url(#pw-fill)"
+  />
+
+  <!-- Escudo Hexagonal Abierto con bordes biselados a 45° (apertura simétrica en flanco superior-izquierdo) -->
+  <path
+    d="M 30 8 L 46 8 L 56 18 L 56 38 L 36 58 L 30 58 L 10 38 L 10 32"
+    stroke="url(#pw-shield)"
+    stroke-width="4"
+    stroke-linecap="square"
+    stroke-linejoin="miter"
+  />
+
+  <!-- Bisel técnico interior a 45° (muro de custodia) -->
+  <path
+    d="M 49 20 L 49 35 L 35 49"
+    stroke="#38BDF8"
+    stroke-opacity="0.32"
+    stroke-width="2"
+    stroke-linecap="square"
+  />
+
+  <!-- Paquete Diagonal 1 (Superior, 45°: y - x = -9) -->
+  <path
+    d="M 21 12 L 31 22"
+    stroke="#F8FAFC"
+    stroke-width="3.8"
+    stroke-linecap="square"
+  />
+
+  <!-- Paquete Diagonal 2 (Central, 45°: y - x = 2) -> Se transforma en Nodo Bloqueado -->
+  <path
+    d="M 11 13 L 28 30"
+    stroke="#38BDF8"
+    stroke-width="3.8"
+    stroke-linecap="square"
+  />
+  <!-- Nodo Bloqueado Central (Rombo a 45° centrado en 35,37) -->
+  <polygon
+    points="35,29.5 42.5,37 35,44.5 27.5,37"
+    fill="#0B0F19"
+    stroke="#38BDF8"
+    stroke-width="3.6"
+    stroke-linejoin="miter"
+  />
+  <!-- Pulso bloqueado en el núcleo -->
+  <polygon
+    points="35,34 38,37 35,40 32,37"
+    fill="#F43F5E"
+  />
+
+  <!-- Paquete Diagonal 3 (Inferior, 45°: y - x = +13) -->
+  <path
+    d="M 11 24 L 21 34"
+    stroke="#F8FAFC"
+    stroke-width="3.8"
+    stroke-linecap="square"
+  />
+</svg>
