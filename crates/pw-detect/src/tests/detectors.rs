@@ -154,6 +154,19 @@ fn a_scan_fast_enough_to_be_a_flood_raises_both() {
 }
 
 #[test]
+fn a_fast_horizontal_sweep_is_one_alert_not_a_syn_flood_too() {
+    // 50 SYN/s (500 per 10 s) over 500 hosts: the host set saturates at its cap, still >= 32.
+    let targets: Vec<IpAddr> = (0..500u32).map(|n| client_ip(5_000_000 + n)).collect();
+    let packets = port_scan_horizontal(ATTACKER_SCAN, T0, &targets, 3389, SECOND / 50);
+    let alerts = run(Config::default(), packets, &[], T0, END);
+    assert_eq!(
+        started(&alerts),
+        vec![("port_scan_horizontal", Some(ATTACKER_SCAN))],
+        "{alerts:#?}"
+    );
+}
+
+#[test]
 fn horizontal_port_scan() {
     let targets: Vec<IpAddr> = (1..=60u8).map(|n| ip4(198, 51, 100, n)).collect();
     let packets = port_scan_horizontal(ATTACKER_SCAN, T0, &targets, 22, SECOND / 10);

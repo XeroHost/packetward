@@ -716,7 +716,7 @@ impl Engine {
             let key = (f.key, f.source);
             if let Some(inc) = self.incidents.get_mut(&key) {
                 inc.last_met_ns = now;
-                if f.primary > inc.peak_primary {
+                if f.primary > inc.peak_primary || f.severity > inc.severity {
                     inc.peak_primary = f.primary;
                     inc.peak_metrics = f.metrics;
                     inc.window_secs = f.window_secs;

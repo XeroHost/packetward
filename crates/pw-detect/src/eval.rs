@@ -81,7 +81,8 @@ pub(crate) fn evaluate_source(
     } else {
         (0, 0)
     };
-    let scanning = cfg.port_scan.enabled && ports >= cfg.port_scan.min_ports;
+    let scanning = cfg.port_scan.enabled
+        && (ports >= cfg.port_scan.min_ports || hosts >= cfg.port_scan.min_hosts);
 
     // SynFlood: many SYNs, few completions. A source that is port scanning sends SYNs that never
     // complete too; that is a scan, not a flood, unless the rate alone is already a flood
