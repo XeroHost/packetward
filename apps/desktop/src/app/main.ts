@@ -2,6 +2,7 @@
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 import '@/styles/main.css'
+import { startWindowVisibility } from '@/lib/visibility'
 import { useAgentStore } from '@/stores/agent'
 import { useSettingsStore } from '@/stores/settings'
 import App from './App.vue'
@@ -17,6 +18,8 @@ async function bootstrap(): Promise<void> {
   await useSettingsStore(pinia).init()
 
   app.mount('#app')
+
+  void startWindowVisibility()
 
   // Follow the agent for the whole life of the window; the shell reconnects on its own.
   useAgentStore(pinia).start()

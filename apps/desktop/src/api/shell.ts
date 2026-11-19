@@ -2,6 +2,7 @@
 // Window-shell features owned by the desktop process: start-at-sign-in and the tray menu.
 // This module is the only place that talks to Tauri for them.
 import { invoke } from '@tauri-apps/api/core'
+import { listen } from '@tauri-apps/api/event'
 import { isTauri } from './uiPrefs'
 
 /** Whether the UI starts (minimized to the tray) when this Windows user signs in. */
@@ -23,4 +24,26 @@ export async function setTrayLocale(locale: string): Promise<void> {
   } catch (err) {
     console.warn('Could not update the tray menu language', err)
   }
+}
+
+/** Whether the native window can currently be seen (not hidden to the tray, not minimized). */
+export async function getWindowVisible(): Promise<boolean> {
+  if (!isTauri()) return true
+  try {
+    return await invoke<boolean>('window_visible')
+  } catch {
+    return true
+  }
+}
+
+/**
+ * Calls `onChange` whenever the native window is hidden, shown or minimized. The webview's own
+ * `document.visibilityState` does not follow those changes, so the shell announces them.
+ * Returns a function that stops listening.
+ */
+export async function watchWindowVisible(
+  onChange: (visible: boolean) => void,
+): Promise<() => void> {
+  if (!isTauri()) return () => {}
+  return listen<boolean>('window-visibility', (event) => onChange(event.payload))
 }

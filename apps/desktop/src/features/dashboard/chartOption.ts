@@ -51,7 +51,6 @@ export function buildChartOption(
     color: [colors.inbound, colors.outbound],
     textStyle: { color: colors.muted },
     grid: { left: 8, right: 16, top: 24, bottom: 8, containLabel: true },
-    legend: { show: false },
     tooltip: {
       trigger: 'axis',
       backgroundColor: colors.surface,

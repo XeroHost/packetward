@@ -60,6 +60,12 @@ fn autostart_set(app: tauri::AppHandle, enabled: bool) -> Result<(), String> {
     .map_err(|err| err.to_string())
 }
 
+/// Whether the window can currently be seen (not hidden to the tray, not minimized).
+#[tauri::command]
+fn window_visible() -> bool {
+    tray::is_visible()
+}
+
 /// Keeps the tray menu in the language the user picked.
 #[tauri::command]
 fn tray_set_locale(app: tauri::AppHandle, locale: String) -> Result<(), String> {
@@ -99,6 +105,7 @@ fn main() -> anyhow::Result<()> {
             autostart_state,
             autostart_set,
             tray_set_locale,
+            window_visible,
             bridge::agent_watch,
             bridge::agent_connections,
             bridge::agent_elevate
@@ -107,16 +114,28 @@ fn main() -> anyhow::Result<()> {
             let handle = app.handle();
             tray::init(handle, startup_locale(handle))?;
             // The window is created hidden (see tauri.conf.json) so a minimized start never flashes.
-            if !std::env::args().any(|arg| arg == MINIMIZED_FLAG) {
+            if std::env::args().any(|arg| arg == MINIMIZED_FLAG) {
+                tray::announce_visibility(handle, false);
+            } else {
                 tray::show_main_window(handle);
             }
             Ok(())
         })
         .on_window_event(|window, event| {
             // Closing the window hides it to the tray; "Quit" in the tray menu really exits.
-            if let WindowEvent::CloseRequested { api, .. } = event {
-                api.prevent_close();
-                let _ = window.hide();
+            match event {
+                WindowEvent::CloseRequested { api, .. } => {
+                    api.prevent_close();
+                    let _ = window.hide();
+                    tray::announce_visibility(window.app_handle(), false);
+                }
+                // Minimizing and restoring both resize the window.
+                WindowEvent::Resized(_) => {
+                    if let Ok(minimized) = window.is_minimized() {
+                        tray::announce_visibility(window.app_handle(), !minimized);
+                    }
+                }
+                _ => {}
             }
         })
         .run(tauri::generate_context!())

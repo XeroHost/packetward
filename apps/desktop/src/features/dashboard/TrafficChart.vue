@@ -1,6 +1,5 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup lang="ts">
-import { useDocumentVisibility } from '@vueuse/core'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
 import { use, type EChartsCoreOption } from 'echarts/core'
@@ -9,6 +8,7 @@ import { computed, shallowRef, watch } from 'vue'
 import VChart from 'vue-echarts'
 import { useI18n } from 'vue-i18n'
 import { formatBitrate } from '@/lib/format'
+import { useAppVisible } from '@/lib/visibility'
 import { useAppearanceStore } from '@/stores/appearance'
 import { useLiveStore } from '@/stores/live'
 import { buildChartOption, readChartColors } from './chartOption'
@@ -19,7 +19,7 @@ use([LineChart, GridComponent, TooltipComponent, CanvasRenderer])
 const { t } = useI18n()
 const live = useLiveStore()
 const appearance = useAppearanceStore()
-const visibility = useDocumentVisibility()
+const visible = useAppVisible()
 
 const option = shallowRef<EChartsCoreOption>({})
 
@@ -36,12 +36,12 @@ function refresh(): void {
 watch(
   () => live.tick,
   () => {
-    if (visibility.value === 'visible') refresh()
+    if (visible.value) refresh()
   },
   { immediate: true },
 )
-watch(visibility, (state) => {
-  if (state === 'visible') refresh()
+watch(visible, (isVisible) => {
+  if (isVisible) refresh()
 })
 // A theme or language change re-reads the colours and labels (after the attributes are applied).
 watch(

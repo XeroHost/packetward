@@ -10,7 +10,7 @@ import {
   type ColumnDef,
 } from '@tanstack/vue-table'
 import { useVirtualizer } from '@tanstack/vue-virtual'
-import { refDebounced, useDocumentVisibility, useIntervalFn } from '@vueuse/core'
+import { refDebounced, useIntervalFn } from '@vueuse/core'
 import { ArrowDown, ArrowUp, ArrowUpDown, TriangleAlert } from 'lucide-vue-next'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { copyText } from '@/lib/clipboard'
+import { useAppVisible } from '@/lib/visibility'
 import { useAppearanceStore } from '@/stores/appearance'
 import { useLiveStore, type ConnectionRow } from '@/stores/live'
 import type { TcpState } from '@/types/generated/TcpState'
@@ -31,7 +32,7 @@ import { applyFilters, type ProtoFilter, type StateFilter } from './filters'
 const { t } = useI18n()
 const live = useLiveStore()
 const appearance = useAppearanceStore()
-const visibility = useDocumentVisibility()
+const visible = useAppVisible()
 
 const POLL_MS = 2000
 const TCP_STATES: readonly TcpState[] = [
@@ -186,10 +187,10 @@ const { pause, resume } = useIntervalFn(() => void live.loadConnections(), POLL_
 onMounted(() => {
   rowHeight.value = measureRowHeight()
   void live.loadConnections()
-  if (visibility.value === 'visible') resume()
+  if (visible.value) resume()
 })
-watch(visibility, (current) => {
-  if (current === 'visible') {
+watch(visible, (isVisible) => {
+  if (isVisible) {
     void live.loadConnections()
     resume()
   } else {

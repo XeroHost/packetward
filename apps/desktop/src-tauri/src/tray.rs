@@ -4,12 +4,34 @@
 //! The desktop app is a viewer: closing the window hides it, and quitting the UI leaves the agent
 //! (which does the actual protecting) running.
 
+use std::sync::atomic::{AtomicBool, Ordering};
+
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 
 const TRAY_ID: &str = "main";
 const MAIN_WINDOW: &str = "main";
+/// Event telling the webview whether the window can be seen. `document.visibilityState` cannot be
+/// trusted for this: WebView2 keeps reporting "visible" after `window.hide()` (tray) and often
+/// after minimizing.
+pub const VISIBILITY_EVENT: &str = "window-visibility";
+
+/// Last visibility announced. The window starts visible unless started with `--minimized`.
+static UI_VISIBLE: AtomicBool = AtomicBool::new(true);
+
+/// Records the visibility and tells the webview when it changed.
+pub fn announce_visibility(app: &AppHandle, visible: bool) {
+    if UI_VISIBLE.swap(visible, Ordering::SeqCst) != visible {
+        let _ = app.emit(VISIBILITY_EVENT, visible);
+    }
+}
+
+/// Current visibility, for a webview that loads after the last announcement.
+pub fn is_visible() -> bool {
+    UI_VISIBLE.load(Ordering::SeqCst)
+}
+
 const OPEN_ID: &str = "open";
 const QUIT_ID: &str = "quit";
 
@@ -48,6 +70,7 @@ pub fn show_main_window(app: &AppHandle) {
         let _ = window.unminimize();
         let _ = window.show();
         let _ = window.set_focus();
+        announce_visibility(app, true);
     }
 }
 
