@@ -8,6 +8,11 @@ license.workspace = true
 repository.workspace = true
 publish = false
 
+[features]
+default = []
+# The real HTTP(S) transport of the speed test (ring needs a C toolchain). Enabled by the agent.
+speed-http = ["pw-diag/speed"]
+
 [dependencies]
 pw-capture = { path = "../pw-capture" }
 pw-core = { path = "../pw-core" }

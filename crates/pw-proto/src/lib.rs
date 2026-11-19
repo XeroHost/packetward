@@ -16,6 +16,7 @@ mod handshake;
 mod live;
 mod netstat;
 mod rdp;
+mod speed;
 mod subscribe;
 mod support;
 mod system;
@@ -53,6 +54,10 @@ pub use netstat::{
 pub use rdp::{
     RdpAttempts, RdpAudit, RdpConfirmRequest, RdpEndSessionRequest, RdpFinding, RdpLockoutRequest,
     RdpNlaRequest, RdpPending, RdpPortRequest, RdpRestrictRequest,
+};
+pub use speed::{
+    SpeedEvent, SpeedKind, SpeedLatencyView, SpeedRequest, SpeedResultView, SpeedServerView,
+    SpeedStarted, SpeedTransferView,
 };
 pub use subscribe::{SubscribeRequest, SubscribeResponse, UnsubscribeRequest};
 pub use support::{
@@ -111,6 +116,8 @@ pub mod method {
     pub const RDP_CANCEL: &str = "rdp.cancel";
     pub const RDP_RESET: &str = "rdp.reset";
     pub const RDP_END_SESSION: &str = "rdp.end_session";
+    pub const SPEED_START: &str = "speed.start";
+    pub const SPEED_CANCEL: &str = "speed.cancel";
     pub const ALERTS_LIST: &str = "alerts.list";
     pub const ALERTS_CLEAR: &str = "alerts.clear";
     pub const SUBSCRIBE: &str = "subscribe";
@@ -128,5 +135,7 @@ pub mod topic {
     pub const CAPTURE_STATS: &str = "capture.stats";
     /// Every change of an incident (started, escalated, ended), see [`crate::AlertView`].
     pub const ALERTS: &str = "alerts";
+    /// Progress and result of speed tests, see [`crate::SpeedEvent`].
+    pub const SPEED_PROGRESS: &str = "speed.progress";
     pub const DIAG_PROGRESS: &str = "diag.progress";
 }

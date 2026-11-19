@@ -12,6 +12,7 @@ mod detect;
 mod diag;
 mod poller;
 mod rdp_shield;
+mod speed;
 mod support;
 mod sys;
 mod trust;
@@ -25,11 +26,11 @@ use pw_ipc::{EventReceiver, Handler};
 use pw_netstat::NetStat;
 use pw_proto::{
     method, topic, AllowlistConfig, BlockRequest, CaptureFileRequest, CaptureStartRequest,
-    ConnectionsRequest, DiagJobRequest, DnsLookupRequest, ErrorCode, ErrorPayload,
-    FirewallRuleAction, FirewallRuleEdit, FirewallRulesRequest, Heartbeat, HelloResponse,
-    MtrStartRequest, PingStartRequest, PortCheckRequest, PurgeRequest, RdpAttempts,
+    ConnectionsRequest, DiagJobRequest as SpeedJobRequest, DiagJobRequest, DnsLookupRequest,
+    ErrorCode, ErrorPayload, FirewallRuleAction, FirewallRuleEdit, FirewallRulesRequest, Heartbeat,
+    HelloResponse, MtrStartRequest, PingStartRequest, PortCheckRequest, PurgeRequest, RdpAttempts,
     RdpConfirmRequest, RdpEndSessionRequest, RdpLockoutRequest, RdpNlaRequest, RdpPortRequest,
-    RdpRestrictRequest, RecordStartRequest, SetGuardianPolicy, SupportBundleRequest,
+    RdpRestrictRequest, RecordStartRequest, SetGuardianPolicy, SpeedRequest, SupportBundleRequest,
     SupportDiscardRequest, SupportReadRequest, SystemInfo, UnblockRequest, PROTOCOL_MAJOR,
     PROTOCOL_MINOR,
 };
@@ -45,6 +46,7 @@ pub use detect::{AlertStore, DetectionService, KEEP_INCIDENTS};
 pub use diag::{Diag, MAX_RUNNING_JOBS};
 pub use poller::{Poller, Snapshot};
 pub use rdp_shield::RdpShield;
+pub use speed::{SpeedApi, SpeedService, UnavailableSpeed};
 pub use trust::{TrustState, DEFAULT_WINDOW_DAYS};
 
 /// Events buffered per subscription before the producer waits for the consumer.
@@ -125,6 +127,7 @@ pub struct Engine {
     defense: Arc<Defense>,
     detection: Arc<DetectionService>,
     shield: Arc<RdpShield>,
+    speed: Arc<dyn SpeedApi>,
     _poller: AbortOnDrop,
     _detector: AbortOnDrop,
     _guardian: AbortOnDrop,
@@ -149,6 +152,7 @@ impl Engine {
             None,
             Arc::new(pw_firewall::system_firewall()),
             Arc::new(pw_netstat::WindowsRdpControl),
+            system_speed(),
         )
     }
 
@@ -165,7 +169,15 @@ impl Engine {
         ));
         let control: Arc<dyn pw_netstat::rdp_control::RdpControl> =
             Arc::new(pw_netstat::rdp_control::FakeRdpControl::new());
-        Self::build(config, netstat, host, sink, firewall, control)
+        Self::build(
+            config,
+            netstat,
+            host,
+            sink,
+            firewall,
+            control,
+            Arc::new(UnavailableSpeed),
+        )
     }
 
     fn build(
@@ -175,6 +187,7 @@ impl Engine {
         sink: Option<PacketSink>,
         firewall: Arc<dyn pw_firewall::Firewall>,
         control: Arc<dyn pw_netstat::rdp_control::RdpControl>,
+        speed: Arc<dyn SpeedApi>,
     ) -> Self {
         let (publish, latest) = watch::channel(None);
         let trust = TrustState::new(config.rdp_trust_days);
@@ -324,6 +337,7 @@ impl Engine {
             defense,
             detection,
             shield,
+            speed,
             _poller: AbortOnDrop(task),
             _detector: AbortOnDrop(detector_task),
             _guardian: AbortOnDrop(guardian_task),
@@ -704,6 +718,15 @@ impl Handler for Engine {
                 blocking(move || shield.end_session(&request)).await?;
                 Ok(Value::Null)
             }
+            method::SPEED_START => {
+                let request: SpeedRequest = parse(payload)?;
+                to_value(&self.speed.start(request)?)
+            }
+            method::SPEED_CANCEL => {
+                let request: SpeedJobRequest = parse(payload)?;
+                self.speed.cancel(request.job_id);
+                Ok(Value::Null)
+            }
             method::ALERTS_LIST => to_value(&self.alerts.list()),
             method::ALERTS_CLEAR => {
                 self.alerts.clear_ended();
@@ -844,6 +867,7 @@ impl Handler for Engine {
             }
             topic::DIAG_PROGRESS => Ok(self.diag.subscribe()),
             topic::ALERTS => Ok(self.alerts.subscribe()),
+            topic::SPEED_PROGRESS => Ok(self.speed.subscribe()),
             topic::CAPTURE_STATS => {
                 let (tx, rx) = mpsc::channel(SUBSCRIPTION_QUEUE);
                 let mut live = self.capture.subscribe();
@@ -889,6 +913,22 @@ fn data_dir() -> PathBuf {
     std::env::var_os("ProgramData")
         .map_or_else(|| PathBuf::from(r"C:ProgramData"), PathBuf::from)
         .join("PacketWard")
+}
+
+/// The speed test of the real agent: HTTP(S) with the system proxy (needs the `speed-http` feature).
+#[cfg(windows)]
+fn system_speed() -> Arc<dyn SpeedApi> {
+    #[cfg(feature = "speed-http")]
+    {
+        use pw_diag::speed::{HttpTransport, HttpTransportConfig};
+        match HttpTransport::new(&HttpTransportConfig::default()) {
+            // XeroHost nodes: the list is published in the blocklist repository (nodes.json); until a node
+            // list is loaded only the user's own servers are used.
+            Ok(transport) => return Arc::new(SpeedService::new(transport, Vec::new())),
+            Err(err) => tracing::warn!(%err, "the speed test has no network transport"),
+        }
+    }
+    Arc::new(UnavailableSpeed)
 }
 
 fn preset_of(preset: pw_proto::GuardianPreset) -> pw_detect::Preset {

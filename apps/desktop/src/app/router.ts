@@ -9,6 +9,7 @@ const AlertsPage = () => import('@/features/alerts/AlertsPage.vue')
 const FirewallPage = () => import('@/features/firewall/FirewallPage.vue')
 const GuardianPage = () => import('@/features/guardian/GuardianPage.vue')
 const RdpShieldPage = () => import('@/features/rdp/RdpShieldPage.vue')
+const SpeedTestPage = () => import('@/features/speed/SpeedTestPage.vue')
 const TrafficPage = () => import('@/features/traffic/TrafficPage.vue')
 const CapturePage = () => import('@/features/capture/CapturePage.vue')
 const DiagnosticsPage = () => import('@/features/diagnostics/DiagnosticsPage.vue')
@@ -19,6 +20,7 @@ const pageComponents: Record<string, RouteRecordRaw['component']> = {
   dashboard: DashboardPage,
   alerts: AlertsPage,
   traffic: TrafficPage,
+  'speed-test': SpeedTestPage,
   'rdp-shield': RdpShieldPage,
   firewall: FirewallPage,
   guardian: GuardianPage,

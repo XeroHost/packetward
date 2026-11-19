@@ -830,5 +830,55 @@
       "confirm": "¿Restaurar el puerto por defecto, las reglas integradas y quitar las reglas RDP de PacketWard?",
       "yes": "Sí, restaurar"
     }
+  },
+  "speed": {
+    "title": "Prueba de velocidad",
+    "hint": "Mide latencia, jitter y velocidad de descarga/subida contra un servidor de velocidad. Las pruebas nunca escriben en disco.",
+    "servers": "Servidores (uno por línea)",
+    "serversHint": "Su propio speed-server, como https://host:puerto (http:// solo para su laboratorio). Los nodos de XeroHost aparecerán aquí automáticamente cuando se publiquen.",
+    "streams": "Flujos",
+    "streamsShort": "flujos",
+    "kinds": {
+      "quick": "Prueba rápida",
+      "bin1": "Descarga de 1 GB",
+      "bin10": "Descarga de 10 GB",
+      "bin50": "Descarga de 50 GB"
+    },
+    "cancel": "Cancelar",
+    "confirm50": "Entiendo que la prueba de 50 GB mueve 50 GB de datos y puede tardar mucho; cuenta para mi ancho de banda y los límites del servidor.",
+    "rejected": "No usados:",
+    "running": "En curso…",
+    "phases": {
+      "picking_server": "Eligiendo el servidor más rápido",
+      "server_info": "Leyendo el servidor",
+      "latency": "Midiendo la latencia",
+      "download": "Descarga",
+      "upload": "Subida",
+      "bin_download": "Descargando"
+    },
+    "avg": "prom.",
+    "peak": "pico",
+    "download": "Descarga",
+    "upload": "Subida",
+    "latency": "Latencia",
+    "jitter": "jitter",
+    "sourceIp": "Su dirección pública",
+    "candidates": "Servidores probados:",
+    "empty": "Aún no hay resultados. Añada un servidor y haga una prueba rápida.",
+    "errors": {
+      "no_server": "Ningún servidor respondió. Compruebe la dirección o añada otro servidor.",
+      "confirmation_required": "La prueba de 50 GB necesita marcar la casilla de confirmación.",
+      "rate_limited": "El servidor está limitando esta máquina. Inténtelo de nuevo en {retry} segundos.",
+      "budget_exceeded": "Esta prueba superaría el límite de transferencia del servidor para su dirección. Pruebe una más pequeña más tarde.",
+      "server": "El servidor rechazó la petición.",
+      "invalid": "Un ajuste o una dirección de servidor no es válido.",
+      "incomplete": "La transferencia terminó antes de tiempo.",
+      "transport": "La conexión falló.",
+      "failed": "No se pudo iniciar la prueba.",
+      "unsupported": "Este agente no puede hacer pruebas de velocidad; actualícelo.",
+      "bad_request": "Se rechazó la petición.",
+      "busy": "Ya hay una prueba de velocidad en curso.",
+      "not_connected": "El agente no está conectado."
+    }
   }
 }

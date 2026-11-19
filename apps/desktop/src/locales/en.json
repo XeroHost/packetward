@@ -830,5 +830,55 @@
       "confirm": "Restore the default port, the built-in rules and remove PacketWard’s RDP rules?",
       "yes": "Yes, restore"
     }
+  },
+  "speed": {
+    "title": "Speed test",
+    "hint": "Measures latency, jitter and download/upload speed against a speed server. Tests never write to disk.",
+    "servers": "Servers (one per line)",
+    "serversHint": "Your own speed-server, as https://host:port (http:// only for your own lab). XeroHost nodes appear here automatically once published.",
+    "streams": "Streams",
+    "streamsShort": "streams",
+    "kinds": {
+      "quick": "Quick test",
+      "bin1": "1 GB download",
+      "bin10": "10 GB download",
+      "bin50": "50 GB download"
+    },
+    "cancel": "Cancel",
+    "confirm50": "I understand the 50 GB test moves 50 GB of data and can take a long time; it counts against my bandwidth and the server’s limits.",
+    "rejected": "Not used:",
+    "running": "Running…",
+    "phases": {
+      "picking_server": "Choosing the fastest server",
+      "server_info": "Reading the server",
+      "latency": "Measuring latency",
+      "download": "Download",
+      "upload": "Upload",
+      "bin_download": "Downloading"
+    },
+    "avg": "avg",
+    "peak": "peak",
+    "download": "Download",
+    "upload": "Upload",
+    "latency": "Latency",
+    "jitter": "jitter",
+    "sourceIp": "Your public address",
+    "candidates": "Servers tried:",
+    "empty": "No results yet. Add a server and run a quick test.",
+    "errors": {
+      "no_server": "No server answered. Check the address, or add another server.",
+      "confirmation_required": "The 50 GB test needs the confirmation box ticked.",
+      "rate_limited": "The server is limiting this machine. Try again in {retry} seconds.",
+      "budget_exceeded": "This test would exceed the server’s transfer limit for your address. Try a smaller test later.",
+      "server": "The server refused the request.",
+      "invalid": "A setting or a server address is not valid.",
+      "incomplete": "The transfer ended early.",
+      "transport": "The connection failed.",
+      "failed": "The test could not start.",
+      "unsupported": "This agent cannot run speed tests; update it.",
+      "bad_request": "The request was refused.",
+      "busy": "A speed test is already running.",
+      "not_connected": "The agent is not connected."
+    }
   }
 }

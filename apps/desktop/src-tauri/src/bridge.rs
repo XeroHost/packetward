@@ -12,8 +12,8 @@ use pw_ipc::{Client, ClientError};
 use pw_proto::{
     method, topic, AccessReason, AgentConnection, AlertView, BridgeEvent, CaptureLive, ClientKind,
     ConnectionsRequest, ConnectionsResponse, DiagEvent, ElevatedAction, ElevationOutcome,
-    ErrorCode, Heartbeat, LiveStats, SavedBundle, SupportBundleInfo, SupportBundleRequest,
-    SupportChunk, SupportDiscardRequest, SupportReadRequest,
+    ErrorCode, Heartbeat, LiveStats, SavedBundle, SpeedEvent, SupportBundleInfo,
+    SupportBundleRequest, SupportChunk, SupportDiscardRequest, SupportReadRequest,
 };
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, State};
@@ -69,6 +69,10 @@ impl Emitter {
 
     fn diag(&self, event: DiagEvent) -> bool {
         self.channel.send(BridgeEvent::Diag(event)).is_ok()
+    }
+
+    fn speed(&self, event: SpeedEvent) -> bool {
+        self.channel.send(BridgeEvent::Speed(event)).is_ok()
     }
 
     fn alert(&self, alert: AlertView) -> bool {
@@ -160,6 +164,14 @@ async fn run_connected(client: Client, out: &mut Emitter, slot: &ClientSlot) -> 
             None
         }
     };
+    // Speed test progress and results; older agents have none.
+    let mut speed = match client.subscribe(topic::SPEED_PROGRESS).await {
+        Ok(subscription) => Some(subscription),
+        Err(err) => {
+            tracing::info!(%err, "the agent does not publish speed.progress");
+            None
+        }
+    };
     // Live capture statistics; older agents do not have them and the Traffic page then stays empty.
     let mut capture = match client.subscribe(topic::CAPTURE_STATS).await {
         Ok(subscription) => Some(subscription),
@@ -192,6 +204,14 @@ async fn run_connected(client: Client, out: &mut Emitter, slot: &ClientSlot) -> 
             snapshot = next_stats(&mut stats) => match snapshot {
                 Some(snapshot) => {
                     if !out.stats(snapshot) {
+                        return false;
+                    }
+                }
+                None => return true,
+            },
+            event = next_speed(&mut speed) => match event {
+                Some(event) => {
+                    if !out.speed(event) {
                         return false;
                     }
                 }
@@ -230,6 +250,14 @@ async fn run_connected(client: Client, out: &mut Emitter, slot: &ClientSlot) -> 
 async fn next_stats(subscription: &mut Option<pw_ipc::Subscription>) -> Option<LiveStats> {
     match subscription {
         Some(subscription) => subscription.recv_as::<LiveStats>().await,
+        None => std::future::pending().await,
+    }
+}
+
+/// The next `speed.progress` event; never completes when the agent offers none.
+async fn next_speed(subscription: &mut Option<pw_ipc::Subscription>) -> Option<SpeedEvent> {
+    match subscription {
+        Some(subscription) => subscription.recv_as::<SpeedEvent>().await,
         None => std::future::pending().await,
     }
 }
@@ -303,6 +331,8 @@ const CALLABLE_METHODS: &[&str] = &[
     method::RDP_CANCEL,
     method::RDP_RESET,
     method::RDP_END_SESSION,
+    method::SPEED_START,
+    method::SPEED_CANCEL,
 ];
 
 fn is_callable(method_name: &str) -> bool {
@@ -551,6 +581,7 @@ mod tests {
                     || allowed.starts_with("firewall.")
                     || allowed.starts_with("guardian.")
                     || allowed.starts_with("rdp.")
+                    || allowed.starts_with("speed.")
                     || *allowed == method::SUPPORT_PREVIEW,
                 "{allowed}"
             );

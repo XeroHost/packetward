@@ -13,6 +13,7 @@ import { useAlertsStore } from './alerts'
 import { useCaptureStore } from './capture'
 import { useDefenseStore } from './defense'
 import { useRdpStore } from './rdp'
+import { useSpeedStore } from './speed'
 import { useDiagStore } from './diag'
 import { useLiveStore } from './live'
 
@@ -65,6 +66,7 @@ export const useAgentStore = defineStore('agent', () => {
         useAlertsStore().reset()
         useDefenseStore().reset()
         useRdpStore().disconnect()
+        useSpeedStore().reset()
       } else {
         // Connecting counts as a sign of life: do not report "unresponsive" before the first beat.
         lastBeatAt.value = Date.now()
@@ -78,6 +80,10 @@ export const useAgentStore = defineStore('agent', () => {
     }
     if (event.type === 'stats') {
       useLiveStore().applyStats(event.data)
+      return
+    }
+    if (event.type === 'speed') {
+      useSpeedStore().applyEvent(event.data)
       return
     }
     if (event.type === 'alert') {
