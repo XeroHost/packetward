@@ -48,6 +48,12 @@ Measured on the dev VPS (16 logical cores; release build; `run --console`; captu
   **CPU criterion NOT met**. Not optimized and not measured with capture stopped. Candidates: the 1 s netstat/adapter poll, the detector
   tick, the raw-socket capture thread. To do on a 1 vCPU / 2 GB test VPS together with the attack-fixture replay.
 
+## VPS clean-up (TESTING §G), 2026-11-19 at the end of the run
+No service was ever installed here; agent processes were stopped; `%ProgramData%\PacketWard` (captures, logs, support, alerts.jsonl,
+audit.jsonl, packetward.db + wal/shm) was deleted. Result of the §G block: service `False`, group `PacketWard Operators` `False`,
+HKCU/HKLM Run `False`/`False`, `Test-Path ProgramData\PacketWard` `False`, agent/app processes `0`, firewall rules in group
+`PacketWard` `0`, `%AppData%\PacketWard` `False`. Build outputs (`target/`) and worktrees under `.claude/` are git-ignored and were left.
+
 ## Blockers
 None open. Everything that needs live firewall/RDP/service changes is deferred to a test VPS (TESTING §F4–F11).
 
