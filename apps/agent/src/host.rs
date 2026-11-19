@@ -35,6 +35,11 @@ pub async fn run_agent(
     let listener = PipeListener::bind(PIPE_NAME, &pipe_sddl(operators.as_deref()))
         .with_context(|| format!("could not create the IPC pipe {PIPE_NAME}"))?;
 
+    // The data folder holds the Guardian state, the allowlist and the alerts: only SYSTEM and
+    // Administrators may write there, before anything is read from it.
+    if let Err(err) = pw_engine::ensure_private_dir(&crate::logging::data_dir()) {
+        tracing::error!(%err, "could not restrict the data folder to administrators");
+    }
     let engine = Arc::new(Engine::with_system_firewall(
         {
             let mut config = EngineConfig::new(AGENT_VERSION, service_mode);

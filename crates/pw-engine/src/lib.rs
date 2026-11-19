@@ -35,6 +35,7 @@ use tokio::sync::{mpsc, watch};
 use tokio::task::JoinHandle;
 use tokio::time::{Instant, MissedTickBehavior};
 
+pub use capture::ensure_private_dir;
 pub use capture::{CaptureHost, CaptureManager, PacketSink, SystemCaptureHost};
 pub use defense::{Defense, JsonPersistence, MemoryPersistence, Persistence};
 pub use detect::{AlertStore, DetectionService, KEEP_INCIDENTS};

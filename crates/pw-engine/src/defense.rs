@@ -273,6 +273,9 @@ struct State {
     recent_auto: VecDeque<u64>,
     circuit_open: bool,
     escalation: BTreeMap<String, (u8, u64)>,
+    /// Incident ids the Guardian already decided about: an incident escalating from High to
+    /// Critical must not be blocked (and escalated in the ladder) twice.
+    acted: VecDeque<u64>,
 }
 
 pub struct Defense {
@@ -336,6 +339,7 @@ impl Defense {
                 recent_auto: VecDeque::new(),
                 circuit_open: false,
                 escalation: saved.escalation,
+                acted: VecDeque::new(),
             }),
             clock,
         }
@@ -904,6 +908,16 @@ impl Defense {
 
     fn record_decision(&self, decision: GuardianDecision) {
         let mut state = lock(&self.state);
+        // Below-threshold and failed attempts may still be acted on later (escalation, retry).
+        if !matches!(
+            decision.outcome.as_str(),
+            "skipped_below_threshold" | "skipped_failed"
+        ) {
+            state.acted.push_back(decision.alert_id);
+            while state.acted.len() > 2000 {
+                state.acted.pop_front();
+            }
+        }
         state.decisions.push_front(decision);
         while state.decisions.len() > MAX_DECISIONS {
             state.decisions.pop_back();
@@ -920,6 +934,9 @@ impl Defense {
         if policy.mode == GuardianMode::Off {
             return None;
         }
+        if lock(&self.state).acted.contains(&alert.id) {
+            return None;
+        }
         let now = self.now();
         let mut decision = GuardianDecision {
             unix_ms: now * 1000,
@@ -931,7 +948,14 @@ impl Defense {
             ttl_secs: None,
             why: String::new(),
         };
-        if alert.severity < policy.min_severity {
+        // Password guessing against RDP is what automatic blocking is for: it qualifies from Medium
+        // on even when the general threshold is higher.
+        let threshold = if alert.summary_key == "rdp_brute_force" {
+            policy.min_severity.min(AlertSeverity::Medium)
+        } else {
+            policy.min_severity
+        };
+        if alert.severity < threshold {
             decision.outcome = "skipped_below_threshold".to_owned();
             decision.why = "the alert is below the severity the Guardian acts on".to_owned();
             self.record_decision(decision.clone());
@@ -1760,6 +1784,49 @@ mod tests {
             "only our rule went; everything else stayed"
         );
         assert!(rig.defense.list_blocks().blocks.is_empty());
+    }
+
+    #[test]
+    fn one_incident_is_blocked_once_even_when_it_escalates() {
+        let rig = rig();
+        active(&rig);
+        let started = alert(7, "203.0.113.9", AlertSeverity::High);
+        assert_eq!(rig.defense.on_alert(&started).unwrap().outcome, "blocked");
+        let mut escalated = alert(7, "203.0.113.9", AlertSeverity::Critical);
+        escalated.phase = AlertPhaseView::Escalated;
+        assert!(rig.defense.on_alert(&escalated).is_none());
+        let status = rig.defense.status();
+        assert_eq!(status.blocks_last_hour, 1);
+        assert_eq!(rig.defense.list_blocks().blocks[0].escalation, 1);
+        assert_eq!(status.decisions.len(), 1);
+    }
+
+    #[test]
+    fn an_incident_below_the_threshold_is_acted_on_when_it_escalates() {
+        let rig = rig();
+        active(&rig);
+        let started = alert(8, "203.0.113.9", AlertSeverity::Low);
+        assert_eq!(
+            rig.defense.on_alert(&started).unwrap().outcome,
+            "skipped_below_threshold"
+        );
+        let mut escalated = alert(8, "203.0.113.9", AlertSeverity::High);
+        escalated.phase = AlertPhaseView::Escalated;
+        assert_eq!(rig.defense.on_alert(&escalated).unwrap().outcome, "blocked");
+    }
+
+    #[test]
+    fn rdp_password_guessing_qualifies_from_medium() {
+        let rig = rig();
+        active(&rig);
+        let mut guessing = alert(9, "203.0.113.9", AlertSeverity::Medium);
+        guessing.summary_key = "rdp_brute_force".to_owned();
+        assert_eq!(rig.defense.on_alert(&guessing).unwrap().outcome, "blocked");
+        let other = alert(10, "203.0.113.10", AlertSeverity::Medium);
+        assert_eq!(
+            rig.defense.on_alert(&other).unwrap().outcome,
+            "skipped_below_threshold"
+        );
     }
 
     #[test]

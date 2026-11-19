@@ -48,6 +48,13 @@ cargo fmt --all --check; cargo clippy --workspace --all-targets -- -D warnings; 
 cd apps\desktop; pnpm lint; pnpm typecheck; pnpm test; pnpm build
 ```
 
+## Notes for the final summary
+- M4 acceptance items pending for a test VPS: Npcap + Wireshark check of the pcapng, 200k pps responsiveness. M5: a toast for a critical alert while the window is closed.
+- RDP Shield (M7b) must: call `restore_snapshot` before any purge/uninstall/`pwctl rdp reset` (a purge with the shield active leaves the built-in RDP rules disabled), and persist the ORIGINAL pre-shield snapshot once (`kv_set_if_absent` in pw-store), never overwriting it.
+- **The working tree contains changes to `branding-kit/` that I did not make (deleted and modified files).** I never commit them (commits use `git add -A -- . ':!branding-kit'`); tell the user.
+- Live check on the dev VPS (agent in Monitor, read-only): real RDP brute-force bots hit this server; the Guardian protected set listed gateway, DNS, 127/8 and the trusted RDP client, and a Medium RdpBruteForce alert became a `would_block` decision. Nothing was blocked.
+- Cleanup at the end: remove `%ProgramData%PacketWard` (alerts.jsonl, audit.jsonl, defense.json, captures, support, logs), stop any agent process, uninstall nothing else (no service was installed).
+
 ## Findings to act on
 - **RawSocket backend saw 0 inbound packets on the dev VPS** (pw-capture live test, elevated; outbound is seen). Hypothesis (unverified): Windows Firewall drops inbound delivery to raw sockets of an app without an allow rule. Not tested further because firewall changes are prohibited here. Actions: (1) the engine must warn when outbound flows but inbound stays at 0 for N seconds ("capture is blind"), (2) test on a test VPS with an inbound allow rule for `packetward-agent.exe` in the `PacketWard` group (TESTING.md), (3) fall back to netstat-based counters (ConnFlood/Aggregate/RDP detectors do not need capture), (4) later alternative: NDIS ETW provider.
 - `pw-capture` Npcap FFI was never executed (Npcap must not be installed here): test on a test VPS with Npcap.
