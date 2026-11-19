@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "pw-intel"
 description = "GeoIP/ASN, AbuseIPDB client, reputation cache and blocklists."
 version.workspace = true
@@ -8,5 +8,39 @@ license.workspace = true
 repository.workspace = true
 publish = false
 
+[features]
+default = []
+# The real HTTPS `Fetcher` (reqwest + rustls/ring). Opt-in, to be enabled by the agent: `ring` compiles C code, so
+# keeping it out of the default build keeps `cargo check/test` of the pure logic free of a C toolchain (and lets it
+# be cross-checked for Linux from a Windows box). Everything else in the crate is network-free; tests never touch
+# the network.
+http = ["dep:reqwest", "dep:rustls"]
+# Fakes for the crates that consume pw-intel (`pw_intel::testing`): scripted fetcher, manual clock, log capture.
+testing = []
+
+[dependencies]
+pw-core = { path = "../pw-core" }
+flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
+maxminddb = "0.33"
+minisign-verify = "0.3"
+# rustls with the `ring` provider and the OS certificate verifier: no OpenSSL and no aws-lc (C/cmake/NASM build).
+# Proxy: the system proxy by default, an explicit proxy through `HttpFetcherConfig`.
+reqwest = { version = "0.13", optional = true, default-features = false, features = ["rustls-no-provider", "system-proxy", "socks", "http2"] }
+rustls = { version = "0.23", optional = true, default-features = false, features = ["ring", "std", "tls12"] }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+# Windows Credential Manager (`KeyringSecretStore`). Only compiled on Windows: no zbus/secret-service on Linux.
+[target.'cfg(windows)'.dependencies]
+keyring = "4"
+
+[dev-dependencies]
+# Test-only: generates a throwaway minisign keypair / signatures. Never a real key.
+minisign = "0.10"
+tokio = { workspace = true, features = ["rt", "macros", "time"] }
+
 [lints]
 workspace = true
+
