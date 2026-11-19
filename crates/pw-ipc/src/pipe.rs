@@ -4,10 +4,10 @@
 use std::io;
 use std::time::Duration;
 
-use tokio::net::windows::named_pipe::{ClientOptions, NamedPipeClient, NamedPipeServer};
+use tokio::net::windows::named_pipe::{NamedPipeClient, NamedPipeServer};
 
 use crate::server::Listener;
-use crate::sys::windows::{create_pipe_instance, SecurityDescriptor};
+use crate::sys::windows::{create_pipe_instance, open_client, SecurityDescriptor};
 
 /// The pipe the agent listens on.
 pub const PIPE_NAME: &str = r"\\.\pipe\packetward";
@@ -21,12 +21,23 @@ const ERROR_PIPE_BUSY: i32 = 231;
 const BUSY_RETRY: Duration = Duration::from_millis(50);
 const BUSY_ATTEMPTS: u32 = 40;
 
-/// SDDL for the pipe: SYSTEM and Administrators get full control, plus read/write for the
-/// operators group when its SID is known. Nobody else gets any access (protected DACL).
+/// What a client asks for when opening the pipe: FILE_READ_DATA | FILE_WRITE_DATA |
+/// FILE_READ_ATTRIBUTES | SYNCHRONIZE. Deliberately **not** GENERIC_WRITE: that would include
+/// FILE_APPEND_DATA, which on a pipe means FILE_CREATE_PIPE_INSTANCE.
+pub const CLIENT_ACCESS: u32 = 0x0010_0083;
+/// Rights granted to the operators group: the client rights plus READ_CONTROL.
+const OPERATOR_ACE_MASK: u32 = CLIENT_ACCESS | 0x0002_0000;
+
+/// SDDL for the pipe: SYSTEM and Administrators get full control; the operators group (when its
+/// SID is known) gets exactly the rights needed to talk to the agent. Nobody else gets any access
+/// (protected DACL).
+///
+/// Operators must not get FILE_CREATE_PIPE_INSTANCE: with it, a member could create extra
+/// instances of the pipe and answer clients in place of the agent.
 pub fn pipe_sddl(operators_sid: Option<&str>) -> String {
     let mut sddl = String::from("D:P(A;;GA;;;SY)(A;;GA;;;BA)");
     if let Some(sid) = operators_sid {
-        sddl.push_str(&format!("(A;;GRGW;;;{sid})"));
+        sddl.push_str(&format!("(A;;0x{OPERATOR_ACE_MASK:x};;;{sid})"));
     }
     sddl
 }
@@ -70,7 +81,7 @@ impl Listener for PipeListener {
 pub async fn connect(name: &str) -> io::Result<NamedPipeClient> {
     let mut attempts = 0;
     loop {
-        match ClientOptions::new().open(name) {
+        match open_client(name) {
             Ok(client) => return Ok(client),
             Err(err) if err.raw_os_error() == Some(ERROR_PIPE_BUSY) && attempts < BUSY_ATTEMPTS => {
                 attempts += 1;
@@ -106,9 +117,9 @@ mod tests {
     /// Opens the pipe with plain blocking file APIs from the calling thread, so the thread's
     /// token is what the ACL is checked against.
     fn open_blocking(name: &str) -> io::Result<std::fs::File> {
+        use std::os::windows::fs::OpenOptionsExt;
         std::fs::OpenOptions::new()
-            .read(true)
-            .write(true)
+            .access_mode(CLIENT_ACCESS)
             .open(name)
     }
 
@@ -136,7 +147,7 @@ mod tests {
         assert_eq!(pipe_sddl(None), "D:P(A;;GA;;;SY)(A;;GA;;;BA)");
         assert_eq!(
             pipe_sddl(Some("S-1-5-21-1-2-3-1001")),
-            "D:P(A;;GA;;;SY)(A;;GA;;;BA)(A;;GRGW;;;S-1-5-21-1-2-3-1001)"
+            "D:P(A;;GA;;;SY)(A;;GA;;;BA)(A;;0x120083;;;S-1-5-21-1-2-3-1001)"
         );
     }
 
@@ -216,11 +227,63 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn an_operator_cannot_create_extra_pipe_instances() {
+        // With FILE_CREATE_PIPE_INSTANCE an operator could stand up a second server on the same
+        // name and answer clients in place of the agent.
+        let name = unique_name();
+        let user = current_user_sid_string().unwrap();
+        let _listener = PipeListener::bind(&name, &pipe_sddl(Some(&user))).unwrap();
+        let name_for_thread = name.clone();
+        let attempt = test_support::run_without_administrators(move || {
+            // The runtime is needed only because tokio pipe servers register with a reactor.
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            runtime.block_on(async {
+                tokio::net::windows::named_pipe::ServerOptions::new()
+                    .first_pipe_instance(false)
+                    .create(&name_for_thread)
+                    .map(|_| ())
+            })
+        });
+        assert_eq!(attempt.unwrap_err().kind(), io::ErrorKind::PermissionDenied);
+    }
+
+    // Multi-threaded: the test blocks its own thread while the restricted-token thread runs, and the
+    // server task must keep being polled meanwhile.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn the_real_client_connects_with_the_narrow_access_mask() {
+        // End to end through `connect`, as an unelevated administrator with only the group ACE.
+        let name = unique_name();
+        let user = current_user_sid_string().unwrap();
+        let listener = PipeListener::bind(&name, &pipe_sddl(Some(&user))).unwrap();
+        tokio::spawn(serve(listener, Arc::new(Echo), std::future::pending()));
+        let name_for_thread = name.clone();
+        let echoed = test_support::run_without_administrators(move || {
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            runtime.block_on(async {
+                let stream = connect(&name_for_thread).await?;
+                let client = Client::connect(stream, ClientKind::Pwctl, "test")
+                    .await
+                    .unwrap();
+                let echoed: Value = client.request("echo", &json!(42)).await.unwrap();
+                io::Result::Ok(echoed)
+            })
+        });
+        assert_eq!(echoed.unwrap(), json!(42));
+    }
+
+    #[tokio::test]
     async fn a_user_not_in_the_acl_is_denied() {
         // Same restricted token, but the ACL names an unrelated SID and no Administrators ACE.
         let name = unique_name();
         let _listener =
-            PipeListener::bind(&name, "D:P(A;;GA;;;SY)(A;;GRGW;;;S-1-5-21-1-2-3-4242)").unwrap();
+            PipeListener::bind(&name, "D:P(A;;GA;;;SY)(A;;0x120083;;;S-1-5-21-1-2-3-4242)")
+                .unwrap();
         let name_for_thread = name.clone();
         let result =
             test_support::run_without_administrators(move || open_blocking(&name_for_thread));

@@ -7,7 +7,10 @@ use std::ffi::c_void;
 use std::io;
 use std::iter::once;
 
-use tokio::net::windows::named_pipe::{NamedPipeServer, ServerOptions};
+use std::os::windows::fs::OpenOptionsExt;
+use std::os::windows::io::IntoRawHandle;
+
+use tokio::net::windows::named_pipe::{NamedPipeClient, NamedPipeServer, ServerOptions};
 use windows::core::{BOOL, PCWSTR, PWSTR};
 use windows::Win32::Foundation::{CloseHandle, LocalFree, HANDLE, HLOCAL};
 use windows::Win32::NetworkManagement::NetManagement::{
@@ -115,6 +118,23 @@ pub fn create_pipe_instance(
             (&mut attributes as *mut SECURITY_ATTRIBUTES).cast::<c_void>(),
         )
     }
+}
+
+const FILE_FLAG_OVERLAPPED: u32 = 0x4000_0000;
+const SECURITY_SQOS_PRESENT: u32 = 0x0010_0000;
+const SECURITY_IDENTIFICATION: u32 = 0x0001_0000;
+
+/// Opens the agent pipe as a client with exactly the rights the ACL grants operators (see
+/// `pipe::CLIENT_ACCESS`). SECURITY_IDENTIFICATION stops a server that is not the agent from
+/// impersonating the caller.
+pub fn open_client(name: &str) -> io::Result<NamedPipeClient> {
+    let file = std::fs::OpenOptions::new()
+        .access_mode(crate::pipe::CLIENT_ACCESS)
+        .custom_flags(FILE_FLAG_OVERLAPPED | SECURITY_SQOS_PRESENT | SECURITY_IDENTIFICATION)
+        .open(name)?;
+    // SAFETY: `file` owns a valid handle opened with FILE_FLAG_OVERLAPPED; ownership moves to the
+    // pipe object, which closes it.
+    unsafe { NamedPipeClient::from_raw_handle(file.into_raw_handle()) }
 }
 
 /// Converts a SID to its `S-1-5-...` string form.
