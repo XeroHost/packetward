@@ -6,10 +6,19 @@ import type { AccessReason } from '@/types/generated/AccessReason'
 import type { AgentConnection } from '@/types/generated/AgentConnection'
 import type { BridgeEvent } from '@/types/generated/BridgeEvent'
 import type { ElevatedAction } from '@/types/generated/ElevatedAction'
+import type { ConnectionsResponse } from '@/types/generated/ConnectionsResponse'
 import type { ElevationOutcome } from '@/types/generated/ElevationOutcome'
+import { previewConnections, previewRowCount, previewStats } from './preview'
 import { isTauri } from './uiPrefs'
 
-export type { AccessReason, AgentConnection, BridgeEvent, ElevatedAction, ElevationOutcome }
+export type {
+  AccessReason,
+  AgentConnection,
+  BridgeEvent,
+  ConnectionsResponse,
+  ElevatedAction,
+  ElevationOutcome,
+}
 
 /** Version string reported while running in a plain browser, where there is no agent. */
 export const PREVIEW_AGENT_VERSION = 'browser-preview'
@@ -46,6 +55,7 @@ function previewWatch(onEvent: (event: BridgeEvent) => void): () => void {
   })
   const timer = setInterval(() => {
     seq += 1
+    onEvent({ type: 'stats', data: previewStats(seq) })
     onEvent({
       type: 'heartbeat',
       data: {
@@ -62,4 +72,25 @@ function previewWatch(onEvent: (event: BridgeEvent) => void): () => void {
 export async function elevateAgent(action: ElevatedAction): Promise<ElevationOutcome> {
   if (!isTauri()) return { result: 'failed', message: 'Not available in the browser preview.' }
   return invoke<ElevationOutcome>('agent_elevate', { action })
+}
+
+/** Raised by `fetchConnections` when the agent is too old to provide the connection table. */
+export class AgentUnsupportedError extends Error {
+  constructor() {
+    super('The installed agent does not provide the connection table.')
+  }
+}
+
+/**
+ * The agent's connection table (capped on the agent side; `truncated` says when). Throws
+ * `AgentUnsupportedError` for an agent older than the app and an Error for anything else.
+ */
+export async function fetchConnections(limit?: number): Promise<ConnectionsResponse> {
+  if (!isTauri()) return previewConnections(previewRowCount())
+  try {
+    return await invoke<ConnectionsResponse>('agent_connections', { limit: limit ?? null })
+  } catch (err) {
+    if (err === 'unsupported') throw new AgentUnsupportedError()
+    throw new Error(String(err), { cause: err })
+  }
 }

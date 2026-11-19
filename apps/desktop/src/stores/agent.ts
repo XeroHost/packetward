@@ -9,6 +9,7 @@ import {
   type ElevatedAction,
 } from '@/api/agent'
 import type { Heartbeat } from '@/types/generated/Heartbeat'
+import { useLiveStore } from './live'
 
 /** What the top-bar pill shows. */
 export type AgentPill = 'unknown' | 'connected' | 'unresponsive' | 'disconnected'
@@ -52,11 +53,17 @@ export const useAgentStore = defineStore('agent', () => {
       if (event.data.state !== 'connected') {
         heartbeat.value = null
         lastBeatAt.value = null
+        // Nothing stale may look live once the agent is gone.
+        useLiveStore().reset()
       } else {
         // Connecting counts as a sign of life: do not report "unresponsive" before the first beat.
         lastBeatAt.value = Date.now()
         now.value = Date.now()
       }
+      return
+    }
+    if (event.type === 'stats') {
+      useLiveStore().applyStats(event.data)
       return
     }
     heartbeat.value = event.data

@@ -24,6 +24,8 @@
   --color-success: var(--success);
   --color-info: var(--info);
   --color-glow: var(--glow);
+  --color-chart-in: var(--chart-in);
+  --color-chart-out: var(--chart-out);
 
   /* shadcn-vue semantic names, themed to Crimson Sentinel */
   --color-background: var(--bg);
@@ -92,4 +94,12 @@
     outline: 2px solid var(--brand);
     outline-offset: 2px;
   }
+}
+
+/* Dense tables: 13 px, 12 px in Compact density (docs/DESIGN.md). */
+.pw-table {
+  font-size: 13px;
+}
+:root[data-density='compact'] .pw-table {
+  font-size: 12px;
 }

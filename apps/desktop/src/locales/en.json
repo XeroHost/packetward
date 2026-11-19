@@ -146,6 +146,105 @@
       "uptime": "Agent uptime",
       "lastBeat": "Last heartbeat",
       "secondsAgo": "{n}s ago"
+    },
+    "oldAgent": "The installed agent is older than this app and does not report traffic or connections. Update PacketWard.",
+    "tiles": {
+      "inbound": "Inbound",
+      "outbound": "Outbound",
+      "pps": "pkt/s",
+      "link": "Link {speed}",
+      "connections": "Established connections",
+      "connectionsHint": "{total} in total · {waiting} waiting to close · {half} half-open",
+      "rdp": "RDP sessions",
+      "rdpHint": "{n} connected from outside · port {port}"
+    },
+    "chart": {
+      "title": "Traffic, last 5 minutes",
+      "inbound": "Inbound",
+      "outbound": "Outbound",
+      "empty": "Waiting for data from the agent…",
+      "summary": "Traffic chart. Now: {inbound} inbound, {outbound} outbound."
+    },
+    "topRemote": {
+      "title": "Top remote addresses",
+      "description": "Who holds the most connections to this machine right now.",
+      "empty": "No remote connections.",
+      "connections": "{n} conn."
+    },
+    "adapters": {
+      "title": "Network adapters",
+      "description": "Only real adapters are added to the totals; tunnels and VPNs are shown apart.",
+      "empty": "No adapters with traffic.",
+      "counted": "Counted in the totals",
+      "notCounted": "Not in the totals",
+      "kind": {
+        "ethernet": "Ethernet",
+        "wireless": "Wi-Fi",
+        "tunnel": "Tunnel / VPN",
+        "loopback": "Loopback",
+        "other": "Other"
+      }
+    },
+    "rdp": {
+      "title": "Remote Desktop",
+      "description": "Sessions on this machine and the addresses they connect from.",
+      "none": "Nobody is connected through Remote Desktop.",
+      "peers": "Connected from",
+      "reported": "client reports",
+      "note": "The address the client reports can differ from the one the server sees (NAT, VPN). The addresses marked RDP are the real source of the connections.",
+      "state": {
+        "active": "Active",
+        "connected": "Connected",
+        "disconnected": "Disconnected",
+        "other": "Other"
+      }
     }
+  },
+  "common": {
+    "copy": "Copy",
+    "copied": "Copied",
+    "copyAddress": "Copy {addr}"
+  },
+  "connections": {
+    "rdpBadge": "RDP",
+    "rdpBadgeTip": "Current Remote Desktop client",
+    "filters": {
+      "protocol": "Protocol",
+      "state": "State",
+      "search": "Search",
+      "searchPlaceholder": "Process, address, port or PID",
+      "all": "All",
+      "clear": "Clear filters"
+    },
+    "columns": {
+      "proto": "Proto",
+      "local": "Local address",
+      "remote": "Remote address",
+      "state": "State",
+      "process": "Process",
+      "pid": "PID"
+    },
+    "states": {
+      "established": "Established",
+      "listen": "Listening",
+      "syn_sent": "SYN sent",
+      "syn_received": "SYN received",
+      "fin_wait1": "FIN wait 1",
+      "fin_wait2": "FIN wait 2",
+      "close_wait": "Close wait",
+      "closing": "Closing",
+      "last_ack": "Last ACK",
+      "time_wait": "Time wait",
+      "closed": "Closed",
+      "delete_tcb": "Deleting"
+    },
+    "summary": "Showing {shown} of {total}",
+    "updated": "Updated {time}",
+    "truncated": "The agent sent only the first {n} rows to stay within its size limit.",
+    "empty": "No connections.",
+    "noMatch": "No connection matches the filters.",
+    "unknownProcess": "PID {pid}",
+    "unsupported": "The installed agent is older than this app and cannot provide the connection list. Update PacketWard.",
+    "failed": "Could not read the connection list from the agent. It will try again."
   }
 }

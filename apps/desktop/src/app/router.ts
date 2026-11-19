@@ -4,11 +4,13 @@ import { NAV_ITEMS } from './nav'
 
 const PlaceholderPage = () => import('@/features/placeholder/PlaceholderPage.vue')
 const DashboardPage = () => import('@/features/dashboard/DashboardPage.vue')
+const ConnectionsPage = () => import('@/features/connections/ConnectionsPage.vue')
 const SettingsPage = () => import('@/features/settings/SettingsPage.vue')
 const AboutPage = () => import('@/features/about/AboutPage.vue')
 
 const pageComponents: Record<string, RouteRecordRaw['component']> = {
   dashboard: DashboardPage,
+  connections: ConnectionsPage,
   settings: SettingsPage,
 }
 

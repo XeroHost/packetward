@@ -100,6 +100,7 @@ fn main() -> anyhow::Result<()> {
             autostart_set,
             tray_set_locale,
             bridge::agent_watch,
+            bridge::agent_connections,
             bridge::agent_elevate
         ])
         .setup(|app| {

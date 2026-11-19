@@ -146,6 +146,105 @@
       "uptime": "Tiempo activo del agente",
       "lastBeat": "Último latido",
       "secondsAgo": "hace {n} s"
+    },
+    "oldAgent": "El agente instalado es más antiguo que esta aplicación y no reporta tráfico ni conexiones. Actualiza PacketWard.",
+    "tiles": {
+      "inbound": "Entrada",
+      "outbound": "Salida",
+      "pps": "pkt/s",
+      "link": "Enlace {speed}",
+      "connections": "Conexiones establecidas",
+      "connectionsHint": "{total} en total · {waiting} esperando cerrar · {half} a medio abrir",
+      "rdp": "Sesiones RDP",
+      "rdpHint": "{n} conectadas desde fuera · puerto {port}"
+    },
+    "chart": {
+      "title": "Tráfico, últimos 5 minutos",
+      "inbound": "Entrada",
+      "outbound": "Salida",
+      "empty": "Esperando datos del agente…",
+      "summary": "Gráfico de tráfico. Ahora: {inbound} de entrada, {outbound} de salida."
+    },
+    "topRemote": {
+      "title": "Direcciones remotas principales",
+      "description": "Quién mantiene más conexiones con este equipo ahora mismo.",
+      "empty": "No hay conexiones remotas.",
+      "connections": "{n} conex."
+    },
+    "adapters": {
+      "title": "Adaptadores de red",
+      "description": "Solo los adaptadores reales suman en los totales; túneles y VPN se muestran aparte.",
+      "empty": "No hay adaptadores con tráfico.",
+      "counted": "Suma en los totales",
+      "notCounted": "No suma en los totales",
+      "kind": {
+        "ethernet": "Ethernet",
+        "wireless": "Wi-Fi",
+        "tunnel": "Túnel / VPN",
+        "loopback": "Loopback",
+        "other": "Otro"
+      }
+    },
+    "rdp": {
+      "title": "Escritorio remoto",
+      "description": "Sesiones de este equipo y las direcciones desde las que se conectan.",
+      "none": "Nadie está conectado por Escritorio remoto.",
+      "peers": "Conectado desde",
+      "reported": "el cliente informa",
+      "note": "La dirección que informa el cliente puede diferir de la que ve el servidor (NAT, VPN). Las direcciones marcadas RDP son el origen real de las conexiones.",
+      "state": {
+        "active": "Activa",
+        "connected": "Conectada",
+        "disconnected": "Desconectada",
+        "other": "Otra"
+      }
     }
+  },
+  "common": {
+    "copy": "Copiar",
+    "copied": "Copiado",
+    "copyAddress": "Copiar {addr}"
+  },
+  "connections": {
+    "rdpBadge": "RDP",
+    "rdpBadgeTip": "Cliente actual de Escritorio remoto",
+    "filters": {
+      "protocol": "Protocolo",
+      "state": "Estado",
+      "search": "Buscar",
+      "searchPlaceholder": "Proceso, dirección, puerto o PID",
+      "all": "Todos",
+      "clear": "Quitar filtros"
+    },
+    "columns": {
+      "proto": "Proto",
+      "local": "Dirección local",
+      "remote": "Dirección remota",
+      "state": "Estado",
+      "process": "Proceso",
+      "pid": "PID"
+    },
+    "states": {
+      "established": "Establecida",
+      "listen": "Escuchando",
+      "syn_sent": "SYN enviado",
+      "syn_received": "SYN recibido",
+      "fin_wait1": "FIN espera 1",
+      "fin_wait2": "FIN espera 2",
+      "close_wait": "Espera de cierre",
+      "closing": "Cerrando",
+      "last_ack": "Último ACK",
+      "time_wait": "Espera de tiempo",
+      "closed": "Cerrada",
+      "delete_tcb": "Eliminando"
+    },
+    "summary": "Mostrando {shown} de {total}",
+    "updated": "Actualizado {time}",
+    "truncated": "El agente envió solo las primeras {n} filas para respetar su límite de tamaño.",
+    "empty": "No hay conexiones.",
+    "noMatch": "Ninguna conexión coincide con los filtros.",
+    "unknownProcess": "PID {pid}",
+    "unsupported": "El agente instalado es más antiguo que esta aplicación y no puede dar la lista de conexiones. Actualiza PacketWard.",
+    "failed": "No se pudo leer la lista de conexiones del agente. Lo intentará de nuevo."
   }
 }
