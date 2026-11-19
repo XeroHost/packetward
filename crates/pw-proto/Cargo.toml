@@ -8,5 +8,15 @@ license.workspace = true
 repository.workspace = true
 publish = false
 
+[features]
+# Derive `ts_rs::TS` and export the TypeScript bindings when running the tests.
+ts-export = ["dep:ts-rs"]
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+ts-rs = { workspace = true, optional = true }
+
 [lints]
 workspace = true
