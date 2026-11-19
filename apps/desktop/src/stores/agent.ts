@@ -9,6 +9,7 @@ import {
   type ElevatedAction,
 } from '@/api/agent'
 import type { Heartbeat } from '@/types/generated/Heartbeat'
+import { useDiagStore } from './diag'
 import { useLiveStore } from './live'
 
 /** What the top-bar pill shows. */
@@ -55,6 +56,7 @@ export const useAgentStore = defineStore('agent', () => {
         lastBeatAt.value = null
         // Nothing stale may look live once the agent is gone.
         useLiveStore().reset()
+        useDiagStore().reset()
       } else {
         // Connecting counts as a sign of life: do not report "unresponsive" before the first beat.
         lastBeatAt.value = Date.now()
@@ -64,6 +66,10 @@ export const useAgentStore = defineStore('agent', () => {
     }
     if (event.type === 'stats') {
       useLiveStore().applyStats(event.data)
+      return
+    }
+    if (event.type === 'diag') {
+      useDiagStore().applyEvent(event.data)
       return
     }
     heartbeat.value = event.data

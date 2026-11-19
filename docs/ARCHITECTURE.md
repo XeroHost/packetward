@@ -239,6 +239,16 @@ synthetic generators.
   **Bin tests 1 GB / 10 GB / 50 GB**: download of a fixed size with progress, avg/peak Mbps and duration; 50 GB
   requires an explicit confirmation (bandwidth/time warning). All tests cancellable.
 
+**Integration (M3).** `pw-engine::Diag<P: Pinger>` owns the jobs: `diag.ping.start` / `diag.mtr.start` return a job id
+and stream `DiagEvent`s (ping reply, MTR snapshot per cycle, done, failed) on the `diag.progress` topic (every
+subscriber sees every job; the client filters by id). At most 4 jobs run at once (`ErrorCode::Busy` beyond that);
+`diag.cancel` is idempotent; the last MTR snapshot of a job is kept (16 finished jobs) so `diag.mtr.report` can
+render the support report. `diag.dns.lookup`, `diag.port.check` (rate-limited by pw-diag's limiter) and `diag.ports.local` (listening sockets taken from the latest netstat
+snapshot, nothing is probed) are plain request/response. The desktop shell exposes them through a single
+`agent_call` Tauri command with a method **allowlist** (`CALLABLE_METHODS` in `bridge.rs`) and forwards
+`diag.progress` as `BridgeEvent::Diag`. The source public IP line of the report is omitted until a XeroHost node
+reports it (M9). Protocol minor is 3.
+
 ### 6.7 Speed server (`tools/speed-server`)
 axum service deployable on XeroHost nodes (Miami, Brazil, …):
 `GET /ping`, `GET /download?bytes=N` (streams generated data, no files on disk), `POST /upload` (discards, returns

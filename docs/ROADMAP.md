@@ -59,8 +59,8 @@ counter; scroll at 5k real and 50k synthetic rows stays at the idle frame cadenc
 VM caps at ~31 ms per frame). Not seen yet: the GitHub Actions run of M2, and the page at 1280×720 Compact by eye.)
 
 ## M3 — Basic diagnostics
-- [ ] Ping (v4/v6), MTR simple with streaming per-cycle results, DNS lookup (all record types), port check.
-- [ ] "Copy report" for MTR.
+- [x] Ping (v4/v6), MTR simple with streaming per-cycle results, DNS lookup (all record types), port check.
+- [x] "Copy report" for MTR.
 **Accept:** MTR to a XeroHost node matches WinMTR within reason; DNS ALL returns every type present.
 
 ## M4 — Capture & support bundle

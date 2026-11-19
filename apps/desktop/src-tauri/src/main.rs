@@ -108,6 +108,7 @@ fn main() -> anyhow::Result<()> {
             window_visible,
             bridge::agent_watch,
             bridge::agent_connections,
+            bridge::agent_call,
             bridge::agent_elevate
         ])
         .setup(|app| {

@@ -15,6 +15,8 @@ pub enum ErrorCode {
     UnknownTopic,
     /// The frame exceeded the maximum size.
     FrameTooLarge,
+    /// Too many jobs of this kind are running.
+    Busy,
     Internal,
 }
 

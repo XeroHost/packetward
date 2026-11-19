@@ -144,6 +144,25 @@ With the agent running (console or service):
 Dev only: a dev build (`pnpm tauri dev` or `pnpm dev`) accepts `?rows=N` in the URL to show N synthetic
 connections instead of the agent's table, for performance checks.
 
+## F3. Diagnostics (M3)
+
+The automated tests use a fake pinger; these steps prove the real ICMP/DNS/TCP paths (any machine with internet).
+
+1. Diagnostics → Ping: `1.1.1.1`, count 10. Replies show RTT/TTL; loss 0 %. Compare with `ping 1.1.1.1`.
+   Ping an unroutable address (`192.0.2.1`): every row says *Timed out*, loss 100 %. Ping a host name and an IPv6
+   literal (`2606:4700:4700::1111`) if the machine has IPv6.
+2. **Stop** during a long ping (count 100) ends it within about a second and says *Stopped*.
+3. MTR: trace to `1.1.1.1` and to a XeroHost node, 20 rounds. Compare the hops, loss and averages with WinMTR run
+   at the same time (expect the same path; numbers within reason). **Copy report** puts the plain-text table on the
+   clipboard; paste it into a text editor. A hop with loss that does not continue in later hops shows the `*` note.
+4. DNS: `example.com` with *ALL* returns A, AAAA, MX, NS, SOA, TXT (every type present); try Cloudflare, Google and a
+   custom server; an unknown name shows a clear *no records* or error line; a literal IP does a PTR lookup.
+5. Port check: `127.0.0.1` and a listening port (for example 3389 on an RDP server) → *open*; a closed port →
+   *closed*; a port behind a dropping firewall → *filtered*; UDP without a reply → *no answer* (inconclusive).
+6. Local ports: matches `netstat -ano -p tcp | findstr LISTENING` plus UDP endpoints; RDP shows its tag; the
+   *Reachable from* column says *all interfaces* for `0.0.0.0`/`::`.
+7. Start 5 long pings: the fifth is refused with the *Too many diagnostics* message.
+
 ## G. Leave-no-trace check
 
 After testing, all of these must be empty / `False`:

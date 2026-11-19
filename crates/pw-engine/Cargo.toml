@@ -9,6 +9,7 @@ repository.workspace = true
 publish = false
 
 [dependencies]
+pw-diag = { path = "../pw-diag" }
 pw-proto = { path = "../pw-proto" }
 pw-ipc = { path = "../pw-ipc" }
 pw-netstat = { path = "../pw-netstat" }

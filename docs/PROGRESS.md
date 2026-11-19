@@ -20,7 +20,7 @@ Read this first when resuming after a stop or a context compaction.
 | M0 Scaffold | done (main) |
 | M1 Proto/IPC/agent | done (main) |
 | M2 Netstat & dashboard | done (main) + RDP trust set |
-| M3 Basic diagnostics | not started |
+| M3 Basic diagnostics | integrated on dev (see below) |
 | M4 Capture & support bundle | not started |
 | M5 Detection & alerts | not started |
 | M6 Firewall manager | not started |
@@ -33,7 +33,7 @@ Read this first when resuming after a stop or a context compaction.
 | M12 Hardening & 1.0 | not started |
 
 ## Now / next
-Now: wave 1 of crate-level subagents running in worktrees (pw-diag, pw-capture, pw-detect). When they report: merge their branches into dev, verify, then integrate M3 (proto types, engine, UI Diagnostics page), M4, M5.
+Now: M3 integrated and checked locally (fmt, clippy Windows + Linux, tests, deny, lint, typecheck, build). Next: commit + push dev, verify CI, advisor; then merge the pw-capture (`worktree-agent-a2611a6e633529557`) and pw-detect (`worktree-agent-a2991347640d9fe8e`) branches and integrate M4/M5; launch wave 2 subagents (pw-firewall, pw-intel, speed-server).
 Note: pw-core (PacketMeta, CIDR sets) was written first on dev so capture/detect share it. Subagent worktrees live in .claude/worktrees (ignored by git).
 
 ## Blockers

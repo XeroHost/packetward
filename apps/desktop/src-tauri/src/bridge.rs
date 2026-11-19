@@ -11,7 +11,8 @@ use pw_ipc::scm::{self, AgentService};
 use pw_ipc::{Client, ClientError};
 use pw_proto::{
     method, topic, AccessReason, AgentConnection, BridgeEvent, ClientKind, ConnectionsRequest,
-    ConnectionsResponse, ElevatedAction, ElevationOutcome, ErrorCode, Heartbeat, LiveStats,
+    ConnectionsResponse, DiagEvent, ElevatedAction, ElevationOutcome, ErrorCode, Heartbeat,
+    LiveStats,
 };
 use tauri::ipc::Channel;
 use tauri::{AppHandle, State};
@@ -63,6 +64,10 @@ impl Emitter {
 
     fn stats(&self, stats: LiveStats) -> bool {
         self.channel.send(BridgeEvent::Stats(stats)).is_ok()
+    }
+
+    fn diag(&self, event: DiagEvent) -> bool {
+        self.channel.send(BridgeEvent::Diag(event)).is_ok()
     }
 }
 
@@ -130,6 +135,14 @@ async fn run_connected(client: Client, out: &mut Emitter, slot: &ClientSlot) -> 
             None
         }
     };
+    // Progress of ping/MTR jobs; older agents do not have it and the app then has no diagnostics.
+    let mut diag = match client.subscribe(topic::DIAG_PROGRESS).await {
+        Ok(subscription) => Some(subscription),
+        Err(err) => {
+            tracing::info!(%err, "the agent does not publish diag.progress");
+            None
+        }
+    };
     *slot.lock().unwrap_or_else(|e| e.into_inner()) = Some(client.clone());
     let _clear_on_exit = SlotGuard(slot);
 
@@ -159,6 +172,14 @@ async fn run_connected(client: Client, out: &mut Emitter, slot: &ClientSlot) -> 
                 }
                 None => return true,
             },
+            event = next_diag(&mut diag) => match event {
+                Some(event) => {
+                    if !out.diag(event) {
+                        return false;
+                    }
+                }
+                None => return true,
+            },
             () = client.closed() => return true,
         }
     }
@@ -170,6 +191,59 @@ async fn next_stats(subscription: &mut Option<pw_ipc::Subscription>) -> Option<L
         Some(subscription) => subscription.recv_as::<LiveStats>().await,
         None => std::future::pending().await,
     }
+}
+
+/// The next `diag.progress` event; never completes when the agent offers none.
+async fn next_diag(subscription: &mut Option<pw_ipc::Subscription>) -> Option<DiagEvent> {
+    match subscription {
+        Some(subscription) => subscription.recv_as::<DiagEvent>().await,
+        None => std::future::pending().await,
+    }
+}
+
+/// Methods the webview may call through `agent_call`. Everything else needs its own typed command, so
+/// a compromised page cannot reach agent methods nobody meant to expose to it.
+const CALLABLE_METHODS: &[&str] = &[
+    method::DIAG_PING_START,
+    method::DIAG_MTR_START,
+    method::DIAG_CANCEL,
+    method::DIAG_MTR_REPORT,
+    method::DIAG_DNS_LOOKUP,
+    method::DIAG_PORT_CHECK,
+    method::DIAG_PORTS_LOCAL,
+];
+
+fn is_callable(method_name: &str) -> bool {
+    CALLABLE_METHODS.contains(&method_name)
+}
+
+/// A request to an allowlisted agent method. Errors are strings the UI maps: `not_connected`,
+/// `unsupported` (older agent), `forbidden`, or `<code>: <message>` from the agent.
+#[tauri::command]
+pub async fn agent_call(
+    bridge: State<'_, Bridge>,
+    method: String,
+    payload: Option<serde_json::Value>,
+) -> Result<serde_json::Value, String> {
+    if !is_callable(&method) {
+        return Err("forbidden".to_owned());
+    }
+    let client = bridge
+        .client
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .clone()
+        .ok_or_else(|| "not_connected".to_owned())?;
+    client
+        .request(&method, &payload.unwrap_or(serde_json::Value::Null))
+        .await
+        .map_err(|err| match err {
+            ClientError::Remote(remote) if remote.code == ErrorCode::UnknownMethod => {
+                "unsupported".to_owned()
+            }
+            ClientError::Remote(remote) => format!("{:?}: {}", remote.code, remote.message),
+            other => other.to_string(),
+        })
 }
 
 /// The agent's connection table (capped on the agent side). Called while the Connections page is
@@ -289,5 +363,27 @@ fn elevate(action: ElevatedAction) -> ElevationOutcome {
         Err(err) => ElevationOutcome::Failed {
             message: err.to_string(),
         },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_diagnostics_methods_are_callable_from_the_webview() {
+        for allowed in CALLABLE_METHODS {
+            assert!(allowed.starts_with("diag."), "{allowed}");
+            assert!(is_callable(allowed));
+        }
+        for blocked in [
+            method::SYSTEM_INFO,
+            method::HELLO,
+            method::SUBSCRIBE,
+            "firewall.block",
+            "",
+        ] {
+            assert!(!is_callable(blocked), "{blocked:?}");
+        }
     }
 }

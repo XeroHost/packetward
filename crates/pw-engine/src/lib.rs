@@ -6,23 +6,27 @@
 //! hand it to `pw_ipc::serve`.
 
 mod connections;
+mod diag;
 mod poller;
 mod trust;
 
 use std::sync::Arc;
 use std::time::Duration;
 
+use pw_diag::SystemPinger;
 use pw_ipc::{EventReceiver, Handler};
 use pw_netstat::NetStat;
 use pw_proto::{
-    method, topic, ConnectionsRequest, ErrorCode, ErrorPayload, Heartbeat, HelloResponse,
-    SystemInfo, PROTOCOL_MAJOR, PROTOCOL_MINOR,
+    method, topic, ConnectionsRequest, DiagJobRequest, DnsLookupRequest, ErrorCode, ErrorPayload,
+    Heartbeat, HelloResponse, MtrStartRequest, PingStartRequest, PortCheckRequest, SystemInfo,
+    PROTOCOL_MAJOR, PROTOCOL_MINOR,
 };
 use serde_json::Value;
 use tokio::sync::{mpsc, watch};
 use tokio::task::JoinHandle;
 use tokio::time::{Instant, MissedTickBehavior};
 
+pub use diag::{Diag, MAX_RUNNING_JOBS};
 pub use poller::{Poller, Snapshot};
 pub use trust::{TrustState, DEFAULT_WINDOW_DAYS};
 
@@ -70,6 +74,7 @@ pub struct Engine {
     config: EngineConfig,
     started: Instant,
     latest: watch::Receiver<Option<Arc<Snapshot>>>,
+    diag: Diag<SystemPinger>,
     _poller: AbortOnDrop,
 }
 
@@ -99,6 +104,7 @@ impl Engine {
             config,
             started: Instant::now(),
             latest,
+            diag: Diag::new(Arc::new(SystemPinger)),
             _poller: AbortOnDrop(task),
         }
     }
@@ -186,6 +192,37 @@ impl Handler for Engine {
                 let latest = self.latest.borrow().clone();
                 to_value(&connections::response(latest.as_deref(), request.limit))
             }
+            method::DIAG_PING_START => {
+                let request: PingStartRequest = parse(payload)?;
+                to_value(&self.diag.start_ping(request).await?)
+            }
+            method::DIAG_MTR_START => {
+                let request: MtrStartRequest = parse(payload)?;
+                to_value(&self.diag.start_mtr(request).await?)
+            }
+            method::DIAG_CANCEL => {
+                let request: DiagJobRequest = parse(payload)?;
+                self.diag.cancel(request.job_id);
+                Ok(Value::Null)
+            }
+            method::DIAG_MTR_REPORT => {
+                let request: DiagJobRequest = parse(payload)?;
+                // The public IP of this machine is learned from a XeroHost node (M9); until then the
+                // report simply omits that line.
+                to_value(&self.diag.mtr_report(request.job_id, None)?)
+            }
+            method::DIAG_DNS_LOOKUP => {
+                let request: DnsLookupRequest = parse(payload)?;
+                to_value(&self.diag.dns_lookup(request).await?)
+            }
+            method::DIAG_PORT_CHECK => {
+                let request: PortCheckRequest = parse(payload)?;
+                to_value(&self.diag.port_check(request).await?)
+            }
+            method::DIAG_PORTS_LOCAL => {
+                let latest = self.latest.borrow().clone();
+                to_value(&diag::local_ports(latest.as_deref()))
+            }
             other => Err(ErrorPayload::new(
                 ErrorCode::UnknownMethod,
                 format!("unknown method `{other}`"),
@@ -244,12 +281,18 @@ impl Handler for Engine {
                 });
                 Ok(rx)
             }
+            topic::DIAG_PROGRESS => Ok(self.diag.subscribe()),
             other => Err(ErrorPayload::new(
                 ErrorCode::UnknownTopic,
                 format!("unknown topic `{other}`"),
             )),
         }
     }
+}
+
+fn parse<T: serde::de::DeserializeOwned>(payload: Value) -> Result<T, ErrorPayload> {
+    serde_json::from_value(payload)
+        .map_err(|err| ErrorPayload::new(ErrorCode::BadRequest, err.to_string()))
 }
 
 fn to_value<T: serde::Serialize>(value: &T) -> Result<Value, ErrorPayload> {

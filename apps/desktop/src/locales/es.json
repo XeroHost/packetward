@@ -262,5 +262,118 @@
     "feedUnavailable": "No se puede leer el registro de eventos de seguridad, así que no se aprenden los logons RDP correctos.",
     "howToFix": "Actívalas ambas desde una consola de administrador:",
     "command": "auditpol /set /subcategory:\"Logon\" /success:enable /failure:enable"
+  },
+  "diagnostics": {
+    "tabs": {
+      "ping": "Ping",
+      "mtr": "MTR",
+      "dns": "DNS",
+      "port": "Comprobar puerto",
+      "local": "Puertos locales"
+    },
+    "target": "Host o dirección IP",
+    "targetPlaceholder": "ejemplo.com o 203.0.113.10",
+    "stop": "Detener",
+    "loss": "Pérdida",
+    "outcome": {
+      "success": "Respuesta",
+      "ttl_expired": "TTL agotado",
+      "unreachable": "Inalcanzable",
+      "timed_out": "Tiempo agotado",
+      "other": "Error"
+    },
+    "errors": {
+      "notConnected": "El agente no está conectado. Inícielo e inténtelo de nuevo.",
+      "unsupported": "El agente instalado es más antiguo que esta aplicación y no ofrece diagnósticos. Actualice el agente.",
+      "busy": "Hay demasiados diagnósticos en curso. Detenga uno e inténtelo de nuevo."
+    },
+    "ping": {
+      "hint": "Envía solicitudes de eco ICMP para medir la accesibilidad, la latencia y el jitter.",
+      "count": "Cantidad",
+      "start": "Iniciar ping",
+      "pinging": "Haciendo ping a",
+      "sent": "Enviados",
+      "received": "Recibidos",
+      "avg": "Promedio",
+      "jitter": "Jitter",
+      "range": "mín–máx",
+      "finished": "Terminado.",
+      "stopped": "Detenido.",
+      "replies": "Respuestas del ping"
+    },
+    "mtr": {
+      "hint": "Traza la ruta hasta un host y mide la pérdida y la latencia en cada router, como MTR. Use Copiar informe para enviar el resultado a soporte.",
+      "cycles": "Rondas",
+      "resolveNames": "Resolver nombres de host",
+      "start": "Iniciar traza",
+      "copyReport": "Copiar informe",
+      "reportCopied": "Informe copiado",
+      "copyFailed": "No se pudo copiar al portapapeles.",
+      "progress": "ronda {cycle} de {total}",
+      "finished": "terminado",
+      "stopped": "detenido",
+      "hop": "Salto",
+      "host": "Host",
+      "sent": "Enviados",
+      "last": "Último",
+      "avg": "Prom.",
+      "best": "Mejor",
+      "worst": "Peor",
+      "jitter": "Jitter",
+      "noReply": "sin respuesta",
+      "otherRouters": "+{count} más",
+      "rateLimitedTip": "Los saltos siguientes están limpios: este router probablemente solo limita sus respuestas ICMP.",
+      "rateLimitedNote": "La pérdida aquí no continúa en los saltos siguientes, así que este router probablemente solo limita sus respuestas, no descarta tráfico."
+    },
+    "dns": {
+      "hint": "Consulta registros DNS con el resolvedor del sistema o uno público, para distinguir un problema de DNS de uno de red.",
+      "name": "Nombre",
+      "type": "Tipo",
+      "resolver": "Resolvedor",
+      "resolvers": {
+        "system": "Sistema",
+        "cloudflare": "Cloudflare (1.1.1.1)",
+        "google": "Google (8.8.8.8)",
+        "custom": "Personalizado"
+      },
+      "customServers": "Servidores DNS",
+      "lookup": "Consultar",
+      "summary": "{count} registros en {ms} ms",
+      "none": "No hay registros de ese tipo.",
+      "value": "Valor"
+    },
+    "port": {
+      "hint": "Intenta conectarse desde esta máquina a un host y puerto. Para saber si este servidor es accesible desde fuera, haga la prueba desde otra máquina.",
+      "port": "Puerto",
+      "protocol": "Protocolo",
+      "check": "Comprobar puerto",
+      "states": {
+        "open": "abierto",
+        "closed": "cerrado",
+        "filtered": "filtrado",
+        "inconclusive": "sin respuesta",
+        "error": "falló"
+      },
+      "explain": {
+        "open": "La conexión fue aceptada.",
+        "closed": "El host respondió y rechazó la conexión: no hay nada escuchando ahí.",
+        "filtered": "Ninguna respuesta. Probablemente un firewall descarta el tráfico, o el host está caído.",
+        "inconclusive": "UDP no tiene handshake: la falta de respuesta no prueba que el puerto esté cerrado ni abierto.",
+        "error": "No se pudo hacer la comprobación."
+      }
+    },
+    "local": {
+      "hint": "Lo que esta máquina tiene a la escucha. Un puerto accesible desde todas las interfaces está expuesto a la red salvo que un firewall lo bloquee.",
+      "searchPlaceholder": "Puerto, dirección, proceso o PID",
+      "count": "{count} a la escucha",
+      "address": "Enlazado a",
+      "reachable": "Accesible desde",
+      "scope": {
+        "all": "todas las interfaces",
+        "local": "solo esta máquina",
+        "specific": "una interfaz"
+      },
+      "empty": "No hay puertos a la escucha."
+    }
   }
 }

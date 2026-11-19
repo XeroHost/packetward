@@ -262,5 +262,118 @@
     "feedUnavailable": "The Security event log cannot be read, so successful RDP logons are not being learned.",
     "howToFix": "Turn both on from an administrator shell:",
     "command": "auditpol /set /subcategory:\"Logon\" /success:enable /failure:enable"
+  },
+  "diagnostics": {
+    "tabs": {
+      "ping": "Ping",
+      "mtr": "MTR",
+      "dns": "DNS",
+      "port": "Port check",
+      "local": "Local ports"
+    },
+    "target": "Host or IP address",
+    "targetPlaceholder": "example.com or 203.0.113.10",
+    "stop": "Stop",
+    "loss": "Loss",
+    "outcome": {
+      "success": "Reply",
+      "ttl_expired": "TTL expired",
+      "unreachable": "Unreachable",
+      "timed_out": "Timed out",
+      "other": "Error"
+    },
+    "errors": {
+      "notConnected": "The agent is not connected. Start it and try again.",
+      "unsupported": "The installed agent is older than this app and does not provide diagnostics. Update the agent.",
+      "busy": "Too many diagnostics are running at once. Stop one and try again."
+    },
+    "ping": {
+      "hint": "Sends ICMP echo requests to measure reachability, latency and jitter.",
+      "count": "Count",
+      "start": "Start ping",
+      "pinging": "Pinging",
+      "sent": "Sent",
+      "received": "Received",
+      "avg": "Average",
+      "jitter": "Jitter",
+      "range": "min–max",
+      "finished": "Finished.",
+      "stopped": "Stopped.",
+      "replies": "Ping replies"
+    },
+    "mtr": {
+      "hint": "Traces the route to a host and measures loss and latency at every router, like MTR. Use Copy report to send the result to support.",
+      "cycles": "Rounds",
+      "resolveNames": "Look up host names",
+      "start": "Start trace",
+      "copyReport": "Copy report",
+      "reportCopied": "Report copied",
+      "copyFailed": "Could not copy to the clipboard.",
+      "progress": "round {cycle} of {total}",
+      "finished": "finished",
+      "stopped": "stopped",
+      "hop": "Hop",
+      "host": "Host",
+      "sent": "Sent",
+      "last": "Last",
+      "avg": "Avg",
+      "best": "Best",
+      "worst": "Worst",
+      "jitter": "Jitter",
+      "noReply": "no reply",
+      "otherRouters": "+{count} more",
+      "rateLimitedTip": "Later hops are clean: this router probably only limits its ICMP replies.",
+      "rateLimitedNote": "Loss here is not carried to the next hops, so this router is probably just rate-limiting its replies, not dropping traffic."
+    },
+    "dns": {
+      "hint": "Looks up DNS records with the system resolver or a public one, to tell a DNS problem from a network problem.",
+      "name": "Name",
+      "type": "Type",
+      "resolver": "Resolver",
+      "resolvers": {
+        "system": "System",
+        "cloudflare": "Cloudflare (1.1.1.1)",
+        "google": "Google (8.8.8.8)",
+        "custom": "Custom"
+      },
+      "customServers": "DNS servers",
+      "lookup": "Look up",
+      "summary": "{count} records in {ms} ms",
+      "none": "No records of that type.",
+      "value": "Value"
+    },
+    "port": {
+      "hint": "Tries to connect from this machine to a host and port. To test whether this server is reachable from outside, run the check from another machine.",
+      "port": "Port",
+      "protocol": "Protocol",
+      "check": "Check port",
+      "states": {
+        "open": "open",
+        "closed": "closed",
+        "filtered": "filtered",
+        "inconclusive": "no answer",
+        "error": "failed"
+      },
+      "explain": {
+        "open": "The connection was accepted.",
+        "closed": "The host answered and refused the connection: nothing is listening there.",
+        "filtered": "No answer at all. A firewall is probably dropping the traffic, or the host is down.",
+        "inconclusive": "UDP has no handshake: no reply does not prove the port is closed, nor open.",
+        "error": "The check could not run."
+      }
+    },
+    "local": {
+      "hint": "What this machine is listening on. A port reachable from all interfaces is exposed to the network unless a firewall blocks it.",
+      "searchPlaceholder": "Port, address, process or PID",
+      "count": "{count} listening",
+      "address": "Bound to",
+      "reachable": "Reachable from",
+      "scope": {
+        "all": "all interfaces",
+        "local": "this machine only",
+        "specific": "one interface"
+      },
+      "empty": "No listening ports."
+    }
   }
 }
