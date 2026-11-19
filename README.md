@@ -10,9 +10,11 @@ PacketWard is built by [XeroHost](https://xerohost.net) to help a non-expert ans
 *Am I being attacked? From where? How much? Is it my network or the route? Block it.*
 It is useful to anyone running a Windows server, not only XeroHost customers.
 
-> **Status: pre-alpha.** The project is under active development and has no release yet.
-> Progress is tracked milestone by milestone in [`docs/ROADMAP.md`](docs/ROADMAP.md).
-> Nothing below is available to install today.
+> **Status: pre-release.** The features below are implemented on the `dev` branch and tested with fakes and
+> read-only checks, but **no release has been published yet** and the privileged paths (firewall writes,
+> Remote Desktop changes, installer) still need a run on a test VPS: see [`docs/TESTING.md`](docs/TESTING.md).
+> Progress is tracked milestone by milestone in [`docs/ROADMAP.md`](docs/ROADMAP.md) and
+> [`docs/PROGRESS.md`](docs/PROGRESS.md). Nothing below is available to install today.
 
 ## What it is meant to do
 
@@ -38,6 +40,33 @@ pipe is full, only upstream mitigation (your provider's DDoS protection) helps. 
 inbound traffic gets close to your link capacity.
 
 It is not an IDS with deep payload inspection, an antivirus or a VPN.
+
+## Features
+
+| Area | What you get |
+|---|---|
+| Dashboard, Traffic, Connections | Live bandwidth, top sources, connection table, RDP peers |
+| Alerts | SYN/UDP/ICMP floods, port scans, connection floods, RDP brute force, new-address RDP logons, with notifications |
+| Guardian + Firewall | Monitor (dry-run) by default, Active after confirmation; manual blocks; one protected set that is never blocked |
+| RDP Shield | Exposure audit; restrict to trusted addresses, change port, force NLA, attempt limit — every change auto-reverts unless you confirm |
+| Diagnostics | Ping, MTR (ICMP/UDP/TCP, ASN/country per hop, export), DNS, port checks, support bundle |
+| Speed test | Latency, jitter, multi-stream download/upload and 1/10/50 GB bin tests against your own `speed-server` |
+| Threat Intel | Local GeoIP/ASN, opt-in public blocklists, optional AbuseIPDB with your own key |
+| Logs & Settings | Audit log with filter/export, appearance, language (en, es, pt-BR), proxy |
+
+Not built yet: attack map, IP detail drawer, country restriction for RDP Shield (see the roadmap).
+
+### Resumen en español
+PacketWard es un kit abierto de defensa y diagnóstico de red para servidores Windows (VPS/RDP): muestra si está
+siendo atacado, desde dónde y cuánto, diagnostica la red (ping, MTR, DNS, puertos, velocidad) y bloquea con el
+Firewall de Windows. Empieza en modo **Monitor** (sin bloquear), nunca bloquea su puerta de enlace, DNS ni los
+clientes RDP, y no envía telemetría. Aún no hay versión publicada.
+
+### Resumo em português
+O PacketWard é um kit aberto de defesa e diagnóstico de rede para servidores Windows (VPS/RDP): mostra se você está
+sob ataque, de onde e quanto, diagnostica a rede (ping, MTR, DNS, portas, velocidade) e bloqueia com o Firewall do
+Windows. Começa em modo **Monitor** (sem bloquear), nunca bloqueia seu gateway, DNS nem os clientes RDP, e não
+envia telemetria. Ainda não há versão publicada.
 
 ## How it works
 
