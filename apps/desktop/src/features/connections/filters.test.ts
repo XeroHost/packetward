@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { describe, expect, it } from 'vitest'
-import type { ConnectionRow } from '@/stores/live'
+import { endpointText, type ConnectionRow } from '@/stores/live'
 import { applyFilters } from './filters'
 
-const rows: ConnectionRow[] = [
+const base: Omit<ConnectionRow, 'local' | 'remote'>[] = [
   {
     id: 0,
     proto: 'tcp',
@@ -48,6 +48,12 @@ const rows: ConnectionRow[] = [
     process: '',
   },
 ]
+
+const rows: ConnectionRow[] = base.map((row) => ({
+  ...row,
+  local: endpointText(row.local_addr, row.local_port),
+  remote: endpointText(row.remote_addr, row.remote_port),
+}))
 
 const none = { proto: 'all', state: 'all', search: '' } as const
 const ids = (list: ConnectionRow[]) => list.map((row) => row.id)

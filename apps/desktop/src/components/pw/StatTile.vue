@@ -37,6 +37,6 @@ const toneClass = {
     <div class="font-mono text-2xl leading-tight tabular-nums" data-testid="tile-value">
       {{ value }}
     </div>
-    <div v-if="hint" class="text-text-muted truncate text-xs">{{ hint }}</div>
+    <div v-if="hint" class="text-text-muted line-clamp-2 text-xs break-words">{{ hint }}</div>
   </div>
 </template>

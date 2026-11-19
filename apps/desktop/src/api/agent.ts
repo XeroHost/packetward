@@ -8,7 +8,7 @@ import type { BridgeEvent } from '@/types/generated/BridgeEvent'
 import type { ElevatedAction } from '@/types/generated/ElevatedAction'
 import type { ConnectionsResponse } from '@/types/generated/ConnectionsResponse'
 import type { ElevationOutcome } from '@/types/generated/ElevationOutcome'
-import { previewConnections, previewRowCount, previewStats } from './preview'
+import { previewConnections, previewRowCount, previewRowsRequested, previewStats } from './preview'
 import { isTauri } from './uiPrefs'
 
 export type {
@@ -86,7 +86,11 @@ export class AgentUnsupportedError extends Error {
  * `AgentUnsupportedError` for an agent older than the app and an Error for anything else.
  */
 export async function fetchConnections(limit?: number): Promise<ConnectionsResponse> {
-  if (!isTauri()) return previewConnections(previewRowCount())
+  // `?rows=N` forces synthetic data in a dev build, even inside Tauri (performance checks). The
+  // check is a compile-time constant, so production builds drop it.
+  if (!isTauri() || (import.meta.env.DEV && previewRowsRequested())) {
+    return previewConnections(previewRowCount())
+  }
   try {
     return await invoke<ConnectionsResponse>('agent_connections', { limit: limit ?? null })
   } catch (err) {

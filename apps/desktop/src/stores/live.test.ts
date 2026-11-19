@@ -3,7 +3,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AgentUnsupportedError, type ConnectionsResponse } from '@/api/agent'
 import { previewStats } from '@/api/preview'
-import { HISTORY_POINTS, useLiveStore } from './live'
+import { endpointText, HISTORY_POINTS, useLiveStore } from './live'
 
 const api = vi.hoisted(() => ({ fetch: vi.fn<() => Promise<ConnectionsResponse>>() }))
 
@@ -126,5 +126,13 @@ describe('connections', () => {
     finish(response)
     await first
     expect(live.rows).toHaveLength(2)
+  })
+})
+
+describe('endpointText', () => {
+  it('joins address and port, bracketing IPv6', () => {
+    expect(endpointText('10.0.0.5', 443)).toBe('10.0.0.5:443')
+    expect(endpointText('2001:db8::1', 443)).toBe('[2001:db8::1]:443')
+    expect(endpointText('', 0)).toBe('')
   })
 })

@@ -165,6 +165,11 @@ export function previewStats(seq: number): LiveStats {
   }
 }
 
+/** Whether the URL asks for synthetic rows (`?rows=N`). */
+export function previewRowsRequested(): boolean {
+  return typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('rows')
+}
+
 /** How many rows the browser preview serves, from `?rows=N` (default 400, at most 100 000). */
 export function previewRowCount(): number {
   if (typeof window === 'undefined') return 400

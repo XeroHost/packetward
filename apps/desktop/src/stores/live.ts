@@ -13,6 +13,15 @@ export interface ConnectionRow extends Connection {
   id: number
   /** Image name of the owning process, or '' when Windows would not tell us. */
   process: string
+  /** "10.0.0.5:443" / "[2001:db8::1]:443", or '' for an empty address. Built once per refresh. */
+  local: string
+  remote: string
+}
+
+/** IPv6 with a port needs brackets: [2001:db8::1]:443. */
+export function endpointText(addr: string, port: number): string {
+  if (!addr) return ''
+  return addr.includes(':') ? `[${addr}]:${port}` : `${addr}:${port}`
 }
 
 export interface History {
@@ -83,6 +92,8 @@ export const useLiveStore = defineStore('live', () => {
         ...connection,
         id,
         process: response.processes[connection.pid] ?? '',
+        local: endpointText(connection.local_addr, connection.local_port),
+        remote: endpointText(connection.remote_addr, connection.remote_port),
       }))
       total.value = response.total
       truncated.value = response.truncated

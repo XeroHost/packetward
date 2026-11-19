@@ -14,7 +14,6 @@ import { refDebounced, useDocumentVisibility, useIntervalFn } from '@vueuse/core
 import { ArrowDown, ArrowUp, ArrowUpDown, TriangleAlert } from 'lucide-vue-next'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import IpCell from '@/components/pw/IpCell.vue'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -83,12 +82,10 @@ const features = tableFeatures({
 const COLUMN_IDS = ['proto', 'local', 'remote', 'state', 'process', 'pid'] as const
 type ColumnId = (typeof COLUMN_IDS)[number]
 
-const endpoint = (addr: string, port: number) => (addr ? `${addr}:${port}` : '')
-
 const columns: ColumnDef<typeof features, ConnectionRow>[] = [
   { id: 'proto', accessorFn: (row) => row.proto, sortFn: 'text' },
-  { id: 'local', accessorFn: (row) => endpoint(row.local_addr, row.local_port), sortFn: 'text' },
-  { id: 'remote', accessorFn: (row) => endpoint(row.remote_addr, row.remote_port), sortFn: 'text' },
+  { id: 'local', accessorFn: (row) => row.local, sortFn: 'text' },
+  { id: 'remote', accessorFn: (row) => row.remote, sortFn: 'text' },
   { id: 'state', accessorFn: (row) => row.state ?? '', sortFn: 'text' },
   { id: 'process', accessorFn: (row) => row.process || `#${row.pid}`, sortFn: 'text' },
   { id: 'pid', accessorFn: (row) => row.pid, sortFn: 'alphanumeric' },
@@ -137,10 +134,40 @@ const virtualizer = useVirtualizer(
     getScrollElement: () => scroller.value,
     estimateSize: () => rowHeight.value,
     getItemKey: (index: number) => rows.value[index]?.id ?? index,
-    overscan: 12,
+    overscan: 6,
   })),
 )
 const virtualRows = computed(() => virtualizer.value.getVirtualItems())
+
+/** What the template renders: one plain object per visible row (no repeated lookups per cell). */
+const visibleRows = computed(() =>
+  virtualRows.value.flatMap((item) => {
+    const row = rows.value[item.index]?.original
+    return row
+      ? [{ key: String(item.key), index: item.index, start: item.start, size: item.size, row }]
+      : []
+  }),
+)
+
+// Translated once per language, not once per rendered row.
+const stateLabels = computed(
+  () =>
+    Object.fromEntries(TCP_STATES.map((s) => [s, t(`connections.states.${s}`)])) as Record<
+      string,
+      string
+    >,
+)
+
+/** One listener for every copy button in the grid (rows are plain markup, not components). */
+async function onGridClick(event: MouseEvent): Promise<void> {
+  const button = (event.target as HTMLElement).closest<HTMLElement>('[data-copy]')
+  if (!button) return
+  event.stopPropagation()
+  if (await copyText(button.dataset.copy ?? '')) {
+    copiedFlash.value = true
+    setTimeout(() => (copiedFlash.value = false), 1200)
+  }
+}
 const totalSize = computed(() => virtualizer.value.getTotalSize())
 
 watch(
@@ -234,6 +261,11 @@ watch(
 const sampled = computed(() =>
   live.sampledAt ? new Date(live.sampledAt).toLocaleTimeString() : null,
 )
+const rdpPeers = computed(() => live.rdpPeers)
+const rdpLabel = computed(() => t('connections.rdpBadge'))
+const rdpTip = computed(() => t('connections.rdpBadgeTip'))
+const copyLabel = computed(() => t('common.copy'))
+const unknownProcess = (pid: number) => t('connections.unknownProcess', { pid })
 const GRID = 'grid grid-cols-[4rem_minmax(0,1.4fr)_minmax(0,1.4fr)_8rem_minmax(0,1fr)_5rem] gap-x-3'
 </script>
 
@@ -357,7 +389,23 @@ const GRID = 'grid grid-cols-[4rem_minmax(0,1.4fr)_minmax(0,1.4fr)_8rem_minmax(0
         :aria-label="t('nav.connections')"
         data-testid="connections-grid"
         @keydown="onKeydown"
+        @click="onGridClick"
       >
+        <!-- One shared copy icon; the rows reference it instead of mounting an icon component. -->
+        <svg class="hidden" aria-hidden="true">
+          <symbol
+            id="pw-copy"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <rect width="14" height="14" x="8" y="8" rx="2" />
+            <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+          </symbol>
+        </svg>
         <p
           v-if="!rows.length"
           class="text-text-muted flex h-full items-center justify-center p-6 text-sm"
@@ -366,54 +414,71 @@ const GRID = 'grid grid-cols-[4rem_minmax(0,1.4fr)_minmax(0,1.4fr)_8rem_minmax(0
         </p>
         <div v-else class="relative w-full" :style="{ height: `${totalSize}px` }">
           <div
-            v-for="item in virtualRows"
-            :key="String(item.key)"
+            v-for="r in visibleRows"
+            :key="r.key"
             role="row"
-            :aria-rowindex="item.index + 1"
-            :aria-selected="item.index === active"
+            :aria-rowindex="r.index + 1"
+            :aria-selected="r.index === active"
             :class="[
               GRID,
               'border-border absolute top-0 left-0 w-full items-center border-b px-3',
-              item.index === active ? 'bg-surface-3' : 'hover:bg-surface-2',
+              r.index === active ? 'bg-surface-3' : 'hover:bg-surface-2',
             ]"
-            :style="{ height: `${item.size}px`, transform: `translateY(${item.start}px)` }"
-            @click="active = item.index"
+            :style="{ height: `${r.size}px`, transform: `translateY(${r.start}px)` }"
+            @click="active = r.index"
           >
-            <template v-if="rows[item.index]">
-              <div role="gridcell" class="font-mono text-xs uppercase">
-                {{ rows[item.index]!.original.proto }}
-              </div>
-              <div role="gridcell" class="min-w-0">
-                <IpCell
-                  :addr="rows[item.index]!.original.local_addr"
-                  :port="rows[item.index]!.original.local_port"
-                  :rdp="live.rdpPeers.has(rows[item.index]!.original.local_addr)"
-                />
-              </div>
-              <div role="gridcell" class="min-w-0">
-                <IpCell
-                  :addr="rows[item.index]!.original.remote_addr"
-                  :port="rows[item.index]!.original.remote_port"
-                  :rdp="live.rdpPeers.has(rows[item.index]!.original.remote_addr)"
-                />
-              </div>
-              <div role="gridcell" class="truncate text-xs">
-                {{
-                  rows[item.index]!.original.state
-                    ? t(`connections.states.${rows[item.index]!.original.state}`)
-                    : '—'
-                }}
-              </div>
-              <div role="gridcell" class="min-w-0 truncate">
-                {{
-                  rows[item.index]!.original.process ||
-                  t('connections.unknownProcess', { pid: rows[item.index]!.original.pid })
-                }}
-              </div>
-              <div role="gridcell" class="text-text-muted font-mono text-xs tabular-nums">
-                {{ rows[item.index]!.original.pid }}
-              </div>
-            </template>
+            <div role="gridcell" class="font-mono text-xs uppercase">{{ r.row.proto }}</div>
+            <div role="gridcell" class="group flex min-w-0 items-center gap-1.5">
+              <template v-if="r.row.local_addr">
+                <span class="truncate font-mono" :title="r.row.local">{{ r.row.local }}</span>
+                <span
+                  v-if="rdpPeers.has(r.row.local_addr)"
+                  class="border-brand-fg/50 text-brand-fg shrink-0 rounded-full border px-1.5 text-[10px] leading-4"
+                  :title="rdpTip"
+                  >{{ rdpLabel }}</span
+                >
+                <button
+                  type="button"
+                  class="text-text-muted hover:text-text focus-visible:ring-brand shrink-0 rounded p-0.5 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:outline-none"
+                  :data-copy="r.row.local_addr"
+                  :aria-label="copyLabel"
+                  :title="copyLabel"
+                >
+                  <svg class="size-3.5" aria-hidden="true"><use href="#pw-copy" /></svg>
+                </button>
+              </template>
+              <span v-else class="text-text-muted">—</span>
+            </div>
+            <div role="gridcell" class="group flex min-w-0 items-center gap-1.5">
+              <template v-if="r.row.remote_addr">
+                <span class="truncate font-mono" :title="r.row.remote">{{ r.row.remote }}</span>
+                <span
+                  v-if="rdpPeers.has(r.row.remote_addr)"
+                  class="border-brand-fg/50 text-brand-fg shrink-0 rounded-full border px-1.5 text-[10px] leading-4"
+                  :title="rdpTip"
+                  >{{ rdpLabel }}</span
+                >
+                <button
+                  type="button"
+                  class="text-text-muted hover:text-text focus-visible:ring-brand shrink-0 rounded p-0.5 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:outline-none"
+                  :data-copy="r.row.remote_addr"
+                  :aria-label="copyLabel"
+                  :title="copyLabel"
+                >
+                  <svg class="size-3.5" aria-hidden="true"><use href="#pw-copy" /></svg>
+                </button>
+              </template>
+              <span v-else class="text-text-muted">—</span>
+            </div>
+            <div role="gridcell" class="truncate text-xs">
+              {{ r.row.state ? stateLabels[r.row.state] : '—' }}
+            </div>
+            <div role="gridcell" class="min-w-0 truncate">
+              {{ r.row.process || unknownProcess(r.row.pid) }}
+            </div>
+            <div role="gridcell" class="text-text-muted font-mono text-xs tabular-nums">
+              {{ r.row.pid }}
+            </div>
           </div>
         </div>
       </div>
