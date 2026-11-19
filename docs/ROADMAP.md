@@ -16,7 +16,7 @@ Product decisions are fixed in `docs/DECISIONS.md`.
 - [x] App shell: sidebar nav (Dashboard, Traffic, Connections, Capture, Guardian, Firewall, Diagnostics,
       Speed Test, Threat Intel, Logs, Settings), "by XeroHost" footer, top bar with agent status + Guardian pill.
 - [x] CI: Linux (core crates + frontend), Windows (full build). `cargo deny`, `cargo audit`.
-      (Workflows in `.github/workflows/ci.yml`; every command was run locally on Windows with Node 26; CI pins Node 24, both inside the dependencies' `engines`. The remote run is not yet verified.)
+      (Workflows in `.github/workflows/ci.yml`; every command was run locally on Windows with Node 26; CI pins Node 24, both inside the dependencies' `engines`. The first remote run on `main` was reported green by the maintainer.)
 **Accept:** `pnpm tauri dev` opens the shell on Windows; all Appearance options work live; CI green.
 
 ## M1 — Proto, IPC, agent service
@@ -39,7 +39,7 @@ Product decisions are fixed in `docs/DECISIONS.md`.
 **Accept:** heartbeat visible in UI; stopping the service shows the repair screen; non-admin cannot open the pipe.
 (Met: the first two were checked live against the installed service; "non-admin cannot open the pipe" is proven by
 automated tests on a real pipe with a restricted token and by reading the live DACL. A run with a real second
-standard account is TESTING.md §D and has not been done yet. Windows CI not yet seen green.)
+standard account is TESTING.md §D and has not been done yet. The M1 run on GitHub Actions has not been seen yet.)
 
 ## M2 — Netstat & dashboard
 - [ ] TCP/UDP tables with PID/process, IPv4+IPv6; adapters; interface counters → bps/pps in/out.
