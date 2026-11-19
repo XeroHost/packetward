@@ -10,7 +10,10 @@ use std::process::ExitCode;
 use pw_ipc::access::{self, AccessProblem};
 use pw_ipc::pipe::{self, OPERATORS_GROUP, PIPE_NAME};
 use pw_ipc::{Client, ClientError};
-use pw_proto::{method, topic, AuditState, ClientKind, LiveStats, SystemInfo, TrustFeed};
+use pw_proto::{
+    method, topic, AuditState, CaptureRunState, CaptureStatus, ClientKind, LiveStats, SystemInfo,
+    TrustFeed,
+};
 
 const EXIT_OTHER: u8 = 1;
 const EXIT_NOT_RUNNING: u8 = 2;
@@ -66,6 +69,7 @@ pub async fn run() -> ExitCode {
     );
     println!("Uptime:    {}s", info.uptime_secs);
     print_traffic(&client).await;
+    print_capture(&client).await;
     ExitCode::SUCCESS
 }
 
@@ -177,5 +181,38 @@ fn print_rdp_trust(stats: &LiveStats) {
     );
     for address in trust.addresses.iter().take(5) {
         println!("  {}", address.addr);
+    }
+}
+
+/// Which capture backend is in use and whether it is healthy (older agents have no capture).
+async fn print_capture(client: &Client) {
+    let Ok(status) = client
+        .request::<_, CaptureStatus>(method::CAPTURE_STATUS, &())
+        .await
+    else {
+        return;
+    };
+    let state = match status.state {
+        CaptureRunState::Running => "running",
+        CaptureRunState::Stopped => "stopped",
+        CaptureRunState::Failed => "FAILED",
+    };
+    println!("Capture:   {state} - {}", status.selection.summary);
+    if let Some(interface) = &status.interface {
+        println!(
+            "           adapter {interface}, {} packets seen, {} dropped",
+            status.counters.received, status.counters.dropped
+        );
+    }
+    if let Some(error) = &status.error {
+        println!("           error: {error}");
+    }
+    if status.blind {
+        println!("  WARNING: the capture sees outbound packets but no inbound ones, so flood detection from");
+        println!("  capture is unreliable here. Other detectors (connections, bandwidth, RDP logons) are not affected.");
+    }
+    for missing in &status.selection.missing {
+        let url = missing.install_url.as_deref().unwrap_or("");
+        println!("  Note: {} {url}", missing.message);
     }
 }

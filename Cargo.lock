@@ -3355,14 +3355,18 @@ dependencies = [
 name = "pw-engine"
 version = "0.1.0"
 dependencies = [
+ "pw-capture",
+ "pw-core",
  "pw-diag",
  "pw-ipc",
  "pw-netstat",
  "pw-proto",
  "serde",
  "serde_json",
+ "tempfile",
  "tokio",
  "tracing",
+ "windows",
 ]
 
 [[package]]

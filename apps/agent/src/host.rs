@@ -36,7 +36,12 @@ pub async fn run_agent(
         .with_context(|| format!("could not create the IPC pipe {PIPE_NAME}"))?;
 
     let engine = Arc::new(Engine::new(
-        EngineConfig::new(AGENT_VERSION, service_mode),
+        {
+            let mut config = EngineConfig::new(AGENT_VERSION, service_mode);
+            // Passive and bounded: the live capture feeds the traffic page and the detectors.
+            config.capture_autostart = true;
+            config
+        },
         Arc::new(WindowsNetStat::new()),
     ));
     tracing::info!(

@@ -5,11 +5,14 @@
 //! `live.stats` topics. The engine implements [`pw_ipc::Handler`] itself, so the agent only has to
 //! hand it to `pw_ipc::serve`.
 
+mod capture;
 mod connections;
 mod diag;
 mod poller;
+mod sys;
 mod trust;
 
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -17,15 +20,17 @@ use pw_diag::SystemPinger;
 use pw_ipc::{EventReceiver, Handler};
 use pw_netstat::NetStat;
 use pw_proto::{
-    method, topic, ConnectionsRequest, DiagJobRequest, DnsLookupRequest, ErrorCode, ErrorPayload,
-    Heartbeat, HelloResponse, MtrStartRequest, PingStartRequest, PortCheckRequest, SystemInfo,
-    PROTOCOL_MAJOR, PROTOCOL_MINOR,
+    method, topic, CaptureFileRequest, CaptureStartRequest, ConnectionsRequest, DiagJobRequest,
+    DnsLookupRequest, ErrorCode, ErrorPayload, Heartbeat, HelloResponse, MtrStartRequest,
+    PingStartRequest, PortCheckRequest, RecordStartRequest, SystemInfo, PROTOCOL_MAJOR,
+    PROTOCOL_MINOR,
 };
 use serde_json::Value;
 use tokio::sync::{mpsc, watch};
 use tokio::task::JoinHandle;
 use tokio::time::{Instant, MissedTickBehavior};
 
+pub use capture::{CaptureHost, CaptureManager, PacketSink, SystemCaptureHost};
 pub use diag::{Diag, MAX_RUNNING_JOBS};
 pub use poller::{Poller, Snapshot};
 pub use trust::{TrustState, DEFAULT_WINDOW_DAYS};
@@ -46,6 +51,11 @@ pub struct EngineConfig {
     /// How many days back a successful RDP logon keeps an address trusted (1..=365). Will be set
     /// from `config.toml` once the config model exists.
     pub rdp_trust_days: u32,
+    /// Where recordings are written (administrators only). Created on first use.
+    pub capture_dir: PathBuf,
+    /// Start the live capture when the engine starts. Off by default so tests and tools that build
+    /// an engine never open a capture; the agent turns it on.
+    pub capture_autostart: bool,
 }
 
 impl EngineConfig {
@@ -57,6 +67,8 @@ impl EngineConfig {
             poll_interval: Duration::from_secs(1),
             rdp_refresh_every: 5,
             rdp_trust_days: DEFAULT_WINDOW_DAYS,
+            capture_dir: default_capture_dir(),
+            capture_autostart: false,
         }
     }
 }
@@ -75,12 +87,24 @@ pub struct Engine {
     started: Instant,
     latest: watch::Receiver<Option<Arc<Snapshot>>>,
     diag: Diag<SystemPinger>,
+    capture: Arc<CaptureManager>,
     _poller: AbortOnDrop,
 }
 
 impl Engine {
     /// Starts the engine and its network poller. Must be called inside a tokio runtime.
     pub fn new(config: EngineConfig, netstat: Arc<dyn NetStat>) -> Self {
+        Self::with_capture_host(config, netstat, Arc::new(SystemCaptureHost), None)
+    }
+
+    /// `Engine::new` with another capture host (tests) and an optional consumer of every captured
+    /// batch (the detection engine).
+    pub fn with_capture_host(
+        config: EngineConfig,
+        netstat: Arc<dyn NetStat>,
+        host: Arc<dyn CaptureHost>,
+        sink: Option<PacketSink>,
+    ) -> Self {
         let (publish, latest) = watch::channel(None);
         let trust = TrustState::new(config.rdp_trust_days);
         // Learning RDP logons reads the event log (a bounded initial load, then live events); it
@@ -100,11 +124,28 @@ impl Engine {
             config.rdp_refresh_every,
             trust,
         ));
+        let capture = Arc::new(CaptureManager::new(host, config.capture_dir.clone(), sink));
+        if config.capture_autostart {
+            let capture = Arc::clone(&capture);
+            tokio::spawn(async move {
+                let cleaner = Arc::clone(&capture);
+                if let Ok(removed) = tokio::task::spawn_blocking(move || cleaner.cleanup()).await {
+                    if removed > 0 {
+                        tracing::info!(removed, "deleted old recordings");
+                    }
+                }
+                match capture.start(None).await {
+                    Ok(()) => tracing::info!("live capture started"),
+                    Err(err) => tracing::warn!(reason = %err.message, "live capture did not start"),
+                }
+            });
+        }
         Self {
             config,
             started: Instant::now(),
             latest,
             diag: Diag::new(Arc::new(SystemPinger)),
+            capture,
             _poller: AbortOnDrop(task),
         }
     }
@@ -223,6 +264,31 @@ impl Handler for Engine {
                 let latest = self.latest.borrow().clone();
                 to_value(&diag::local_ports(latest.as_deref()))
             }
+            method::CAPTURE_STATUS => to_value(&self.capture.status()),
+            method::CAPTURE_START => {
+                let request: CaptureStartRequest = parse_or_default(payload)?;
+                self.capture.start(request.interface.as_deref()).await?;
+                to_value(&self.capture.status())
+            }
+            method::CAPTURE_STOP => {
+                self.capture.stop().await;
+                to_value(&self.capture.status())
+            }
+            method::CAPTURE_RECORD_START => {
+                let request: RecordStartRequest = parse(payload)?;
+                self.capture.record_start(request).await?;
+                to_value(&self.capture.status())
+            }
+            method::CAPTURE_RECORD_STOP => {
+                self.capture.record_stop().await?;
+                to_value(&self.capture.status())
+            }
+            method::CAPTURE_FILES => to_value(&self.capture.files()),
+            method::CAPTURE_FILES_DELETE => {
+                let request: CaptureFileRequest = parse(payload)?;
+                self.capture.delete_file(&request.name)?;
+                to_value(&self.capture.files())
+            }
             other => Err(ErrorPayload::new(
                 ErrorCode::UnknownMethod,
                 format!("unknown method `{other}`"),
@@ -282,12 +348,52 @@ impl Handler for Engine {
                 Ok(rx)
             }
             topic::DIAG_PROGRESS => Ok(self.diag.subscribe()),
+            topic::CAPTURE_STATS => {
+                let (tx, rx) = mpsc::channel(SUBSCRIPTION_QUEUE);
+                let mut live = self.capture.subscribe();
+                tokio::spawn(async move {
+                    loop {
+                        match live.recv().await {
+                            Ok(stats) => {
+                                let Ok(payload) = serde_json::to_value(&stats) else {
+                                    continue;
+                                };
+                                if tx.send(payload).await.is_err() {
+                                    break;
+                                }
+                            }
+                            Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {}
+                            Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
+                        }
+                    }
+                });
+                Ok(rx)
+            }
             other => Err(ErrorPayload::new(
                 ErrorCode::UnknownTopic,
                 format!("unknown topic `{other}`"),
             )),
         }
     }
+}
+
+/// Like `parse`, but a missing payload means "all defaults".
+fn parse_or_default<T: serde::de::DeserializeOwned + Default>(
+    payload: Value,
+) -> Result<T, ErrorPayload> {
+    if payload.is_null() {
+        Ok(T::default())
+    } else {
+        parse(payload)
+    }
+}
+
+/// `%ProgramData%\PacketWard\captures`, falling back to the Windows default location.
+fn default_capture_dir() -> PathBuf {
+    std::env::var_os("ProgramData")
+        .map_or_else(|| PathBuf::from(r"C:\ProgramData"), PathBuf::from)
+        .join("PacketWard")
+        .join("captures")
 }
 
 fn parse<T: serde::de::DeserializeOwned>(payload: Value) -> Result<T, ErrorPayload> {
