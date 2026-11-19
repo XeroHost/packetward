@@ -249,7 +249,9 @@ Plain HTTP is for local testing only. In production either:
 
 2. **Native TLS** (`--features tls`): set `[tls] cert_file`/`key_file`, `listen = "0.0.0.0:443"`, and give the
    service `AmbientCapabilities=CAP_NET_BIND_SERVICE` (see the commented lines in the unit). HTTP/1.1 only.
-   The certificate is read once at start; restart after renewal (e.g. a certbot `--deploy-hook "systemctl
+   The service user must be able to read the key (Let's Encrypt `privkey.pem` is root-only by default): use
+   group permissions on a copy/deploy hook, or systemd `LoadCredential=` and point `[tls]` at
+   `/run/credentials/pw-speed-server.service/...`. The certificate is read once at start; restart after renewal (e.g. a certbot `--deploy-hook "systemctl
    restart pw-speed-server"`).
 
 ### Firewall and ports
@@ -301,9 +303,9 @@ Users can also add any server running this program as a custom server in PacketW
 cargo test -p pw-speed-server                      # unit + loopback integration tests (port 0, <= 64 MB each)
 cargo test -p pw-speed-server --features tls       # also the TLS tests (needs a C compiler for ring)
 cargo clippy -p pw-speed-server --all-targets -- -D warnings
-# benchmarks (64 MiB per measurement):
+# benchmarks (each moves at most 64 MB):
 cargo test --release -p pw-speed-server --lib -- --ignored --nocapture
-cargo test --release -p pw-speed-server --test api -- --ignored --nocapture
+cargo test --release -p pw-speed-server --test api -- --ignored --nocapture --test-threads=1
 ```
 
 `tests/fixtures/test-{cert,key}.pem` is a throwaway self-signed certificate (CN=localhost, valid 100 years)

@@ -245,8 +245,9 @@ async fn partial_download_then_disconnect_stops_generation_and_frees_the_slot() 
     );
     // Only what the client read plus what fits in socket and hyper buffers was ever produced.
     let produced = later - before;
+    println!("partial_download: three aborted 50 GiB downloads produced {produced} bytes in total");
     assert!(
-        produced < 3 * 64 * 1024 * 1024,
+        produced < 64 * 1024 * 1024,
         "produced {produced} bytes for three aborted downloads"
     );
     assert_eq!(node.active(), 0);
@@ -694,7 +695,11 @@ async fn stalled_reader_is_dropped_and_frees_its_slot() {
     wait_for("stalled download to be dropped", || node.active() == 0).await;
     drop(s);
     // Whatever was buffered is bounded by socket buffers, not by the 50 GiB request.
-    assert!(node.server.stats().generated_bytes.load(Ordering::SeqCst) < 256 * 1024 * 1024);
+    let produced = node.server.stats().generated_bytes.load(Ordering::SeqCst);
+    println!(
+        "stalled_reader: server produced {produced} bytes before dropping the stalled download"
+    );
+    assert!(produced < 64 * 1024 * 1024, "produced {produced}");
 }
 
 #[tokio::test]
@@ -811,62 +816,71 @@ async fn tls_config_without_the_feature_fails_clearly() {
     assert!(err.to_string().contains("tls"), "{err}");
 }
 
-/// Loopback throughput; run explicitly: `cargo test --release -p pw-speed-server --test api -- --ignored --nocapture`.
-/// Moves 64 MiB per measurement, well under the 64 MB-per-test cap of the dev box.
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-#[ignore = "benchmark; run explicitly in release mode"]
-async fn throughput_loopback_64mib() {
-    const TOTAL: u64 = 64 * 1024 * 1024;
-    let node = spawn(|c| {
+// Loopback throughput benchmarks. Run explicitly in release mode:
+//   cargo test --release -p pw-speed-server --test api -- --ignored --nocapture --test-threads=1
+// Each test moves at most 64 MB in total (warm-up included) so it respects the dev box transfer cap.
+
+fn gbit(bytes: u64, started: Instant) -> f64 {
+    bytes as f64 * 8.0 / started.elapsed().as_secs_f64() / 1e9
+}
+
+async fn bench_node() -> Node {
+    spawn(|c| {
         c.limits.requests_per_minute_per_ip = 0;
         c.limits.max_concurrent_tests_per_ip = 0;
     })
-    .await;
-    // Warm up connection/JIT-ish effects.
-    drain(node.get("/download?bytes=1048576").await).await;
+    .await
+}
 
-    let mut single = Vec::new();
-    for _ in 0..3 {
-        let started = Instant::now();
-        let n = drain(node.get(&format!("/download?bytes={TOTAL}")).await).await;
-        assert_eq!(n, TOTAL);
-        single.push(TOTAL as f64 * 8.0 / started.elapsed().as_secs_f64() / 1e9);
-    }
-    println!("single stream 64 MiB: {single:.2?} Gbit/s");
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "benchmark; run explicitly in release mode"]
+async fn bench_download_single_stream_64mb() {
+    const TOTAL: u64 = 64_000_000;
+    let node = bench_node().await;
+    let started = Instant::now();
+    let n = drain(node.get(&format!("/download?bytes={TOTAL}")).await).await;
+    assert_eq!(n, TOTAL);
+    println!("single stream 64 MB: {:.2} Gbit/s", gbit(n, started));
+}
 
-    // 8 parallel streams of 8 MiB each (64 MiB total).
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "benchmark; run explicitly in release mode"]
+async fn bench_download_8_streams_64mb_total() {
+    const PER_STREAM: u64 = 8_000_000;
+    let node = bench_node().await;
     let started = Instant::now();
     let mut tasks = Vec::new();
     for _ in 0..8 {
         let client = node.client.clone();
-        let url = node.url(&format!("/download?bytes={}&test=bench", TOTAL / 8));
+        let url = node.url(&format!("/download?bytes={PER_STREAM}&test=bench"));
         tasks.push(tokio::spawn(async move {
-            let resp = client.get(url).send().await.unwrap();
-            drain(resp).await
+            drain(client.get(url).send().await.unwrap()).await
         }));
     }
     let mut total = 0;
     for t in tasks {
         total += t.await.unwrap();
     }
-    assert_eq!(total, TOTAL);
+    assert_eq!(total, 8 * PER_STREAM);
     println!(
-        "8 parallel streams, 64 MiB total: {:.2} Gbit/s",
-        TOTAL as f64 * 8.0 / started.elapsed().as_secs_f64() / 1e9
+        "8 parallel streams, 64 MB total: {:.2} Gbit/s",
+        gbit(total, started)
     );
+}
 
-    // Upload 64 MiB.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "benchmark; run explicitly in release mode"]
+async fn bench_upload_single_stream_64mb() {
+    const TOTAL: usize = 64_000_000;
+    let node = bench_node().await;
     let started = Instant::now();
     let resp = node
         .client
         .post(node.url("/upload"))
-        .body(vec![0u8; TOTAL as usize])
+        .body(vec![0u8; TOTAL])
         .send()
         .await
         .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
-    println!(
-        "upload 64 MiB: {:.2} Gbit/s",
-        TOTAL as f64 * 8.0 / started.elapsed().as_secs_f64() / 1e9
-    );
+    println!("upload 64 MB: {:.2} Gbit/s", gbit(TOTAL as u64, started));
 }
