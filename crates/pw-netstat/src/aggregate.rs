@@ -57,9 +57,10 @@ pub fn top_remote(rows: &[Connection], limit: usize) -> Vec<RemoteTalker> {
         .collect()
 }
 
-/// Addresses with an ESTABLISHED TCP connection to the RDP listener port: the real RDP clients as
-/// seen by the server. This (not `WTSClientAddress`, which the client reports about itself and which
-/// differs behind NAT or a VPN) is the source for "never block the current RDP client".
+/// Addresses with an ESTABLISHED TCP connection to the RDP listener port, as the server sees them.
+/// Unlike `WTSClientAddress` (what the client says about itself) this is the real source address, but it
+/// also includes peers that have not logged in (a brute-force bot holds such a connection during
+/// NLA), so it does not by itself identify the legitimate client.
 ///
 /// IPv4-mapped IPv6 peers are folded to IPv4; the result is sorted and de-duplicated.
 pub fn rdp_peers(rows: &[Connection], rdp_port: u16) -> Vec<String> {

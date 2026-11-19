@@ -156,7 +156,7 @@
       "connections": "Established connections",
       "connectionsHint": "{total} in total · {waiting} waiting to close · {half} half-open",
       "rdp": "RDP sessions",
-      "rdpHint": "{n} connected from outside · port {port}"
+      "rdpHint": "{n} addresses on port {port}"
     },
     "chart": {
       "title": "Traffic, last 5 minutes",
@@ -189,9 +189,9 @@
       "title": "Remote Desktop",
       "description": "Sessions on this machine and the addresses they connect from.",
       "none": "Nobody is connected through Remote Desktop.",
-      "peers": "Connected from",
+      "peers": "Connected to the RDP port from",
       "reported": "client reports",
-      "note": "The address the client reports can differ from the one the server sees (NAT, VPN). The addresses marked RDP are the real source of the connections.",
+      "note": "These are addresses with an open connection to the RDP port. That includes anyone who has not signed in yet, so it is not proof of a legitimate session. The address a client reports for itself can differ (NAT, VPN).",
       "state": {
         "active": "Active",
         "connected": "Connected",
@@ -207,7 +207,7 @@
   },
   "connections": {
     "rdpBadge": "RDP",
-    "rdpBadgeTip": "Current Remote Desktop client",
+    "rdpBadgeTip": "Has an open connection to the Remote Desktop port",
     "filters": {
       "protocol": "Protocol",
       "state": "State",

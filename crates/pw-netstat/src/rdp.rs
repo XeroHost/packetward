@@ -3,7 +3,7 @@
 //!
 //! That is not the address the server sees. On a live session the client reported `100.102.180.59`
 //! (an overlay-network address) while the TCP connections to port 3389 came from public addresses.
-//! Use [`crate::aggregate::rdp_peers`] for the real source address; this one is informational.
+//! [`crate::aggregate::rdp_peers`] gives the real source addresses; this one is informational.
 
 use std::net::Ipv4Addr;
 

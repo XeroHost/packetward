@@ -131,9 +131,9 @@ fn main() -> anyhow::Result<()> {
                 }
                 // Minimizing and restoring both resize the window.
                 WindowEvent::Resized(_) => {
-                    if let Ok(minimized) = window.is_minimized() {
-                        tray::announce_visibility(window.app_handle(), !minimized);
-                    }
+                    let minimized = window.is_minimized().unwrap_or(false);
+                    let shown = window.is_visible().unwrap_or(true);
+                    tray::announce_visibility(window.app_handle(), shown && !minimized);
                 }
                 _ => {}
             }

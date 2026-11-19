@@ -156,7 +156,7 @@
       "connections": "Conexiones establecidas",
       "connectionsHint": "{total} en total · {waiting} esperando cerrar · {half} a medio abrir",
       "rdp": "Sesiones RDP",
-      "rdpHint": "{n} conectadas desde fuera · puerto {port}"
+      "rdpHint": "{n} direcciones en el puerto {port}"
     },
     "chart": {
       "title": "Tráfico, últimos 5 minutos",
@@ -189,9 +189,9 @@
       "title": "Escritorio remoto",
       "description": "Sesiones de este equipo y las direcciones desde las que se conectan.",
       "none": "Nadie está conectado por Escritorio remoto.",
-      "peers": "Conectado desde",
+      "peers": "Conectado al puerto RDP desde",
       "reported": "el cliente informa",
-      "note": "La dirección que informa el cliente puede diferir de la que ve el servidor (NAT, VPN). Las direcciones marcadas RDP son el origen real de las conexiones.",
+      "note": "Son direcciones con una conexión abierta al puerto RDP. Incluye a quien aún no ha iniciado sesión, así que no prueba que sea una sesión legítima. La dirección que informa el cliente puede diferir (NAT, VPN).",
       "state": {
         "active": "Activa",
         "connected": "Conectada",
@@ -207,7 +207,7 @@
   },
   "connections": {
     "rdpBadge": "RDP",
-    "rdpBadgeTip": "Cliente actual de Escritorio remoto",
+    "rdpBadgeTip": "Tiene una conexión abierta al puerto de Escritorio remoto",
     "filters": {
       "protocol": "Protocolo",
       "state": "Estado",

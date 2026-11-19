@@ -10,8 +10,9 @@ import type { TrafficTotals } from "./TrafficTotals";
  */
 export type LiveStats = { seq: number, unix_ms: number, interfaces: Array<InterfaceStats>, totals: TrafficTotals, connections: ConnectionCounts, top_remote: Array<RemoteTalker>, rdp_sessions: Array<RdpSession>, 
 /**
- * Addresses with an established TCP connection to the RDP port: the real RDP clients as the
- * server sees them. Sorted, de-duplicated, loopback excluded.
+ * Addresses with an established TCP connection to the RDP port, as the server sees them. This
+ * includes anyone who has not logged in (a brute-force bot sits there during NLA), so it is not
+ * proof of a legitimate session. Sorted, de-duplicated, loopback excluded.
  */
 rdp_peers: Array<string>, 
 /**

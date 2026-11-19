@@ -85,11 +85,11 @@ describe('DashboardPage', () => {
     expect(adapters).toContain('Not in the totals')
   })
 
-  it('tells the real RDP peers apart from the address the client reports', () => {
+  it('tells the TCP peers of the RDP port apart from the address the client reports', () => {
     connect()
     useLiveStore().applyStats(previewStats(1))
     const text = mountPage().text()
-    expect(text).toContain('Connected from')
+    expect(text).toContain('Connected to the RDP port from')
     expect(text).toContain('203.0.113.50')
     expect(text).toContain('client reports')
     expect(text).toContain('100.64.0.9')

@@ -156,7 +156,7 @@
       "connections": "Conexões estabelecidas",
       "connectionsHint": "{total} no total · {waiting} aguardando fechar · {half} semiabertas",
       "rdp": "Sessões RDP",
-      "rdpHint": "{n} conectadas de fora · porta {port}"
+      "rdpHint": "{n} endereços na porta {port}"
     },
     "chart": {
       "title": "Tráfego, últimos 5 minutos",
@@ -189,9 +189,9 @@
       "title": "Área de Trabalho Remota",
       "description": "Sessões desta máquina e os endereços de onde elas se conectam.",
       "none": "Ninguém está conectado pela Área de Trabalho Remota.",
-      "peers": "Conectado de",
+      "peers": "Conectado à porta RDP de",
       "reported": "o cliente informa",
-      "note": "O endereço informado pelo cliente pode diferir do que o servidor vê (NAT, VPN). Os endereços marcados RDP são a origem real das conexões.",
+      "note": "São endereços com uma conexão aberta com a porta RDP. Isso inclui quem ainda não entrou, então não prova que a sessão seja legítima. O endereço que o cliente informa pode diferir (NAT, VPN).",
       "state": {
         "active": "Ativa",
         "connected": "Conectada",
@@ -207,7 +207,7 @@
   },
   "connections": {
     "rdpBadge": "RDP",
-    "rdpBadgeTip": "Cliente atual da Área de Trabalho Remota",
+    "rdpBadgeTip": "Tem uma conexão aberta com a porta da Área de Trabalho Remota",
     "filters": {
       "protocol": "Protocolo",
       "state": "Estado",

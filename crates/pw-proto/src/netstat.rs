@@ -197,8 +197,9 @@ pub struct LiveStats {
     pub connections: ConnectionCounts,
     pub top_remote: Vec<RemoteTalker>,
     pub rdp_sessions: Vec<RdpSession>,
-    /// Addresses with an established TCP connection to the RDP port: the real RDP clients as the
-    /// server sees them. Sorted, de-duplicated, loopback excluded.
+    /// Addresses with an established TCP connection to the RDP port, as the server sees them. This
+    /// includes anyone who has not logged in (a brute-force bot sits there during NLA), so it is not
+    /// proof of a legitimate session. Sorted, de-duplicated, loopback excluded.
     pub rdp_peers: Vec<String>,
     /// The TCP port the RDP listener uses (3389 unless reconfigured).
     pub rdp_port: u16,

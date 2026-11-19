@@ -46,8 +46,9 @@ standard account is TESTING.md §D and has not been done yet. The M1 run on GitH
       (Only real adapters are summed: filter layers, loopback and VPN/tunnel adapters are excluded from the total;
       tunnels with traffic are listed apart.)
 - [x] RDP sessions + client IPs.
-      (Client IPs are the TCP peers of the RDP port. `WTSClientAddress` is only what the client reports about itself
-      and differed from the real peer on a live session. IPv6 clients are not identified by WTS yet.)
+      (Shows both the sessions with the address the client reports (WTS) and the TCP peers of the RDP port. They
+      differed on a live session and neither proves a legitimate client: which one the Guardian protects is an open
+      decision. IPv6 clients are not identified by WTS yet.)
 - [x] Dashboard: live in/out bandwidth chart, connection count, top remote IPs by connections.
 - [x] Connections page: virtualized, filterable table (proto, state, process, remote IP), copy IP.
       (Sortable, keyboard-navigable. The context menu with Lookup/Block/Allow/MTR waits for the features it calls.)

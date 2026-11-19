@@ -192,10 +192,14 @@ synthetic generators.
   Wi-Fi, and either a hardware NIC with a connector or the holder of a default route (virtio NICs are not always
   flagged as hardware). VPN/tunnel adapters (WireGuard, ZeroTier, Radmin, TAP...) are never summed but are listed
   when they carry traffic.
-- Active RDP sessions (WTS API) and **RDP client IPs = the established TCP peers of the RDP port** (port read from
-  the registry, default 3389). `WTSClientAddress` is what the client reports about itself (NAT, VPN, overlay
-  networks) and differs from the address the server sees, so it is shown as informational only. Anything that must
-  act on the real source (the badge, the Guardian protected set) uses the TCP peers.
+- Active RDP sessions (WTS API) and the **established TCP peers of the RDP port** (port read from the registry,
+  default 3389), reported as `rdp_peers`. Two different things, neither alone identifies "the current RDP client":
+  `WTSClientAddress` is what the client reports about itself (NAT, VPN, overlay networks) and differed from the TCP
+  peer on a live session; and a TCP peer on the RDP port may be a brute-force bot sitting in NLA before any logon.
+  The UI labels peers as "connected to the RDP port", not as the legitimate client.
+  **Open decision for the Guardian protected set** (to be settled with the owner, not yet implemented): WTS address,
+  TCP peers, or TCP peers that also have a successful RDP logon (Security 4624 type 10 / TerminalServices 1149).
+  Using all peers would make RdpBruteForce unable to block anyone attacking the RDP port.
 - Table buffers are parsed from raw bytes with explicit offsets (no unsafe, tested on Linux). Process names are
   cached by PID + creation time to survive PID reuse.
 - Connections-per-remote-IP aggregation feeds `ConnFlood` when no capture backend is running.
