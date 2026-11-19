@@ -2,14 +2,15 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { DiagEvent } from '@/api/diag'
-import { DiagError } from '@/api/diag'
-import { PING_VISIBLE, useDiagStore } from './diag'
+import { DiagError, parseCallError } from '@/api/diag'
+import { PING_VISIBLE, buildMtrRequest, useDiagStore } from './diag'
 
 const api = vi.hoisted(() => ({
   startPing: vi.fn(),
   startMtr: vi.fn(),
   cancelJob: vi.fn(),
   fetchMtrReport: vi.fn(),
+  exportMtr: vi.fn(),
   dnsLookup: vi.fn(),
   portCheck: vi.fn(),
   fetchLocalPorts: vi.fn(),
@@ -131,6 +132,161 @@ describe('mtr', () => {
     diag.applyEvent({ type: 'failed', job_id: 4, message: 'raw socket denied' })
     expect(diag.mtrError?.message).toBe('raw socket denied')
     expect(diag.mtrRunning).toBe(false)
+  })
+})
+
+describe('advanced mtr', () => {
+  it('sends a plain ICMP trace exactly like before', () => {
+    expect(buildMtrRequest('example.com', 20, true)).toEqual({
+      target: 'example.com',
+      cycles: 20,
+      resolve_names: true,
+    })
+    // ICMP ignores a stale port, and defaults are never sent.
+    expect(buildMtrRequest('a', 5, false, { mode: 'icmp', port: 443 })).toEqual({
+      target: 'a',
+      cycles: 5,
+      resolve_names: false,
+    })
+  })
+
+  it('sends the mode, port and the other options only when they were set', () => {
+    expect(
+      buildMtrRequest('a', 5, true, {
+        mode: 'tcp',
+        port: 8443,
+        packetSize: 64,
+        intervalMs: 500,
+        maxHops: 20,
+        preferIpv6: true,
+      }),
+    ).toEqual({
+      target: 'a',
+      cycles: 5,
+      resolve_names: true,
+      mode: 'tcp',
+      port: 8443,
+      packet_size: 64,
+      interval_ms: 500,
+      max_hops: 20,
+      prefer_ipv6: true,
+    })
+    // TCP without a port lets the agent pick its default (443).
+    const udp = buildMtrRequest('a', 5, true, { mode: 'udp' })
+    expect(udp.mode).toBe('udp')
+    expect('port' in udp).toBe(false)
+    expect('prefer_ipv6' in buildMtrRequest('a', 5, true, { preferIpv6: false })).toBe(false)
+  })
+
+  it('passes the advanced options to the agent', async () => {
+    const diag = useDiagStore()
+    api.startMtr.mockResolvedValue({ job_id: 5, target_ip: '192.0.2.9' })
+    await diag.runMtr('192.0.2.9', 10, false, { mode: 'udp', port: 33500 })
+    expect(api.startMtr).toHaveBeenCalledWith({
+      target: '192.0.2.9',
+      cycles: 10,
+      resolve_names: false,
+      mode: 'udp',
+      port: 33500,
+    })
+  })
+
+  it('keeps the agent message when TCP or UDP cannot run, and is free to try again', async () => {
+    const diag = useDiagStore()
+    api.startMtr.mockRejectedValueOnce(
+      new DiagError('mode_unavailable', 'TCP SYN probes are unavailable: no capture backend'),
+    )
+    await diag.runMtr('192.0.2.9', 10, true, { mode: 'tcp' })
+    expect(diag.mtrRunning).toBe(false)
+    expect(diag.mtrError).toEqual({
+      kind: 'mode_unavailable',
+      message: 'TCP SYN probes are unavailable: no capture backend',
+    })
+    api.startMtr.mockResolvedValue({ job_id: 6, target_ip: '192.0.2.9' })
+    await diag.runMtr('192.0.2.9', 10, true)
+    expect(diag.mtrError).toBeNull()
+    expect(diag.mtrRunning).toBe(true)
+  })
+
+  it('keeps mode, reach and the ASN columns of a snapshot', async () => {
+    const diag = useDiagStore()
+    api.startMtr.mockResolvedValue({ job_id: 4, target_ip: '1.1.1.1' })
+    await diag.runMtr('1.1.1.1', 3, false, { mode: 'tcp', port: 443 })
+    diag.applyEvent({
+      type: 'mtr_snapshot',
+      job_id: 4,
+      snapshot: {
+        target: '1.1.1.1',
+        cycle: 1,
+        total_cycles: 3,
+        hops: [
+          {
+            ttl: 1,
+            addr: '1.1.1.1',
+            other_addrs: [],
+            sent: 1,
+            received: 1,
+            loss_percent: 0,
+            address_changes: 0,
+            asn: 13335,
+            as_org: 'Cloudflare, Inc.',
+            country: 'US',
+          },
+        ],
+        destination_reached: true,
+        cancelled: false,
+        mode: 'tcp',
+        port: 443,
+        reach: 'syn-ack',
+      },
+    })
+    expect(diag.mtrSnapshot?.mode).toBe('tcp')
+    expect(diag.mtrSnapshot?.reach).toBe('syn-ack')
+    expect(diag.mtrSnapshot?.hops[0]?.asn).toBe(13335)
+  })
+
+  it('exports only when there is data, with the source IP when given', async () => {
+    const diag = useDiagStore()
+    api.startMtr.mockResolvedValue({ job_id: 4, target_ip: '192.0.2.9' })
+    await diag.runMtr('192.0.2.9', 10, true)
+    expect(await diag.mtrExport('csv')).toBeNull()
+    expect(api.exportMtr).not.toHaveBeenCalled()
+
+    diag.applyEvent({
+      type: 'mtr_snapshot',
+      job_id: 4,
+      snapshot: {
+        target: '192.0.2.9',
+        cycle: 1,
+        total_cycles: 10,
+        hops: [],
+        destination_reached: false,
+        cancelled: false,
+      },
+    })
+    const file = { format: 'csv', filename: 'packetward-mtr-x.csv', content: 'hop\n' }
+    api.exportMtr.mockResolvedValue(file)
+    expect(await diag.mtrExport('csv')).toEqual(file)
+    expect(api.exportMtr).toHaveBeenLastCalledWith({ job_id: 4, format: 'csv' })
+    await diag.mtrExport('text', '203.0.113.9')
+    expect(api.exportMtr).toHaveBeenLastCalledWith({
+      job_id: 4,
+      format: 'text',
+      source_ip: '203.0.113.9',
+    })
+
+    api.exportMtr.mockRejectedValue(new DiagError('bad_request', 'unknown diagnostics job'))
+    expect(await diag.mtrExport('json')).toBeNull()
+    expect(diag.mtrError?.message).toBe('unknown diagnostics job')
+  })
+})
+
+describe('agent errors', () => {
+  it('maps the ModeUnavailable code of the agent to its own kind', () => {
+    const err = parseCallError('ModeUnavailable: UDP probes are unavailable: no capture backend')
+    expect(err.kind).toBe('mode_unavailable')
+    expect(err.message).toBe('UDP probes are unavailable: no capture backend')
+    expect(parseCallError('BadRequest: port 0 cannot be probed').kind).toBe('bad_request')
   })
 })
 

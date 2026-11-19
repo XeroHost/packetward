@@ -292,7 +292,8 @@
     "errors": {
       "notConnected": "The agent is not connected. Start it and try again.",
       "unsupported": "The installed agent is older than this app and does not provide diagnostics. Update the agent.",
-      "busy": "Too many diagnostics are running at once. Stop one and try again."
+      "busy": "Too many diagnostics are running at once. Stop one and try again.",
+      "modeUnavailableHint": "UDP and TCP traces read the replies through a packet capture. The built-in capture works when the agent runs as administrator, and installing Npcap (npcap.com) improves it. PacketWard does not include Npcap. ICMP traces always work."
     },
     "ping": {
       "hint": "Sends ICMP echo requests to measure reachability, latency and jitter.",
@@ -330,7 +331,41 @@
       "noReply": "no reply",
       "otherRouters": "+{count} more",
       "rateLimitedTip": "Later hops are clean: this router probably only limits its ICMP replies.",
-      "rateLimitedNote": "Loss here is not carried to the next hops, so this router is probably just rate-limiting its replies, not dropping traffic."
+      "rateLimitedNote": "Loss here is not carried to the next hops, so this router is probably just rate-limiting its replies, not dropping traffic.",
+      "options": "Trace options",
+      "mode": "Probe type",
+      "port": "Port",
+      "packetSize": "Packet size (bytes)",
+      "packetSizeTcp": "A TCP SYN carries no data, so the size does not apply.",
+      "interval": "Round interval (ms)",
+      "maxHops": "Max hops",
+      "preferIpv6": "Prefer IPv6",
+      "agentTooOld": "The installed agent is older than this app: UDP and TCP traces, the interval, IPv6 and export need an agent update.",
+      "asn": "Network (ASN)",
+      "country": "Country",
+      "modeWithPort": "{mode}, port {port}",
+      "modes": {
+        "icmp": "ICMP",
+        "udp": "UDP",
+        "tcp": "TCP SYN"
+      },
+      "reach": {
+        "echo_reply": "destination answered the ping",
+        "port_unreachable": "destination answered (port unreachable)",
+        "syn_ack": "destination answered (port open)",
+        "rst": "destination answered (port closed)"
+      },
+      "export": {
+        "button": "Export",
+        "saveCsv": "Save as CSV",
+        "saveJson": "Save as JSON",
+        "saveText": "Save support report (.txt)",
+        "copyCsv": "Copy as CSV",
+        "copyJson": "Copy as JSON",
+        "saved": "Saved {name}",
+        "copied": "Copied to the clipboard.",
+        "failed": "The export could not be saved or copied."
+      }
     },
     "dns": {
       "hint": "Looks up DNS records with the system resolver or a public one, to tell a DNS problem from a network problem.",

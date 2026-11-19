@@ -37,6 +37,10 @@ export const useAgentStore = defineStore('agent', () => {
 
   const connected = computed(() => connection.value.state === 'connected')
   const connecting = computed(() => connection.value.state === 'connecting')
+  /** Protocol minor of the connected agent (0 while not connected): gates newer features. */
+  const protocolMinor = computed(() =>
+    connection.value.state === 'connected' ? connection.value.protocol_minor : 0,
+  )
   const stale = computed(
     () =>
       connected.value &&
@@ -150,6 +154,7 @@ export const useAgentStore = defineStore('agent', () => {
     elevationNotice,
     connected,
     connecting,
+    protocolMinor,
     stale,
     secondsSinceBeat,
     pill,
