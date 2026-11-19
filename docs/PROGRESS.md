@@ -20,42 +20,57 @@ Read this first when resuming after a stop or a context compaction.
 | M0 Scaffold | done (main) |
 | M1 Proto/IPC/agent | done (main) |
 | M2 Netstat & dashboard | done (main) + RDP trust set |
-| M3 Basic diagnostics | done on dev (CI run 44496262640 green). Live smoke on this VPS: ping/MTR/DNS ALL/port check verified, MTR path identical to tracert. Pending on a test VPS: comparison with WinMTR against a XeroHost node (no node exists yet) |
-| M4 Capture & support bundle | implemented on dev (capture manager, recordings, support bundle, Traffic/Capture pages); live checks on this VPS done; Npcap/inbound/200k pps pending for a test VPS |
-| M5 Detection & alerts | implemented on dev (engine service, 4625 feed, inbox, toasts, tray badge); live tests pending for a test VPS |
-| M6 Firewall manager | implemented on dev (manager, IPC, pwctl, Firewall page, block dialog on every address); real-firewall tests pending for a test VPS |
+| M3 Basic diagnostics | done on dev. Live smoke on this VPS: ping/MTR/DNS ALL/port check verified, MTR path identical to tracert. Pending on a test VPS: comparison with WinMTR against a XeroHost node (no node exists yet) |
+| M4 Capture & support bundle | implemented on dev; live checks on this VPS done; Npcap/inbound/200k pps pending for a test VPS |
+| M5 Detection & alerts | implemented on dev (4625 feed, inbox, toasts, tray badge); toast with the window closed pending for a test VPS |
+| M6 Firewall manager | implemented on dev; real-firewall tests pending for a test VPS |
 | M7 Guardian | implemented on dev (Monitor default, Active with confirmation, ladder, circuit breaker, audit); live Active test pending for a test VPS |
-| M7b RDP Shield | implemented on dev (audit, restrict/port/NLA/lockout/attempts with agent-side auto-revert, sessions, reset, pwctl rdp, UI); every write path is fake-tested only: live tests pending for a test VPS; country restriction waits for M8 |
-| M8 GeoIP, intel, blocklists | implemented on dev (IntelService, IPC, Threat Intel page: GeoIP status/update, country leaderboard, blocklists with confirmation, AbuseIPDB). **Not built:** attack map (ECharts), IP detail drawer, RDP Shield country restriction. Live list activation pending for a test VPS |
-| M9 Speed test | implemented on dev (SpeedService, IPC, Speed Test page, bin tests). Accuracy vs a reference tool not measured; needs a test VPS and a node |
-| M10 MTR advanced | not started |
-| M11 Settings/logs/installer/updater | not started |
-| M12 Hardening & 1.0 | not started |
+| M7b RDP Shield | implemented on dev; every write path fake-tested only (live tests pending for a test VPS). **Not built:** country restriction |
+| M8 GeoIP, intel, blocklists | implemented on dev (IntelService, Threat Intel page, blocklists with confirmation, AbuseIPDB). **Not built:** attack map (ECharts), IP detail drawer. Live list activation pending for a test VPS. (CI of the M8 push failed once on the Windows job — reqwest without a rustls provider in the speed-server tests — fixed by `2979d19`) |
+| M9 Speed test | implemented on dev (SpeedService, Speed Test page, bin tests). Accuracy vs a reference tool (±10 %) **not measured**: needs a test VPS and a node |
+| M10 MTR advanced | merged on dev (ICMP/UDP/TCP, ASN/country, export, UI). Acceptance "TCP reaches hosts that drop ICMP with Npcap" **pending** for a test VPS |
+| M11 Settings/logs/installer/updater | done: proxy setting, Logs page (audit), pw-store wired for the defense state + audit log. **Packaging (NSIS installer, updater, release workflow): see "Packaging" below** |
+| M12 Hardening & 1.0 | partly: threat model, IPC robustness tests (CI) + cargo-fuzz target (**not run**, needs nightly), README. **CPU budget NOT met** (below) |
 
-## Now / next
-Now: M4 and M5 pushed to dev (CI being verified). Wave 3 subagents running in worktrees: pw-store (SQLite), speed-test client (pw-diag::speed), advanced MTR (pw-diag::mtr_adv). Meanwhile I integrate M6 (firewall IPC + block manager + UI), then M7 Guardian and M7b RDP Shield (these need pw-store for persistence). Order after that: M8 integration, M9/M10 integration, M11, M12.
-Note: pw-core (PacketMeta, CIDR sets) was written first on dev so capture/detect share it. Subagent worktrees live in .claude/worktrees (ignored by git).
+## Packaging (M11) — status
+Delegated to a subagent working in a worktree branch (`worktree-agent-a8bc3af9dedd69989`). See the end of this file for
+the final state once it has reported.
+
+## Resource budget (M12 acceptance: idle < 1 % CPU, < 60 MB RAM)
+Measured on the dev VPS (16 logical cores; release build; `run --console`; capture on, 1 s poll, ~60 connections, ~3 Mbps):
+- Working set 27 MB, private 15 MB → **RAM criterion met**.
+- CPU **1.7 – 2.9 % of one core** (60 s window, spread across the tokio workers and the blocking pool, no single hot thread) →
+  **CPU criterion NOT met**. Not optimized and not measured with capture stopped. Candidates: the 1 s netstat/adapter poll, the detector
+  tick, the raw-socket capture thread. To do on a 1 vCPU / 2 GB test VPS together with the attack-fixture replay.
 
 ## Blockers
-None.
+None open. Everything that needs live firewall/RDP/service changes is deferred to a test VPS (TESTING §F4–F10).
 
 ## Live tests pending for a test VPS
-See docs/TESTING.md (sections are added per milestone).
+See docs/TESTING.md §F4–F10 (capture/Npcap, alerts, firewall + Guardian, RDP Shield, threat-intel lists, speed test, MTR modes,
+installer/upgrade/uninstall/updater).
 
 ## How to run everything
 ```powershell
 cargo fmt --all --check; cargo clippy --workspace --all-targets -- -D warnings; cargo test --workspace; cargo deny check
+$env:Path = "$env:APPDATA\npm;" + $env:Path      # pnpm lives here on this machine (bash cannot run it)
 cd apps\desktop; pnpm lint; pnpm typecheck; pnpm test; pnpm build
 ```
+Machine-specific notes (this dev VPS): the Linux-target check is
+`cargo clippy --workspace --exclude packetward-desktop --exclude packetward-agent --exclude pw-store --exclude pw-speed-server --all-targets --target x86_64-unknown-linux-gnu -- -D warnings`
+(speed-server and pw-store need a C compiler for ring/SQLite; CI covers them). Vitest is reliable here with
+`pnpm exec vitest run --maxWorkers=3 --testTimeout=60000`. Disk is tight: remove merged subagent worktrees under `.claude/worktrees`.
+Developer agent without installing the service: `cargo run -p packetward-agent -- run --console` (elevated).
 
 ## Notes for the final summary
-- M4 acceptance items pending for a test VPS: Npcap + Wireshark check of the pcapng, 200k pps responsiveness. M5: a toast for a critical alert while the window is closed.
-- RDP Shield (M7b) must: call `restore_snapshot` before any purge/uninstall/`pwctl rdp reset` (a purge with the shield active leaves the built-in RDP rules disabled), and persist the ORIGINAL pre-shield snapshot once (`kv_set_if_absent` in pw-store), never overwriting it.
-- **The working tree contains changes to `branding-kit/` that I did not make (deleted and modified files).** I never commit them (commits use `git add -A -- . ':!branding-kit'`); tell the user.
+- **The working tree contains changes to `branding-kit/` that I did not make (deleted and modified files).** I never commit them (commits use `git add -A -- . ':!branding-kit'`). Earlier, one commit accidentally included them and was pushed to `dev`; it was undone with a revert-style commit (the history keeps both). Tell the user.
+- Keys to generate on the user's own PC: updater key and blocklist minisign key (docs/RELEASE-KEYS.md). Until then the updater and the XeroHost blocklist are disabled (fail closed).
+- RDP Shield calls `restore_snapshot` before any purge/uninstall/`pwctl rdp reset`; the ORIGINAL pre-shield snapshot is persisted once.
 - Live check on the dev VPS (agent in Monitor, read-only): real RDP brute-force bots hit this server; the Guardian protected set listed gateway, DNS, 127/8 and the trusted RDP client, and a Medium RdpBruteForce alert became a `would_block` decision. Nothing was blocked.
-- Cleanup at the end: remove `%ProgramData%PacketWard` (alerts.jsonl, audit.jsonl, defense.json, captures, support, logs), stop any agent process, uninstall nothing else (no service was installed).
+- pw-store is wired only for the defense state and the audit log (decision recorded); alerts, RDP Shield, intel and settings are still JSON files.
+- No config.toml (each area has its own file); proxy applies at the next agent start.
 
 ## Findings to act on
-- **RawSocket backend saw 0 inbound packets on the dev VPS** (pw-capture live test, elevated; outbound is seen). Hypothesis (unverified): Windows Firewall drops inbound delivery to raw sockets of an app without an allow rule. Not tested further because firewall changes are prohibited here. Actions: (1) the engine must warn when outbound flows but inbound stays at 0 for N seconds ("capture is blind"), (2) test on a test VPS with an inbound allow rule for `packetward-agent.exe` in the `PacketWard` group (TESTING.md), (3) fall back to netstat-based counters (ConnFlood/Aggregate/RDP detectors do not need capture), (4) later alternative: NDIS ETW provider.
+- **RawSocket backend saw 0 inbound packets on the dev VPS** (outbound is seen). Hypothesis (unverified): Windows Firewall drops inbound delivery to raw sockets of an app without an allow rule. The engine warns ("capture is blind"); the packaging adds an inbound allow rule for `packetward-agent.exe` in group `PacketWard` (to verify on a test VPS, TESTING §F4); other detectors do not depend on capture.
 - `pw-capture` Npcap FFI was never executed (Npcap must not be installed here): test on a test VPS with Npcap.
-- Subagent wave 2 (pw-firewall, pw-intel, speed-server) launched after M3 was pushed.
+- UDP/TCP MTR intermediate hops are invisible with the raw-socket backend here (same inbound-blind issue).
