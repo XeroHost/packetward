@@ -8,5 +8,15 @@ license.workspace = true
 repository.workspace = true
 publish = false
 
+[features]
+# Deterministic synthetic traffic generators (`pw_detect::testgen`); always available to this crate's own tests.
+testgen = []
+
+[dependencies]
+pw-core = { path = "../pw-core" }
+serde.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
 [lints]
 workspace = true
