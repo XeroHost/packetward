@@ -12,5 +12,11 @@ publish = false
 name = "pwctl"
 path = "src/main.rs"
 
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+pw-ipc = { path = "../../crates/pw-ipc" }
+pw-proto = { path = "../../crates/pw-proto" }
+tokio = { workspace = true, features = ["macros", "rt", "time"] }
+
 [lints]
 workspace = true

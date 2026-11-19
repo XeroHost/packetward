@@ -12,5 +12,18 @@ publish = false
 name = "packetward-agent"
 path = "src/main.rs"
 
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+pw-engine = { path = "../../crates/pw-engine" }
+pw-ipc = { path = "../../crates/pw-ipc" }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "signal", "sync", "time"] }
+tracing.workspace = true
+tracing-appender = "0.2"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[target.'cfg(windows)'.dependencies]
+windows-service = "0.8"
+
 [lints]
 workspace = true

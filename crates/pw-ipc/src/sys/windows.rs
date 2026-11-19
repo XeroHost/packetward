@@ -11,7 +11,8 @@ use tokio::net::windows::named_pipe::{NamedPipeServer, ServerOptions};
 use windows::core::{BOOL, PCWSTR, PWSTR};
 use windows::Win32::Foundation::{CloseHandle, LocalFree, HANDLE, HLOCAL};
 use windows::Win32::NetworkManagement::NetManagement::{
-    NetApiBufferFree, NetLocalGroupGetMembers, LOCALGROUP_MEMBERS_INFO_0,
+    NetApiBufferFree, NetLocalGroupAdd, NetLocalGroupAddMembers, NetLocalGroupDel,
+    NetLocalGroupDelMember, NetLocalGroupGetMembers, LOCALGROUP_INFO_1, LOCALGROUP_MEMBERS_INFO_0,
 };
 use windows::Win32::Security::Authorization::{
     ConvertSidToStringSidW, ConvertStringSecurityDescriptorToSecurityDescriptorW,
@@ -267,6 +268,99 @@ pub fn local_group_has_member(group: &str, sid: &str) -> io::Result<Option<bool>
         }
     }
     Ok(Some(found))
+}
+
+const NERR_GROUP_EXISTS: u32 = 2223;
+const ERROR_MEMBER_IN_ALIAS: u32 = 1378;
+const ERROR_NO_SUCH_MEMBER: u32 = 1387;
+
+fn net_status(status: u32) -> io::Result<()> {
+    if status == NERR_SUCCESS {
+        Ok(())
+    } else {
+        Err(io::Error::from_raw_os_error(status as i32))
+    }
+}
+
+/// Creates a local group. Returns `false` when it already existed.
+pub fn local_group_add(group: &str, comment: &str) -> io::Result<bool> {
+    let mut name = wide(group);
+    let mut text = wide(comment);
+    let info = LOCALGROUP_INFO_1 {
+        lgrpi1_name: PWSTR(name.as_mut_ptr()),
+        lgrpi1_comment: PWSTR(text.as_mut_ptr()),
+    };
+    // SAFETY: `info` and the strings it points to are valid for the duration of the call.
+    let status = unsafe {
+        NetLocalGroupAdd(
+            PCWSTR::null(),
+            1,
+            (&info as *const LOCALGROUP_INFO_1).cast::<u8>(),
+            None,
+        )
+    };
+    if status == NERR_GROUP_EXISTS {
+        return Ok(false);
+    }
+    net_status(status).map(|()| true)
+}
+
+/// Adds a SID to a local group. Returns `false` when it already was a member.
+pub fn local_group_add_member(group: &str, sid: &str) -> io::Result<bool> {
+    let name = wide(group);
+    let text = wide(sid);
+    let mut psid = PSID::default();
+    // SAFETY: NUL-terminated string and valid out pointer; the SID is freed below.
+    unsafe { ConvertStringSidToSidW(PCWSTR(text.as_ptr()), &mut psid) }.map_err(to_io)?;
+    let member = LOCALGROUP_MEMBERS_INFO_0 { lgrmi0_sid: psid };
+    // SAFETY: `member` is a valid one-element LOCALGROUP_MEMBERS_INFO_0 array.
+    let status = unsafe {
+        NetLocalGroupAddMembers(
+            PCWSTR::null(),
+            PCWSTR(name.as_ptr()),
+            0,
+            (&member as *const LOCALGROUP_MEMBERS_INFO_0).cast::<u8>(),
+            1,
+        )
+    };
+    // SAFETY: freeing the SID the conversion allocated, once.
+    unsafe {
+        LocalFree(Some(HLOCAL(psid.0)));
+    }
+    if status == ERROR_MEMBER_IN_ALIAS {
+        return Ok(false);
+    }
+    net_status(status).map(|()| true)
+}
+
+/// Removes a SID from a local group. Returns `false` when it was not a member.
+pub fn local_group_remove_member(group: &str, sid: &str) -> io::Result<bool> {
+    let name = wide(group);
+    let text = wide(sid);
+    let mut psid = PSID::default();
+    // SAFETY: NUL-terminated string and valid out pointer; the SID is freed below.
+    unsafe { ConvertStringSidToSidW(PCWSTR(text.as_ptr()), &mut psid) }.map_err(to_io)?;
+    // SAFETY: valid group name and SID.
+    let status = unsafe { NetLocalGroupDelMember(PCWSTR::null(), PCWSTR(name.as_ptr()), psid) };
+    // SAFETY: freeing the SID the conversion allocated, once.
+    unsafe {
+        LocalFree(Some(HLOCAL(psid.0)));
+    }
+    if status == ERROR_NO_SUCH_MEMBER {
+        return Ok(false);
+    }
+    net_status(status).map(|()| true)
+}
+
+/// Deletes a local group. Returns `false` when it did not exist.
+pub fn local_group_delete(group: &str) -> io::Result<bool> {
+    let name = wide(group);
+    // SAFETY: valid NUL-terminated group name.
+    let status = unsafe { NetLocalGroupDel(PCWSTR::null(), PCWSTR(name.as_ptr())) };
+    if status == NERR_GROUP_NOT_FOUND {
+        return Ok(false);
+    }
+    net_status(status).map(|()| true)
 }
 
 #[cfg(test)]
