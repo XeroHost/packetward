@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# systemd unit for a XeroHost speed-test node.
+#   install -m 0755 pw-speed-server /usr/local/bin/
+#   useradd --system --no-create-home --shell /usr/sbin/nologin pw-speed
+#   install -d -m 0755 /etc/pw-speed-server && $EDITOR /etc/pw-speed-server/config.toml
+#   install -m 0644 pw-speed-server.service /etc/systemd/system/ && systemctl enable --now pw-speed-server
+[Unit]
+Description=PacketWard speed test server
+Documentation=https://github.com/XeroHost/packetward/tree/main/tools/speed-server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=pw-speed
+Group=pw-speed
+ExecStart=/usr/local/bin/pw-speed-server --config /etc/pw-speed-server/config.toml
+# Reload = restart: limiter state is in memory only and rebuilt on start.
+Restart=on-failure
+RestartSec=2
+# SIGTERM triggers graceful shutdown (in-flight transfers get shutdown_grace_secs, default 10 s).
+KillSignal=SIGTERM
+TimeoutStopSec=30
+LimitNOFILE=65536
+
+# No capabilities. For native TLS on a port below 1024 (no reverse proxy) replace the next line with
+# CapabilityBoundingSet=CAP_NET_BIND_SERVICE and add AmbientCapabilities=CAP_NET_BIND_SERVICE
+# (an empty assignment resets the list, so order matters).
+CapabilityBoundingSet=
+
+# Hardening: the service needs the network and nothing else (it never touches the disk).
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+# AF_UNIX is required by the tokio runtime (signal handling) even though nothing listens on a Unix socket.
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target
