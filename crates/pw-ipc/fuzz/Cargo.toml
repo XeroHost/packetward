@@ -1,0 +1,23 @@
+[package]
+name = "pw-ipc-fuzz"
+version = "0.0.0"
+edition = "2021"
+publish = false
+license = "GPL-3.0-or-later"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+pw-ipc = { path = ".." }
+tokio = { version = "1", features = ["rt", "io-util"] }
+
+[[bin]]
+name = "frame_decoder"
+path = "fuzz_targets/frame_decoder.rs"
+test = false
+doc = false
+
+# Not part of the PacketWard workspace: needs nightly and `cargo install cargo-fuzz`.
+[workspace]
