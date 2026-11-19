@@ -77,6 +77,8 @@ pub enum FirewallError {
     BadConfirmation,
     #[error("the RDP allow list would exclude the current client(s): {}", join(.0))]
     RdpClientExcluded(Vec<IpAddr>),
+    #[error("refusing to turn the built-in RDP rules off without any known trusted RDP client")]
+    NoTrustedClients,
     #[error("the RDP allow list is empty; that would lock everybody out")]
     EmptyAllowList,
     #[error("firewall backend failure in {op}: {message} (code {code:#010x})")]

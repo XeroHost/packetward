@@ -19,7 +19,9 @@ use crate::guard::{
     self, check_block_rule, lockout_class, materially_changes, screen_blocks, BlockOptions,
     Confirmation, LockoutReason, ProtectedSpans, Screened,
 };
-use crate::model::{Action, Direction, Protocol, Rule, RuleFilter, PROFILES_ALL};
+use crate::model::{
+    normalize_profiles, Action, Direction, Protocol, Rule, RuleFilter, PROFILES_ALL,
+};
 use crate::names::{self, BatchId, GROUP, RDP_ALLOW_TCP, RDP_ALLOW_UDP};
 use crate::reconcile::{
     plan_reconcile, split_expired, BatchConfig, DesiredBlock, ExistingBatchRule, ReconcilePlan,
@@ -329,17 +331,36 @@ impl<B: FirewallBackend> FirewallManager<B> {
 
     // ---- rule validation -----------------------------------------------------------------
 
-    fn validate_rule(&self, rule: &Rule) -> Result<()> {
+    /// Validates the fields the caller is setting. When editing (`existing` given) only fields that
+    /// actually change are checked: built-in rules use keywords (`RPC`, `IPHTTPS`, ...) this crate
+    /// does not accept for new input, and `apply_fields` never rewrites an unchanged field.
+    fn validate_rule(&self, rule: &Rule, existing: Option<&Rule>) -> Result<()> {
         let bad = |msg: &str| Err(FirewallError::InvalidRule(msg.to_owned()));
-        if !addr::ports_valid(&rule.local_ports) || !addr::ports_valid(&rule.remote_ports) {
+        let changed = |f: &dyn Fn(&Rule) -> bool| existing.is_none_or(|e| f(e) != f(rule));
+        let same_addr = |a: &str, b: &str| addr::windows_readback(a) == addr::windows_readback(b);
+        let ports_changed = changed(&|r| r.local_ports == rule.local_ports)
+            || changed(&|r| r.remote_ports == rule.remote_ports);
+        if ports_changed
+            && (!addr::ports_valid(&rule.local_ports) || !addr::ports_valid(&rule.remote_ports))
+        {
             return bad("ports must be * or numbers/ranges between 1 and 65535");
         }
-        if !rule.protocol.has_ports()
+        if (ports_changed || changed(&|r| r.protocol == rule.protocol))
+            && !rule.protocol.has_ports()
             && (!addr::ports_any(&rule.local_ports) || !addr::ports_any(&rule.remote_ports))
         {
             return bad("ports can only be set for TCP or UDP rules");
         }
-        for list in [&rule.local_addresses, &rule.remote_addresses] {
+        for (list, old) in [
+            (&rule.local_addresses, existing.map(|e| &e.local_addresses)),
+            (
+                &rule.remote_addresses,
+                existing.map(|e| &e.remote_addresses),
+            ),
+        ] {
+            if old.is_some_and(|o| same_addr(o, list)) {
+                continue;
+            }
             if addr::parse_list(list)
                 .iter()
                 .any(|t| matches!(t, AddrToken::Invalid(_)))
@@ -350,9 +371,17 @@ impl<B: FirewallBackend> FirewallManager<B> {
                 return bad("too many address entries");
             }
         }
-        for text in [&rule.application, &rule.service].into_iter().flatten() {
-            if text.len() > 260 || text.chars().any(|c| c.is_control() || c == '"') {
-                return bad("application/service contains a character that is not allowed");
+        for (new, old) in [
+            (&rule.application, existing.map(|e| &e.application)),
+            (&rule.service, existing.map(|e| &e.service)),
+        ] {
+            if old.is_some_and(|o| o == new) {
+                continue;
+            }
+            if let Some(text) = new {
+                if text.len() > 260 || text.chars().any(|c| c.is_control() || c == '"') {
+                    return bad("application/service contains a character that is not allowed");
+                }
             }
         }
         Ok(())
@@ -409,7 +438,7 @@ fn is_canonical_block(rule: &Rule) -> bool {
         && addr::ports_any(&rule.local_addresses)
         && rule.application.is_none()
         && rule.service.is_none()
-        && rule.profiles == PROFILES_ALL
+        && normalize_profiles(rule.profiles) == PROFILES_ALL
 }
 
 fn existing_from_rule(index: u32, rule: &Rule) -> ExistingBatchRule {
@@ -469,7 +498,7 @@ impl<B: FirewallBackend> Firewall for FirewallManager<B> {
 
     fn add_rule(&self, rule: &Rule, opts: &RuleOptions<'_>) -> Result<()> {
         names::validate_rule_name(&rule.name, false)?;
-        self.validate_rule(rule)?;
+        self.validate_rule(rule, None)?;
         let mut rule = normalized(rule.clone());
         if let Some(reason) = self.check_new_rule(&rule, opts)? {
             self.need_confirmation(opts, reason, &rule.name)?;
@@ -495,7 +524,7 @@ impl<B: FirewallBackend> Firewall for FirewallManager<B> {
                 "renaming a rule is not supported".into(),
             ));
         }
-        self.validate_rule(rule)?;
+        self.validate_rule(rule, Some(&existing))?;
         let mut new = normalized(rule.clone());
         if existing.is_managed() {
             new.grouping = GROUP.to_owned();
@@ -759,6 +788,10 @@ impl<B: FirewallBackend> Firewall for FirewallManager<B> {
             .collect();
         if !excluded.is_empty() {
             return Err(FirewallError::RdpClientExcluded(excluded));
+        }
+        if request.disable_builtin && request.required_clients.is_empty() {
+            // Nobody to protect means nobody the guard above could check: do not guess.
+            return Err(FirewallError::NoTrustedClients);
         }
         if request.disable_builtin {
             self.need_confirmation(opts, LockoutReason::RestrictRdp, RDP_ALLOW_TCP)?;

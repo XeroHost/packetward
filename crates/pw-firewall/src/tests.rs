@@ -862,6 +862,95 @@ fn restore_with_a_vanished_builtin_rule_reports_it() {
     ));
 }
 
+#[test]
+fn turning_the_builtin_rules_off_needs_at_least_one_known_client() {
+    let m = manager();
+    let c = confirmation();
+    let allowed = [cidr("203.0.113.0/24")];
+    let err = m
+        .rdp_restrict(
+            &RdpRestrict {
+                port: 3389,
+                allowed: &allowed,
+                required_clients: &[],
+                include_udp: true,
+                disable_builtin: true,
+            },
+            1,
+            &RuleOptions::default().confirmed(&c),
+        )
+        .unwrap_err();
+    assert_eq!(err, FirewallError::NoTrustedClients);
+    assert!(m.backend().writes().is_empty());
+    // Only adding the allow rule (built-ins untouched) needs no client list.
+    m.rdp_restrict(
+        &RdpRestrict {
+            port: 3389,
+            allowed: &allowed,
+            required_clients: &[],
+            include_udp: false,
+            disable_builtin: false,
+        },
+        1,
+        &RuleOptions::default(),
+    )
+    .unwrap();
+    assert!(
+        m.backend()
+            .rule("Remote Desktop - User Mode (TCP-In)")
+            .unwrap()
+            .enabled
+    );
+}
+
+#[test]
+fn editing_a_foreign_rule_with_keyword_values_only_checks_what_changed() {
+    let m = manager();
+    let mut rpc = Rule::new(
+        "Some Windows service (RPC-In)",
+        Direction::Inbound,
+        Action::Allow,
+    );
+    rpc.grouping = "@FirewallAPI.dll,-1".into();
+    rpc.protocol = Protocol::Tcp;
+    rpc.local_ports = "RPC-EPMap".into();
+    rpc.remote_addresses = "LocalSubnet".into();
+    rpc.profiles = 7; // Windows sometimes reports the three bits instead of 0x7FFFFFFF
+    m.backend().seed(rpc.clone());
+    let opts = RuleOptions::default().foreign_edit();
+    let mut edit = m.get_rule(&rpc.name).unwrap().unwrap();
+    edit.description = "edited".into();
+    m.update_rule(&rpc.name, &edit, &opts).unwrap();
+    assert_eq!(m.backend().rule(&rpc.name).unwrap().description, "edited");
+    // Changing the keyword field to garbage is still rejected.
+    edit.local_ports = "RPC-EPMap;x".into();
+    assert!(matches!(
+        m.update_rule(&rpc.name, &edit, &opts),
+        Err(FirewallError::InvalidRule(_))
+    ));
+    // The three profile bits and "all profiles" are the same thing.
+    edit.local_ports = "RPC-EPMap".into();
+    edit.profiles = PROFILES_ALL;
+    m.update_rule(&rpc.name, &edit, &opts).unwrap();
+}
+
+#[test]
+fn profile_spelling_does_not_make_batch_rules_look_wrong() {
+    let m = manager();
+    let none = CidrSet::new();
+    let opts = BlockOptions::new(&none);
+    let batch = BatchId::auto_block();
+    m.block_ips(&batch, &hosts(0..3), &opts).unwrap();
+    m.backend().tamper("PW-AutoBlock-001", |r| r.profiles = 7);
+    m.backend().clear_log();
+    assert_eq!(
+        m.apply_blocklist(&batch, &hosts(0..3), &opts)
+            .unwrap()
+            .rule_writes,
+        0
+    );
+}
+
 // ---- listing -------------------------------------------------------------------------------
 
 #[test]

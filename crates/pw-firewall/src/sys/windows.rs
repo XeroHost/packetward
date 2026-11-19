@@ -28,7 +28,7 @@ use windows::Win32::System::Variant::{VARIANT, VT_DISPATCH};
 use crate::addr;
 use crate::error::{FirewallError, Result};
 use crate::manager::FirewallBackend;
-use crate::model::{Action, Direction, Protocol, Rule};
+use crate::model::{normalize_profiles, Action, Direction, Protocol, Rule};
 
 /// HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND): `Rules.Item` for a name that does not exist.
 const E_NOT_FOUND: u32 = 0x8007_0002;
@@ -140,7 +140,9 @@ fn read_rule(rule: &INetFwRule) -> Result<Rule> {
             remote_addresses: or_any(text(rule.RemoteAddresses())),
             application: optional(text(rule.ApplicationName())),
             service: optional(text(rule.ServiceName())),
-            profiles: rule.Profiles().unwrap_or(0x7FFF_FFFF) as u32,
+            profiles: crate::model::normalize_profiles(
+                rule.Profiles().unwrap_or(0x7FFF_FFFF) as u32
+            ),
         })
     }
 }
@@ -279,7 +281,9 @@ fn apply_fields(com: &INetFwRule, current: Option<&Rule>, new: &Rule) -> Result<
             com.SetServiceName(&BSTR::from(new.service.as_deref().unwrap_or("")))
                 .map_err(fail)?;
         }
-        if current.is_none_or(|c| c.profiles != new.profiles) {
+        if current
+            .is_none_or(|c| normalize_profiles(c.profiles) != normalize_profiles(new.profiles))
+        {
             com.SetProfiles(new.profiles as i32).map_err(fail)?;
         }
         if current.is_none_or(|c| c.enabled != new.enabled) {

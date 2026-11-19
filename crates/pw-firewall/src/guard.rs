@@ -13,7 +13,7 @@ use pw_core::{Cidr, CidrSet};
 
 use crate::addr::{self, cidr_span, AddrToken, Span};
 use crate::error::{FirewallError, RefusedBlocks, Result};
-use crate::model::{Action, Direction, Protocol, Rule};
+use crate::model::{normalize_profiles, Action, Direction, Protocol, Rule};
 
 /// IPv4 blocks shorter than this are "too broad" without `allow_broad`.
 pub const MIN_PREFIX_V4: u8 = 8;
@@ -197,7 +197,9 @@ const RDP_GROUP_TOKENS: [&str; 2] = ["@FirewallAPI.dll,-28752", "@FirewallAPI.dl
 
 /// The built-in "Remote Desktop - User Mode (TCP-In/UDP-In)" family (inbound allow rules of the
 /// Remote Desktop group). Matches on the group, whether Windows reports it resolved ("Remote
-/// Desktop") or as a resource string (`@FirewallAPI.dll,-28752`), and on the name.
+/// Desktop") or as a resource string (`@FirewallAPI.dll,-28752`). Names are localized and
+/// third-party rules may mention Remote Desktop, so the name is not used (only to skip the
+/// "Shadow" rule, which is not an access path in its own right).
 pub fn is_builtin_rdp_rule(rule: &Rule) -> bool {
     if rule.direction != Direction::Inbound || rule.action != Action::Allow || rule.is_managed() {
         return false;
@@ -209,7 +211,6 @@ pub fn is_builtin_rdp_rule(rule: &Rule) -> bool {
         || RDP_GROUP_TOKENS
             .iter()
             .any(|t| rule.grouping.eq_ignore_ascii_case(t))
-        || contains_ci(&rule.name, "remote desktop")
 }
 
 /// An enabled inbound allow rule that names the RDP port explicitly.
@@ -251,7 +252,7 @@ pub fn materially_changes(old: &Rule, new: &Rule) -> bool {
         || old.action != new.action
         || old.protocol != new.protocol
         || old.local_ports != new.local_ports
-        || old.profiles != new.profiles
+        || normalize_profiles(old.profiles) != normalize_profiles(new.profiles)
         || addr::windows_readback(&old.remote_addresses)
             != addr::windows_readback(&new.remote_addresses)
 }

@@ -67,6 +67,15 @@ impl Protocol {
 /// All three profiles (domain, private, public).
 pub const PROFILES_ALL: u32 = 0x7FFF_FFFF;
 
+/// Windows may report "all profiles" as 7 (the three profile bits) or as 0x7FFFFFFF.
+pub fn normalize_profiles(profiles: u32) -> u32 {
+    if profiles & 0x7 == 0x7 {
+        PROFILES_ALL
+    } else {
+        profiles
+    }
+}
+
 /// One Windows Firewall rule as far as PacketWard models it. Properties that are not modelled
 /// (interfaces, ICMP types, edge traversal) are left untouched when an existing rule is updated.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
