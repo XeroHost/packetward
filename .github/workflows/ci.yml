@@ -73,6 +73,8 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      - name: Release helper tests
+        run: node --test ../../.github/scripts/
 
   windows:
     name: Windows (full build)
