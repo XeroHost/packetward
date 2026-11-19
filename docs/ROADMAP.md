@@ -97,6 +97,18 @@ for a critical alert while the main window is closed.
 **Accept:** tests prove the current RDP client IP is never blocked; blocks survive agent restart and expire;
 fresh install is in Monitor.
 
+## M7b — RDP Shield
+- [ ] Exposure audit (read-only) with recommendations; live per-IP logon monitor; sessions list with disconnect/log off.
+- [ ] Transactional actions with agent-side auto-revert (confirm within 120 s, configurable), previous state stored,
+      survives agent restart: restrict RDP to trusted IPs/CIDRs (built-in rules off only while active), attempt limit
+      per IP (threshold/window/TTL/escalation via the Guardian), change RDP port, force NLA, optional account lockout
+      (off by default, DoS warning).
+- [ ] Notification for a successful logon from a never-seen address; optional country restriction (needs M8 GeoIP,
+      off by default, never applied to trusted addresses).
+- [ ] `pwctl rdp reset`; UI mentions the provider's VNC/console for recovery.
+**Accept:** tests (fakes) prove: unconfirmed change is reverted by the agent; revert survives restart; the current
+successful-logon IP is never excluded; reset restores factory state. Live checks are in TESTING.md (test VPS only).
+
 ## M8 — GeoIP map, threat intel & blocklists
 - [ ] DB-IP Lite country + ASN lookup, update check.
 - [ ] Attack map: origin points/arcs to the server, intensity by pps, country leaderboard, click → IP detail.

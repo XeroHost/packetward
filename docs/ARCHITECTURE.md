@@ -277,6 +277,44 @@ app/OS versions. **Preview before saving**, with an option to anonymize local IP
 - Per-severity mute and quiet hours in Settings. If no user is logged in, alerts are only stored in the audit log.
 - No webhooks or email in v1.
 
+### 6.13 RDP Shield (`pw-engine::rdp_shield`, UI page "RDP Shield", milestone M7b)
+Dedicated protection for the one service most VPS owners expose. Built on detection (M5), the firewall (M6),
+the Guardian (M7) and the trusted-RDP-client set (§6.3).
+
+**Read-only parts**
+- *Exposure audit*: RDP enabled (`fDenyTSConnections`), port (`PortNumber`), NLA (`UserAuthentication`), security
+  layer / TLS, account-lockout policy (`NetUserModalsGet`), members of `Remote Desktop Users`, and the scope of the
+  inbound firewall rules that allow the RDP port (open to any address or restricted). Each finding has a severity
+  and a plain-language recommendation with copyable manual steps.
+- *Live monitor*: failed and successful logons per source IP (Security 4625 / 4624 / 1149 via the event feed),
+  timeline, sessions, the trusted set and its audit-policy warnings.
+- *Sessions*: list with **disconnect** and **log off** (`WTSDisconnectSession` / `WTSLogoffSession`), each confirmed.
+- *Notification* when a successful logon comes from an address never seen before.
+
+**Configurable actions** (each one is a transaction, see below)
+1. **Restrict RDP to trusted addresses/CIDRs**: PacketWard-owned rules (group `PacketWard`) allow the RDP port only
+   from the configured list. The built-in "Remote Desktop" rules are disabled **only while the restriction is
+   active** and restored when it is turned off or reverted.
+2. **Attempt limit per IP**: threshold, window, TTL and escalation, enforced through the Guardian (Monitor by default).
+3. **Change the RDP port**: `PortNumber` + firewall rules + restart of `TermService`.
+4. **Force NLA**: `UserAuthentication = 1`.
+5. **Windows account lockout** (optional, **off by default**): warns that an attacker can lock a legitimate account on
+   purpose (a denial of service), which is why PacketWard prefers blocking the source address.
+
+**Safety framework (mandatory for every action)**
+- A transaction stores the **previous state** (registry values, rule ids/enabled flags) in `pw-store` before changing
+  anything, applies the change, and starts a **confirmation timer** (120 s, configurable). The UI asks the user to
+  confirm from a **new connection**; without confirmation the **agent itself reverts** the change (the UI may be
+  unreachable precisely because the change cut the connection). Pending transactions survive an agent restart: on
+  start, any transaction past its deadline is reverted before anything else.
+- The addresses with a successful RDP logon (including the current client) are **always** in the allow-list of a
+  restriction and can never be blocked by the attempt limit.
+- Actions that need a tool the agent cannot verify (port change when the new port is not reachable from the
+  client's address) are refused or require the explicit "I understand" confirmation.
+- `pwctl rdp reset` restores RDP to factory state: port 3389, built-in rules enabled, no PacketWard restrictions
+  or blocks, NLA unchanged. The UI names the provider's **VNC/console** as the recovery path if RDP is lost.
+- All of it is covered by fakes and tests; live runs are documented in `docs/TESTING.md` for a **test VPS** only.
+
 ### 6.12 Branding
 Discreet XeroHost presence: "by XeroHost" in the sidebar footer and About, a "Contact XeroHost support" link
 (opens xerohost.net), XeroHost speed-test nodes and shared blocklist as defaults. No plan promotion or upsell.

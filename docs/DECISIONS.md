@@ -23,4 +23,24 @@ These are settled. Do not re-open them in code; if one blocks you, ask.
 | CLI | **Basic `pwctl` in v1**: `status`, `guardian off|monitor|active`, `unblock --all`, `firewall purge`, `support-bundle`. |
 | UI kit | **shadcn-vue** (components copied into the repo, on Reka UI + Tailwind v4). |
 | Update channels | **Stable + Beta**, selectable in Settings. |
+| RDP Shield (2026-11-19) | New milestone **M7b**: audit + live monitor + Guardian blocks + recommendations, **plus configurable actions** (restrict RDP to trusted IPs/CIDRs, attempt limit per IP, change port, force NLA, optional account lockout off by default). Every action is a transaction confirmed within 120 s (configurable) or **reverted by the agent**; previous state stored; trusted-logon IPs always allowed; `pwctl rdp reset`; UI mentions the provider's VNC console. Optional country restriction (off by default). See ARCHITECTURE §6.13. |
+| XeroHost nodes (2026-11-19) | Miami, Dallas, São Paulo (Ashburn soon). `nodes.json` lives in the public repo `XeroHost/packetward-blocklist`, read from its raw GitHub URL. **Hostnames do not exist yet: shipped as placeholders; an empty list works with custom servers. Never invent hostnames.** |
+| Report source IP | Asked from the speed-server `/info` of a XeroHost node (no third party); omitted when no node is available. |
+| Captures | Headers only (first 128 bytes per packet) by default; full payload is an explicit option with a warning. |
+| Support bundle | "Anonymize local IPs" **on** by default; remote IPs kept. |
+| Notifications | Toasts for **critical and high** only by default; quiet hours off. |
+| Guardian Active | Allowed after a confirmation dialog stating the consequences and showing the Monitor report; no minimum Monitor time. |
+| Windows Firewall | PacketWard never turns it off; only rules. Deleting/disabling the rule that allows RDP needs a typed confirmation. |
+| Blocklist signing key | Real minisign public key not available yet: a test key is used only in tests; the production key is a placeholder and the XeroHost list stays **disabled (fail closed)** until it is set. |
+| Release keys | Keys are **not** generated on the dev VPS. Everything is prepared with placeholders; `docs/RELEASE-KEYS.md` gives the steps to generate the Tauri updater key and the blocklist minisign key on the owner's PC and load them with `gh secret set`. |
+| WebView2 | Installer uses the **embedded bootstrapper**. |
+| Security contact | GitHub private vulnerability reporting; email is a placeholder until provided. |
+
+## Autonomous decisions — review
+Decisions taken during the unattended run (no questions asked): the safest option was chosen, applied and recorded
+here with its reason. Review them when you are back.
+
+| Date | Milestone | Decision | Reason |
+|---|---|---|---|
+| 2026-11-19 | setup | Work on branch `dev`; CI runs on pushes to `main` and `dev` | `main` must stay untouched during the run |
 | Guardian: which RDP clients are protected (2026-11-19) | **Addresses with a successful RDP logon in the last 30 days** (configurable, 1–365): Security 4624 type 10 or 7 (remote address only) and TerminalServices 1149. Not "connected now", not `WTSClientAddress`, not every peer of the RDP port. Learned with `EvtSubscribe` plus one bounded initial load, never by searching the log. If the "Audit Logon" policy (success/failure) is off, the UI and `pwctl status` warn, because without those events neither the protection nor RdpBruteForce work. See ARCHITECTURE §6.3. |
