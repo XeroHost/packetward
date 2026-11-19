@@ -1,7 +1,8 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { getAutostart, setAutostart } from '@/api/shell'
 import type { Density, LanguageSetting, MonoFont, TextSize, ThemeSetting } from '@/api/uiPrefs'
 import { Label } from '@/components/ui/label'
 import {
@@ -49,6 +50,32 @@ function onReduceMotion(v: boolean): void {
   appearance.setReduceMotion(v)
   void settings.persist()
 }
+const autostart = ref(false)
+const autostartBusy = ref(false)
+const autostartError = ref<string | null>(null)
+
+onMounted(async () => {
+  try {
+    autostart.value = await getAutostart()
+  } catch (err) {
+    autostartError.value = String(err)
+  }
+})
+
+async function onAutostart(enabled: boolean): Promise<void> {
+  autostartBusy.value = true
+  autostartError.value = null
+  try {
+    await setAutostart(enabled)
+    autostart.value = enabled
+  } catch (err) {
+    // Keep the switch showing what is really registered.
+    autostartError.value = String(err)
+  } finally {
+    autostartBusy.value = false
+  }
+}
+
 function onLanguage(v: unknown): void {
   if (typeof v !== 'string' || !v) return
   void settings.setLanguage(v as LanguageSetting)
@@ -143,6 +170,33 @@ function onLanguage(v: unknown): void {
           }}</span>
         </div>
       </div>
+    </section>
+
+    <!-- Startup -->
+    <section
+      class="bg-surface border-border flex flex-col gap-5 rounded-lg border p-[var(--card-p)]"
+      style="box-shadow: var(--shadow-card)"
+    >
+      <header>
+        <h2 class="text-base">{{ t('settings.startup.title') }}</h2>
+        <p class="text-text-muted">{{ t('settings.startup.description') }}</p>
+      </header>
+
+      <div class="grid grid-cols-[12rem_1fr] items-center gap-x-4">
+        <Label for="sw-autostart">{{ t('settings.startup.autostart') }}</Label>
+        <div class="flex items-center gap-3">
+          <Switch
+            id="sw-autostart"
+            :model-value="autostart"
+            :disabled="autostartBusy"
+            @update:model-value="onAutostart"
+          />
+          <span class="text-text-muted text-xs">{{ t('settings.startup.autostartHint') }}</span>
+        </div>
+      </div>
+      <p v-if="autostartError" class="text-warning text-sm" role="alert">
+        {{ t('settings.startup.error', { reason: autostartError }) }}
+      </p>
     </section>
 
     <!-- Language -->

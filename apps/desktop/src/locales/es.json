@@ -60,6 +60,13 @@
       "reduceMotion": "Reducir movimiento",
       "reduceMotionHint": "Desactiva pulsos, arcos y transiciones. También se activa cuando Windows pide reducir el movimiento."
     },
+    "startup": {
+      "title": "Inicio",
+      "description": "Elige si PacketWard se abre por sí solo.",
+      "autostart": "Iniciar con Windows",
+      "autostartHint": "Se abre minimizado en la bandeja del sistema cuando inicias sesión. El agente funciona de todos modos.",
+      "error": "No se pudo cambiar esta opción: {reason}"
+    },
     "language": {
       "title": "Idioma",
       "description": "Automático sigue el idioma de pantalla de Windows.",

@@ -23,8 +23,10 @@ pw-proto = { path = "../../../crates/pw-proto" }
 serde.workspace = true
 serde_json.workspace = true
 sys-locale = "0.3"
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-autostart = "2"
 tauri-plugin-opener = "2"
+tauri-plugin-single-instance = "2"
 thiserror.workspace = true
 tokio = { workspace = true, features = ["sync", "time"] }
 tracing.workspace = true

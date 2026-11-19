@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { setTrayLocale } from '@/api/shell'
 import { loadUiPrefs, saveUiPrefs, systemLocale, type LanguageSetting } from '@/api/uiPrefs'
 import { setI18nLocale } from '@/app/i18n'
 import { resolveLocale, type Locale } from '@/app/locale'
@@ -17,6 +18,7 @@ export const useSettingsStore = defineStore('settings', () => {
   function applyLanguage(): void {
     activeLocale.value = resolveLocale(language.value, systemTag.value)
     setI18nLocale(activeLocale.value)
+    void setTrayLocale(activeLocale.value)
   }
 
   async function init(): Promise<void> {

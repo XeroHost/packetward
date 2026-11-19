@@ -7,10 +7,15 @@
 mod bridge;
 mod prefs;
 mod sys;
+mod tray;
 
-use tauri::Manager;
+use tauri::{Manager, WindowEvent};
+use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 
-use prefs::{PrefsError, UiPrefs};
+use prefs::{Language, PrefsError, UiPrefs};
+
+/// Passed by the autostart entry so the app opens straight into the tray.
+const MINIMIZED_FLAG: &str = "--minimized";
 
 fn prefs_file(app: &tauri::AppHandle) -> Result<std::path::PathBuf, PrefsError> {
     prefs::prefs_path(app.path().config_dir().ok())
@@ -38,19 +43,81 @@ fn system_locale() -> Option<String> {
     sys_locale::get_locale()
 }
 
+/// Whether the UI starts (minimized to the tray) when this user signs in to Windows.
+#[tauri::command]
+fn autostart_state(app: tauri::AppHandle) -> Result<bool, String> {
+    app.autolaunch().is_enabled().map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+fn autostart_set(app: tauri::AppHandle, enabled: bool) -> Result<(), String> {
+    let launcher = app.autolaunch();
+    if enabled {
+        launcher.enable()
+    } else {
+        launcher.disable()
+    }
+    .map_err(|err| err.to_string())
+}
+
+/// Keeps the tray menu in the language the user picked.
+#[tauri::command]
+fn tray_set_locale(app: tauri::AppHandle, locale: String) -> Result<(), String> {
+    tray::set_locale(&app, &locale).map_err(|err| err.to_string())
+}
+
+fn startup_locale(app: &tauri::AppHandle) -> &'static str {
+    let saved = prefs_file(app)
+        .map(|path| prefs::load_from(&path).language)
+        .unwrap_or(Language::Auto);
+    match saved {
+        Language::En => "en",
+        Language::Es => "es",
+        Language::PtBr => "pt-BR",
+        Language::Auto => tray::detect_locale(sys_locale::get_locale().as_deref()),
+    }
+}
+
 fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
 
     tauri::Builder::default()
+        // Must be first: a second launch just brings the existing window forward.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            tray::show_main_window(app);
+        }))
+        .plugin(tauri_plugin_autostart::init(
+            MacosLauncher::LaunchAgent,
+            Some(vec![MINIMIZED_FLAG]),
+        ))
         .plugin(tauri_plugin_opener::init())
         .manage(bridge::Bridge::default())
         .invoke_handler(tauri::generate_handler![
             ui_prefs_load,
             ui_prefs_save,
             system_locale,
+            autostart_state,
+            autostart_set,
+            tray_set_locale,
             bridge::agent_watch,
             bridge::agent_elevate
         ])
+        .setup(|app| {
+            let handle = app.handle();
+            tray::init(handle, startup_locale(handle))?;
+            // The window is created hidden (see tauri.conf.json) so a minimized start never flashes.
+            if !std::env::args().any(|arg| arg == MINIMIZED_FLAG) {
+                tray::show_main_window(handle);
+            }
+            Ok(())
+        })
+        .on_window_event(|window, event| {
+            // Closing the window hides it to the tray; "Quit" in the tray menu really exits.
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                let _ = window.hide();
+            }
+        })
         .run(tauri::generate_context!())
         .map_err(|err| {
             tracing::error!(%err, "tauri runtime failed");
