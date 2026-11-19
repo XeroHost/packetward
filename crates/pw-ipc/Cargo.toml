@@ -8,5 +8,17 @@ license.workspace = true
 repository.workspace = true
 publish = false
 
+[features]
+# In-memory transport for tests of this crate and of crates that build on it. Never used in production.
+memory = []
+
+[dependencies]
+pw-proto = { path = "../pw-proto" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["io-util", "macros", "rt", "sync", "time"] }
+tracing.workspace = true
+
 [lints]
 workspace = true
