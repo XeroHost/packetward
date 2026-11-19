@@ -10,7 +10,7 @@ use std::process::ExitCode;
 use pw_ipc::access::{self, AccessProblem};
 use pw_ipc::pipe::{self, OPERATORS_GROUP, PIPE_NAME};
 use pw_ipc::{Client, ClientError};
-use pw_proto::{method, ClientKind, SystemInfo};
+use pw_proto::{method, topic, ClientKind, LiveStats, SystemInfo};
 
 const EXIT_OTHER: u8 = 1;
 const EXIT_NOT_RUNNING: u8 = 2;
@@ -65,6 +65,7 @@ pub async fn run() -> ExitCode {
         info.hostname, info.os_family, info.pid
     );
     println!("Uptime:    {}s", info.uptime_secs);
+    print_traffic(&client).await;
     ExitCode::SUCCESS
 }
 
@@ -99,5 +100,38 @@ fn connect_failed(err: &io::Error) -> ExitCode {
             eprintln!("Could not open the agent pipe: {err}");
             ExitCode::from(EXIT_OTHER)
         }
+    }
+}
+
+/// One `live.stats` snapshot, if the agent publishes it (older agents do not) and answers in time.
+async fn print_traffic(client: &Client) {
+    let Ok(mut stats) = client.subscribe(topic::LIVE_STATS).await else {
+        return;
+    };
+    let Ok(Some(stats)) = tokio::time::timeout(
+        std::time::Duration::from_secs(3),
+        stats.recv_as::<LiveStats>(),
+    )
+    .await
+    else {
+        return;
+    };
+    let mbps = |bps: f64| bps / 1_000_000.0;
+    println!(
+        "Traffic:   in {:.2} Mbps, out {:.2} Mbps",
+        mbps(stats.totals.in_bps),
+        mbps(stats.totals.out_bps)
+    );
+    let c = &stats.connections;
+    println!(
+        "Conns:     {} established, {} total ({} listening, {} time-wait, {} udp)",
+        c.established, c.total, c.listen, c.time_wait, c.udp
+    );
+    if !stats.rdp_peers.is_empty() {
+        println!(
+            "RDP peers: {} (port {})",
+            stats.rdp_peers.join(", "),
+            stats.rdp_port
+        );
     }
 }

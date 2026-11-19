@@ -2674,6 +2674,7 @@ dependencies = [
  "clap",
  "pw-engine",
  "pw-ipc",
+ "pw-netstat",
  "tokio",
  "tracing",
  "tracing-appender",
@@ -3061,7 +3062,9 @@ name = "pw-engine"
 version = "0.1.0"
 dependencies = [
  "pw-ipc",
+ "pw-netstat",
  "pw-proto",
+ "serde",
  "serde_json",
  "tokio",
  "tracing",

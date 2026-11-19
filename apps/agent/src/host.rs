@@ -8,6 +8,7 @@ use anyhow::Context;
 use pw_engine::{Engine, EngineConfig};
 use pw_ipc::pipe::{pipe_sddl, PipeListener, PIPE_NAME};
 use pw_ipc::{access, serve};
+use pw_netstat::WindowsNetStat;
 
 pub const AGENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -34,7 +35,10 @@ pub async fn run_agent(
     let listener = PipeListener::bind(PIPE_NAME, &pipe_sddl(operators.as_deref()))
         .with_context(|| format!("could not create the IPC pipe {PIPE_NAME}"))?;
 
-    let engine = Arc::new(Engine::new(EngineConfig::new(AGENT_VERSION, service_mode)));
+    let engine = Arc::new(Engine::new(
+        EngineConfig::new(AGENT_VERSION, service_mode),
+        Arc::new(WindowsNetStat::new()),
+    ));
     tracing::info!(
         version = AGENT_VERSION,
         service_mode,

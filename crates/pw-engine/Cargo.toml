@@ -11,6 +11,8 @@ publish = false
 [dependencies]
 pw-proto = { path = "../pw-proto" }
 pw-ipc = { path = "../pw-ipc" }
+pw-netstat = { path = "../pw-netstat" }
+serde.workspace = true
 serde_json.workspace = true
 tokio = { workspace = true, features = ["rt", "sync", "time"] }
 tracing.workspace = true

@@ -17,6 +17,7 @@ anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 pw-engine = { path = "../../crates/pw-engine" }
 pw-ipc = { path = "../../crates/pw-ipc" }
+pw-netstat = { path = "../../crates/pw-netstat" }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "signal", "sync", "time"] }
 tracing.workspace = true
 tracing-appender = "0.2"
