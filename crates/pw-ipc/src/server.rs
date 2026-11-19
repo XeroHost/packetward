@@ -55,7 +55,10 @@ pub trait Listener: Send {
 
 /// Accepts connections until `shutdown` completes; every connection runs as its own task and is
 /// dropped when the server stops.
-pub async fn serve<L, H, S>(mut listener: L, handler: Arc<H>, shutdown: S)
+///
+/// Returns `Ok` only for a requested shutdown. If the listener itself fails, the error is returned
+/// so the caller can exit non-zero (a service that stops "cleanly" is not restarted by Windows).
+pub async fn serve<L, H, S>(mut listener: L, handler: Arc<H>, shutdown: S) -> io::Result<()>
 where
     L: Listener,
     H: Handler,
@@ -63,23 +66,24 @@ where
 {
     let mut connections = JoinSet::new();
     tokio::pin!(shutdown);
-    loop {
+    let outcome = loop {
         tokio::select! {
-            () = &mut shutdown => break,
+            () = &mut shutdown => break Ok(()),
             accepted = listener.accept() => match accepted {
                 Ok(stream) => {
                     connections.spawn(serve_connection(stream, Arc::clone(&handler)));
                 }
                 Err(err) => {
                     tracing::error!(%err, "accept failed; stopping the IPC server");
-                    break;
+                    break Err(err);
                 }
             },
             // Reap finished connections so the set does not grow forever.
             Some(_) = connections.join_next(), if !connections.is_empty() => {}
         }
-    }
+    };
     connections.abort_all();
+    outcome
 }
 
 fn error_envelope(

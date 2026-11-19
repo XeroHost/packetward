@@ -41,7 +41,11 @@ pub async fn run_agent(
         pipe = PIPE_NAME,
         "agent started"
     );
-    serve(listener, engine, shutdown).await;
+    // An accept failure is an error, not a clean stop: the service must exit non-zero so Windows
+    // restarts it (failure actions do not fire after a clean stop).
+    serve(listener, engine, shutdown)
+        .await
+        .context("the IPC listener stopped unexpectedly")?;
     tracing::info!("agent stopped");
     Ok(())
 }

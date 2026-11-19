@@ -20,6 +20,7 @@ pub const OPERATORS_GROUP: &str = "PacketWard Operators";
 const ERROR_PIPE_BUSY: i32 = 231;
 const BUSY_RETRY: Duration = Duration::from_millis(50);
 const BUSY_ATTEMPTS: u32 = 40;
+const INSTANCE_RETRY: Duration = Duration::from_secs(1);
 
 /// What a client asks for when opening the pipe: FILE_READ_DATA | FILE_WRITE_DATA |
 /// FILE_READ_ATTRIBUTES | SYNCHRONIZE. Deliberately **not** GENERIC_WRITE: that would include
@@ -44,10 +45,15 @@ pub fn pipe_sddl(operators_sid: Option<&str>) -> String {
 
 /// Accepts connections on a named pipe. Each accepted client gets its own server instance; a
 /// fresh instance is created right away so the next client can connect.
+///
+/// Transient trouble (a client that vanishes mid-connect, a failure to create the next instance)
+/// costs at most one connection and is retried: the listener never gives up on its own, because
+/// the agent without its pipe is unreachable but would still look "running" to Windows.
 pub struct PipeListener {
     name: String,
     descriptor: SecurityDescriptor,
-    waiting: NamedPipeServer,
+    /// The instance clients currently connect to. `None` only while a replacement is being created.
+    waiting: Option<NamedPipeServer>,
 }
 
 impl PipeListener {
@@ -58,7 +64,7 @@ impl PipeListener {
         Ok(Self {
             name: name.to_owned(),
             descriptor,
-            waiting,
+            waiting: Some(waiting),
         })
     }
 }
@@ -67,10 +73,42 @@ impl Listener for PipeListener {
     type Stream = NamedPipeServer;
 
     async fn accept(&mut self) -> io::Result<NamedPipeServer> {
-        self.waiting.connect().await?;
-        // A client arriving between the line above and this one sees ERROR_PIPE_BUSY and retries.
-        let next = create_pipe_instance(&self.name, &self.descriptor, false)?;
-        Ok(std::mem::replace(&mut self.waiting, next))
+        loop {
+            let instance = match self.waiting.take() {
+                Some(instance) => instance,
+                None => match create_pipe_instance(&self.name, &self.descriptor, false) {
+                    Ok(instance) => instance,
+                    Err(err) => {
+                        tracing::warn!(%err, "could not create a pipe instance; retrying");
+                        tokio::time::sleep(INSTANCE_RETRY).await;
+                        continue;
+                    }
+                },
+            };
+            match instance.connect().await {
+                Ok(()) => {
+                    // Create the next instance before handing this one out, so the pipe name never
+                    // has zero instances (that would let another process take the name). A client
+                    // arriving in between sees ERROR_PIPE_BUSY and retries.
+                    match create_pipe_instance(&self.name, &self.descriptor, false) {
+                        Ok(next) => self.waiting = Some(next),
+                        Err(err) => {
+                            tracing::warn!(%err, "could not create the next pipe instance; will retry")
+                        }
+                    }
+                    return Ok(instance);
+                }
+                Err(err) => {
+                    tracing::debug!(%err, "a client left before the connection completed");
+                    // Replace the broken instance first, then drop it, for the same reason as above.
+                    self.waiting = create_pipe_instance(&self.name, &self.descriptor, false).ok();
+                    drop(instance);
+                    if self.waiting.is_none() {
+                        tokio::time::sleep(INSTANCE_RETRY).await;
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -172,6 +210,24 @@ mod tests {
             let echoed: Value = client.request("echo", &json!(round)).await.unwrap();
             assert_eq!(echoed, json!(round));
         }
+    }
+
+    #[tokio::test]
+    async fn a_client_that_vanishes_before_accept_does_not_stop_the_listener() {
+        // A client that opens the pipe and closes it again before the server calls connect() leaves
+        // the waiting instance in a broken state. That must cost one connection, not the whole IPC.
+        let name = unique_name();
+        let listener = PipeListener::bind(&name, &pipe_sddl(None)).unwrap();
+        drop(open_blocking(&name).unwrap());
+        let server = tokio::spawn(serve(listener, Arc::new(Echo), std::future::pending()));
+
+        let stream = connect(&name).await.unwrap();
+        let client = Client::connect(stream, ClientKind::Pwctl, "test")
+            .await
+            .unwrap();
+        let echoed: Value = client.request("echo", &json!(1)).await.unwrap();
+        assert_eq!(echoed, json!(1));
+        assert!(!server.is_finished(), "the listener must still be running");
     }
 
     #[tokio::test]

@@ -442,3 +442,24 @@ async fn many_clients_are_served_independently() {
         join.await.unwrap();
     }
 }
+
+#[tokio::test]
+async fn serve_reports_a_listener_failure_but_not_a_requested_shutdown() {
+    // Listener dies on its own (every connector dropped): the caller must hear about it.
+    let (listener, connector) = memory_pair();
+    let handler = Arc::new(TestHandler {
+        major: PROTOCOL_MAJOR,
+        probe: Arc::new(Probe::default()),
+    });
+    drop(connector);
+    let result = serve(listener, Arc::clone(&handler), std::future::pending()).await;
+    assert!(
+        result.is_err(),
+        "an accept failure is an error, not a clean stop"
+    );
+
+    // A requested shutdown is the one clean way out.
+    let (listener, _connector) = memory_pair();
+    let result = serve(listener, handler, std::future::ready(())).await;
+    assert!(result.is_ok());
+}
