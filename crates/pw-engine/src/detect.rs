@@ -317,6 +317,11 @@ impl DetectionService {
         }
     }
 
+    /// Changes how sensitive the detectors are; open incidents are kept.
+    pub fn set_preset(&self, preset: Preset) {
+        lock(&self.detector).set_config(Config::preset(preset));
+    }
+
     pub fn store(&self) -> &Arc<AlertStore> {
         &self.store
     }

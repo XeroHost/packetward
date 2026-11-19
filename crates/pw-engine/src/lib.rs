@@ -119,6 +119,7 @@ pub struct Engine {
     support: support::SupportService,
     alerts: Arc<AlertStore>,
     defense: Arc<Defense>,
+    detection: Arc<DetectionService>,
     _poller: AbortOnDrop,
     _detector: AbortOnDrop,
     _guardian: AbortOnDrop,
@@ -225,6 +226,7 @@ impl Engine {
             Arc::clone(&context),
             Arc::clone(&trust),
         ));
+        detection.set_preset(preset_of(defense.policy().preset));
         let guardian_task = tokio::spawn(guardian_loop(Arc::clone(&defense), alerts.events()));
         let upkeep_task = tokio::spawn(upkeep_loop(
             Arc::clone(&defense),
@@ -269,6 +271,7 @@ impl Engine {
             capture,
             alerts,
             defense,
+            detection,
             _poller: AbortOnDrop(task),
             _detector: AbortOnDrop(detector_task),
             _guardian: AbortOnDrop(guardian_task),
@@ -601,9 +604,9 @@ impl Handler for Engine {
             method::GUARDIAN_SET_POLICY => {
                 let request: SetGuardianPolicy = parse(payload)?;
                 let defense = Arc::clone(&self.defense);
-                blocking(move || defense.set_policy(&request, "ui"))
-                    .await
-                    .and_then(|v| to_value(&v))
+                let status = blocking(move || defense.set_policy(&request, "ui")).await?;
+                self.detection.set_preset(preset_of(status.policy.preset));
+                to_value(&status)
             }
             method::GUARDIAN_ALLOWLIST => to_value(&self.defense.allowlist()),
             method::GUARDIAN_SET_ALLOWLIST => {
@@ -718,6 +721,14 @@ fn data_dir() -> PathBuf {
     std::env::var_os("ProgramData")
         .map_or_else(|| PathBuf::from(r"C:ProgramData"), PathBuf::from)
         .join("PacketWard")
+}
+
+fn preset_of(preset: pw_proto::GuardianPreset) -> pw_detect::Preset {
+    match preset {
+        pw_proto::GuardianPreset::Gentle => pw_detect::Preset::Gentle,
+        pw_proto::GuardianPreset::Balanced => pw_detect::Preset::Balanced,
+        pw_proto::GuardianPreset::Strict => pw_detect::Preset::Strict,
+    }
 }
 
 /// Runs a call that blocks (firewall COM, disk) off the async workers.
