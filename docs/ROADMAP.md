@@ -151,6 +151,8 @@ is rejected; works offline except AbuseIPDB and list refresh.
 **Accept:** clean install/upgrade/uninstall on Windows Server 2019 and 2022 VMs; switching channel works.
 
 ## M12 — Hardening & 1.0
-- [ ] Threat-model review, fuzz IPC decoder (`cargo fuzz`), CPU/RAM budget check on 1 vCPU / 2 GB VPS.
-- [ ] README (en, with es/pt summaries), SmartScreen note, screenshots, CONTRIBUTING, SECURITY.md.
+- [x] Threat-model review (`docs/THREAT-MODEL.md`).
+- [ ] Fuzz IPC decoder: seeded robustness tests run in CI and a `cargo fuzz` target exists (`crates/pw-ipc/fuzz`), but libFuzzer was **not run** (needs nightly).
+- [ ] CPU/RAM budget check on 1 vCPU / 2 GB VPS: measured on the dev VPS, RAM 27 MB (met), CPU 1.7–2.9 % of one core (**not met**); see PROGRESS.
+- [x] README (en, with es/pt summaries), SmartScreen note, CONTRIBUTING, SECURITY.md. (Screenshots: none yet, no release build was run.)
 **Accept:** agent idle < 1% CPU and < 60 MB RAM; under attack fixture replay it stays responsive.

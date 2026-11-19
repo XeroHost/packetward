@@ -29,12 +29,17 @@ Read this first when resuming after a stop or a context compaction.
 | M8 GeoIP, intel, blocklists | implemented on dev (IntelService, Threat Intel page, blocklists with confirmation, AbuseIPDB). **Not built:** attack map (ECharts), IP detail drawer. Live list activation pending for a test VPS. (CI of the M8 push failed once on the Windows job — reqwest without a rustls provider in the speed-server tests — fixed by `2979d19`) |
 | M9 Speed test | implemented on dev (SpeedService, Speed Test page, bin tests). Accuracy vs a reference tool (±10 %) **not measured**: needs a test VPS and a node |
 | M10 MTR advanced | merged on dev (ICMP/UDP/TCP, ASN/country, export, UI). Acceptance "TCP reaches hosts that drop ICMP with Npcap" **pending** for a test VPS |
-| M11 Settings/logs/installer/updater | done: proxy setting, Logs page (audit), pw-store wired for the defense state + audit log. **Packaging (NSIS installer, updater, release workflow): see "Packaging" below** |
+| M11 Settings/logs/installer/updater | done: proxy setting, Logs page (audit), pw-store wired for the defense state + audit log. Packaging (NSIS installer, updater, release workflow) is merged but untested live: see "Packaging" below |
 | M12 Hardening & 1.0 | partly: threat model, IPC robustness tests (CI) + cargo-fuzz target (**not run**, needs nightly), README. **CPU budget NOT met** (below) |
 
 ## Packaging (M11) — status
-Delegated to a subagent working in a worktree branch (`worktree-agent-a8bc3af9dedd69989`). See the end of this file for
-the final state once it has reported.
+Merged into `dev`: NSIS release config (`tauri.release.conf.json`) + `installer/hooks.nsh`, two-channel updater that fails closed
+with the placeholder public key, tag-driven `release.yml` (unsigned build without secrets; no `latest.json` without the signing key),
+docs ARCHITECTURE §9 and TESTING §F11. The installer was **built** on the dev VPS (setup .exe) but **never run**: install,
+upgrade, uninstall, the raw-socket firewall rule, RDP reset on uninstall, signed updates and the release workflow itself are
+pending (needs Windows Server 2019/2022 test VMs and the owner's keys, docs/RELEASE-KEYS.md). Known caveats are in ARCHITECTURE §9.1
+(manual "uninstall first" upgrade path resets RDP Shield; a stable hotfix lower than the newest beta overwrites the beta manifest;
+the updater uses the Windows system proxy, not the agent-config proxy).
 
 ## Resource budget (M12 acceptance: idle < 1 % CPU, < 60 MB RAM)
 Measured on the dev VPS (16 logical cores; release build; `run --console`; capture on, 1 s poll, ~60 connections, ~3 Mbps):
