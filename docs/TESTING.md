@@ -241,6 +241,27 @@ Every step below can cut Remote Desktop. Keep the provider's console open and a 
    3389, built-in rules enabled, no PacketWard RDP rules.
 8. **New address**: log in from an address that never logged in: an `rdp_new_logon` alert appears; logging in again from it does not repeat it.
 
+## F8. Threat intel and blocklists (M8) — TEST VPS ONLY for list activation
+
+1. **GeoIP** (safe anywhere): Threat Intel → *Download database*; status becomes *Installed* with a build date, the attribution line is shown, and
+   the country table fills with the countries of the current remote addresses. Private addresses never appear.
+2. **Blocklists** (changes the real firewall: test VPS only): switch on *Spamhaus DROP* and confirm. Within a minute `Get-NetFirewallRule -Group PacketWard`
+   (or `pwctl firewall list`) shows `PW-List-spamhaus-drop-NNN` rules; your own RDP session keeps working. Switch it off: the rules are gone.
+   `pwctl firewall purge` also removes them.
+3. **Protected addresses**: add an address of a list entry to the allowlist; after the next pass (≤ 10 min, or *Refresh now*) it is no longer blocked.
+4. **Failure**: disconnect the network, press *Refresh now*: the error is shown, the old rules stay. Restart the agent offline: the list is still in force.
+5. **XeroHost list**: the switch is disabled with the reason until a key is pinned in the build.
+6. **AbuseIPDB**: with no key nothing is sent (check the firewall log / a packet capture of the agent); with your key, check a public address; the key must
+   not appear in logs, `pwctl support-bundle` output or `ProgramData`.
+
+## F9. Speed test (M9)
+
+1. Run `tools/speed-server` on a second machine (see its README / Dockerfile), add `https://host:port` on the Speed Test page, run *Quick test*:
+   latency/jitter/download/upload and your public address are shown. Compare with a reference tool (iperf3/speedtest) on the same link: target ±10 %.
+2. Bin tests 1 GB and 10 GB with progress; **cancel** mid-way: the transfer stops immediately (watch the adapter counters on the dashboard).
+   The 50 GB test stays disabled until its checkbox is ticked. On the dev VPS never run more than 1 GB per test.
+3. Exceed the server's per-address budget: the page shows the *budget exceeded* message with no retry loop.
+
 ## G. Leave-no-trace check
 
 After testing, all of these must be empty / `False`:

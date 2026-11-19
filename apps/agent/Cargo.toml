@@ -15,7 +15,7 @@ path = "src/main.rs"
 [dependencies]
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
-pw-engine = { path = "../../crates/pw-engine", features = ["speed-http"] }
+pw-engine = { path = "../../crates/pw-engine", features = ["net-http"] }
 pw-ipc = { path = "../../crates/pw-ipc" }
 pw-netstat = { path = "../../crates/pw-netstat" }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "signal", "sync", "time"] }

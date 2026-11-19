@@ -880,5 +880,63 @@
       "busy": "Já há um teste de velocidade em andamento.",
       "not_connected": "O agente não está conectado."
     }
+  },
+  "intel": {
+    "never": "nunca",
+    "geo": {
+      "title": "Banco de dados GeoIP",
+      "hint": "País e rede (ASN) dos endereços remotos, consultados localmente neste servidor. Nada do seu tráfego é enviado a lugar nenhum; apenas o arquivo do banco é baixado.",
+      "state": {
+        "missing": "Não instalado",
+        "ready": "Instalado",
+        "corrupt": "Danificado — baixe novamente"
+      },
+      "built": "gerado",
+      "updating": "Baixando…",
+      "download": "Baixar banco de dados",
+      "update": "Atualizar banco de dados"
+    },
+    "countries": {
+      "title": "De onde vêm as conexões",
+      "hint": "Países dos endereços remotos conectados a este servidor agora.",
+      "noDb": "Baixe o banco GeoIP para ver os países.",
+      "empty": "Não há endereços remotos públicos agora.",
+      "country": "País",
+      "sources": "Origens",
+      "connections": "Conexões"
+    },
+    "lists": {
+      "title": "Listas de bloqueio",
+      "hint": "Listas públicas de redes hostis. Só são baixadas quando você as ativa, nunca incluem seus próprios endereços protegidos e saem do firewall quando você as desativa.",
+      "signed": "assinada pela XeroHost",
+      "every": "atualiza a cada {interval}",
+      "entries": "{n} bloqueios",
+      "lastUpdate": "última atualização",
+      "enable": "Ativar",
+      "disable": "Desativar",
+      "refresh": "Atualizar agora",
+      "confirm": "Isto adiciona regras de bloqueio no Firewall do Windows para cada rede da lista. Seu gateway, servidores DNS, clientes RDP e lista de permitidos nunca são bloqueados. Ativar?",
+      "confirmYes": "Sim, ativar",
+      "cancel": "Cancelar"
+    },
+    "abuse": {
+      "title": "Reputação AbuseIPDB (opcional)",
+      "hint": "Com sua própria chave do AbuseIPDB você pode ver quantas vezes um endereço foi denunciado. Sem chave nada é enviado.",
+      "state": {
+        "not_configured": "Sem chave configurada",
+        "ready": "Chave configurada",
+        "rate_limited": "Limite diário atingido; em pausa"
+      },
+      "key": "Chave de API",
+      "save": "Salvar chave",
+      "remove": "Remover chave",
+      "address": "Endereço",
+      "check": "Verificar endereço",
+      "privacy": "A chave fica no Gerenciador de Credenciais do Windows. Só o endereço público verificado é enviado; os privados nunca.",
+      "score": "Pontuação de abuso",
+      "reports": "Denúncias",
+      "isp": "ISP",
+      "cached": "do cache"
+    }
   }
 }

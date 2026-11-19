@@ -3818,6 +3818,7 @@ dependencies = [
  "pw-detect",
  "pw-diag",
  "pw-firewall",
+ "pw-intel",
  "pw-ipc",
  "pw-netstat",
  "pw-proto",

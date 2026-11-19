@@ -880,5 +880,63 @@
       "busy": "A speed test is already running.",
       "not_connected": "The agent is not connected."
     }
+  },
+  "intel": {
+    "never": "never",
+    "geo": {
+      "title": "GeoIP database",
+      "hint": "Country and network (ASN) of remote addresses, looked up locally on this server. Nothing about your traffic is sent anywhere; only the database file is downloaded.",
+      "state": {
+        "missing": "Not installed",
+        "ready": "Installed",
+        "corrupt": "Damaged — download it again"
+      },
+      "built": "built",
+      "updating": "Downloading…",
+      "download": "Download database",
+      "update": "Update database"
+    },
+    "countries": {
+      "title": "Where connections come from",
+      "hint": "Countries of the remote addresses connected to this server right now.",
+      "noDb": "Download the GeoIP database to see countries.",
+      "empty": "No public remote addresses right now.",
+      "country": "Country",
+      "sources": "Sources",
+      "connections": "Connections"
+    },
+    "lists": {
+      "title": "Blocklists",
+      "hint": "Public lists of hostile networks. They are downloaded only when you switch them on, never contain your own protected addresses, and are removed from the firewall when you switch them off.",
+      "signed": "signed by XeroHost",
+      "every": "refreshes every {interval}",
+      "entries": "{n} blocks",
+      "lastUpdate": "last update",
+      "enable": "Switch on",
+      "disable": "Switch off",
+      "refresh": "Refresh now",
+      "confirm": "This adds Windows Firewall block rules for every network in the list. Your gateway, DNS servers, RDP clients and allowlist are never blocked. Switch it on?",
+      "confirmYes": "Yes, switch on",
+      "cancel": "Cancel"
+    },
+    "abuse": {
+      "title": "AbuseIPDB reputation (optional)",
+      "hint": "With your own AbuseIPDB key you can check how often an address was reported. Without a key nothing is ever sent.",
+      "state": {
+        "not_configured": "No key configured",
+        "ready": "Key configured",
+        "rate_limited": "Daily limit reached; paused"
+      },
+      "key": "API key",
+      "save": "Save key",
+      "remove": "Remove key",
+      "address": "Address",
+      "check": "Check address",
+      "privacy": "The key is kept in Windows Credential Manager. Only the public address you check is sent; private addresses never are.",
+      "score": "Abuse score",
+      "reports": "Reports",
+      "isp": "ISP",
+      "cached": "from cache"
+    }
   }
 }

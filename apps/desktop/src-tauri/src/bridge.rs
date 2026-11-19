@@ -333,6 +333,15 @@ const CALLABLE_METHODS: &[&str] = &[
     method::RDP_END_SESSION,
     method::SPEED_START,
     method::SPEED_CANCEL,
+    method::INTEL_GEO_STATUS,
+    method::INTEL_GEO_UPDATE,
+    method::INTEL_LOOKUP,
+    method::INTEL_LISTS,
+    method::INTEL_LIST_ENABLE,
+    method::INTEL_LIST_REFRESH,
+    method::INTEL_ABUSE_STATUS,
+    method::INTEL_ABUSE_SET_KEY,
+    method::INTEL_ABUSE_CHECK,
 ];
 
 fn is_callable(method_name: &str) -> bool {
@@ -582,6 +591,7 @@ mod tests {
                     || allowed.starts_with("guardian.")
                     || allowed.starts_with("rdp.")
                     || allowed.starts_with("speed.")
+                    || allowed.starts_with("intel.")
                     || *allowed == method::SUPPORT_PREVIEW,
                 "{allowed}"
             );

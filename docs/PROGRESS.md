@@ -26,8 +26,8 @@ Read this first when resuming after a stop or a context compaction.
 | M6 Firewall manager | implemented on dev (manager, IPC, pwctl, Firewall page, block dialog on every address); real-firewall tests pending for a test VPS |
 | M7 Guardian | implemented on dev (Monitor default, Active with confirmation, ladder, circuit breaker, audit); live Active test pending for a test VPS |
 | M7b RDP Shield | implemented on dev (audit, restrict/port/NLA/lockout/attempts with agent-side auto-revert, sessions, reset, pwctl rdp, UI); every write path is fake-tested only: live tests pending for a test VPS; country restriction waits for M8 |
-| M8 GeoIP, intel, blocklists | pw-intel core merged; integration/UI pending |
-| M9 Speed test | tools/speed-server merged; client/UI pending |
+| M8 GeoIP, intel, blocklists | implemented on dev (IntelService, IPC, Threat Intel page: GeoIP status/update, country leaderboard, blocklists with confirmation, AbuseIPDB). **Not built:** attack map (ECharts), IP detail drawer, RDP Shield country restriction. Live list activation pending for a test VPS |
+| M9 Speed test | implemented on dev (SpeedService, IPC, Speed Test page, bin tests). Accuracy vs a reference tool not measured; needs a test VPS and a node |
 | M10 MTR advanced | not started |
 | M11 Settings/logs/installer/updater | not started |
 | M12 Hardening & 1.0 | not started |

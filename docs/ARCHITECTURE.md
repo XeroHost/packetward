@@ -290,6 +290,14 @@ snapshot, nothing is probed) are plain request/response. The desktop shell expos
 `diag.progress` as `BridgeEvent::Diag`. The source public IP line of the report is omitted until a XeroHost node
 reports it (M9). Protocol minor is 3.
 
+**Integration (M9).** `pw-engine::SpeedService<T: SpeedTransport>` runs one test at a time (`speed.start` returns a job id,
+`speed.cancel` is idempotent; `ErrorCode::Busy` if one is running) and streams `SpeedEvent`s (phase, ping, rate, bin progress,
+done, failed) on the `speed.progress` topic. The node list comes from `nodes.json` of the repo `XeroHost/packetward-blocklist`
+(placeholders until XeroHost publishes nodes: no hostname is ever invented); the user can add custom servers
+(`https://host:port`, `http://` only for a lab). The source public IP shown in results and in the MTR support report comes from the
+server's `/info`. Only `Engine::with_system_firewall` (the agent, feature `net-http`) gets the real HTTP transport; `Engine::new`
+and the tests use `UnavailableSpeed`/fakes. Protocol minor 8.
+
 ### 6.7 Speed server (`tools/speed-server`)
 axum service deployable on XeroHost nodes (Miami, Brazil, …):
 `GET /ping`, `GET /download?bytes=N` (streams generated data, no files on disk), `POST /upload` (discards, returns
@@ -306,6 +314,18 @@ bytes/time), `GET /info` (location, node name, max size). Rate limits and max co
   - **Public lists** (opt-in, e.g. Spamhaus DROP, FireHOL level 1) — downloaded at runtime, never bundled.
   - Parsed into CIDR sets, de-duplicated, minus the Guardian protected set, applied as batched firewall rules
     in their own rule names (`PW-List-<name>-NNN`) so they can be toggled independently of auto-blocks.
+
+**Integration (M8).** `pw-engine::IntelService<F: Fetcher>` wraps `pw-intel`; the agent uses the HTTP fetcher (feature `net-http`)
+and the Windows Credential Manager for the AbuseIPDB key, tests use `FakeFetcher`/`MemorySecretStore`. Methods `intel.geo.status|geo.update|
+lookup|lists|list.enable|list.refresh|abuse.status|abuse.set_key|abuse.check` (reachable from the webview through the `agent_call`
+allowlist, prefix `intel.`). State lives in `%ProgramData%\PacketWard\intel\` (`geoip/`, `lists/<id>.txt` cleaned CIDRs, `intel.json`
+with enable flags and schedule). Lists are applied by `Defense::apply_list` as firewall batch `PW-List-<id>-NNN` using the same
+protected set as the Guardian (gateway, DNS, trusted RDP clients, allowlist, management ranges, loopback are carved out; the set is
+re-applied every pass so a newly protected address leaves the lists at once); disabling a list clears its batch. A failed refresh keeps the last
+good list in force and shows the error; the lists are restored from disk at start, so they work offline. The XeroHost list refuses to
+be enabled until a minisign key is pinned (`docs/RELEASE-KEYS.md`). Lookups are local and never touch the network (private/reserved
+addresses are flagged `reserved`, at most 500 per call); AbuseIPDB is only contacted with a configured key and never for private addresses.
+The loop refreshes due lists 30 s after start and every 10 minutes. Protocol minor 9.
 
 ### 6.9 Store and logs (`pw-store`)
 - SQLite at `%ProgramData%\PacketWard\packetward.db`.

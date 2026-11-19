@@ -880,5 +880,63 @@
       "busy": "Ya hay una prueba de velocidad en curso.",
       "not_connected": "El agente no está conectado."
     }
+  },
+  "intel": {
+    "never": "nunca",
+    "geo": {
+      "title": "Base de datos GeoIP",
+      "hint": "País y red (ASN) de las direcciones remotas, consultados localmente en este servidor. Nada de su tráfico se envía a ningún sitio; solo se descarga el archivo de la base de datos.",
+      "state": {
+        "missing": "No instalada",
+        "ready": "Instalada",
+        "corrupt": "Dañada — descárguela de nuevo"
+      },
+      "built": "generada",
+      "updating": "Descargando…",
+      "download": "Descargar base de datos",
+      "update": "Actualizar base de datos"
+    },
+    "countries": {
+      "title": "De dónde vienen las conexiones",
+      "hint": "Países de las direcciones remotas conectadas ahora mismo a este servidor.",
+      "noDb": "Descargue la base de datos GeoIP para ver los países.",
+      "empty": "Ahora no hay direcciones remotas públicas.",
+      "country": "País",
+      "sources": "Orígenes",
+      "connections": "Conexiones"
+    },
+    "lists": {
+      "title": "Listas de bloqueo",
+      "hint": "Listas públicas de redes hostiles. Solo se descargan cuando las activa, nunca incluyen sus propias direcciones protegidas y se quitan del firewall al desactivarlas.",
+      "signed": "firmada por XeroHost",
+      "every": "se actualiza cada {interval}",
+      "entries": "{n} bloqueos",
+      "lastUpdate": "última actualización",
+      "enable": "Activar",
+      "disable": "Desactivar",
+      "refresh": "Actualizar ahora",
+      "confirm": "Esto añade reglas de bloqueo en el Firewall de Windows para cada red de la lista. Su puerta de enlace, servidores DNS, clientes RDP y lista de permitidos nunca se bloquean. ¿Activarla?",
+      "confirmYes": "Sí, activar",
+      "cancel": "Cancelar"
+    },
+    "abuse": {
+      "title": "Reputación AbuseIPDB (opcional)",
+      "hint": "Con su propia clave de AbuseIPDB puede comprobar cuántas veces se denunció una dirección. Sin clave no se envía nada.",
+      "state": {
+        "not_configured": "Sin clave configurada",
+        "ready": "Clave configurada",
+        "rate_limited": "Límite diario alcanzado; en pausa"
+      },
+      "key": "Clave de API",
+      "save": "Guardar clave",
+      "remove": "Quitar clave",
+      "address": "Dirección",
+      "check": "Comprobar dirección",
+      "privacy": "La clave se guarda en el Administrador de credenciales de Windows. Solo se envía la dirección pública que comprueba; las privadas nunca.",
+      "score": "Puntuación de abuso",
+      "reports": "Denuncias",
+      "isp": "ISP",
+      "cached": "de la caché"
+    }
   }
 }

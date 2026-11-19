@@ -10,6 +10,7 @@ mod connections;
 mod defense;
 mod detect;
 mod diag;
+mod intel;
 mod poller;
 mod rdp_shield;
 mod speed;
@@ -25,14 +26,15 @@ use pw_diag::SystemPinger;
 use pw_ipc::{EventReceiver, Handler};
 use pw_netstat::NetStat;
 use pw_proto::{
-    method, topic, AllowlistConfig, BlockRequest, CaptureFileRequest, CaptureStartRequest,
-    ConnectionsRequest, DiagJobRequest as SpeedJobRequest, DiagJobRequest, DnsLookupRequest,
-    ErrorCode, ErrorPayload, FirewallRuleAction, FirewallRuleEdit, FirewallRulesRequest, Heartbeat,
-    HelloResponse, MtrStartRequest, PingStartRequest, PortCheckRequest, PurgeRequest, RdpAttempts,
-    RdpConfirmRequest, RdpEndSessionRequest, RdpLockoutRequest, RdpNlaRequest, RdpPortRequest,
-    RdpRestrictRequest, RecordStartRequest, SetGuardianPolicy, SpeedRequest, SupportBundleRequest,
-    SupportDiscardRequest, SupportReadRequest, SystemInfo, UnblockRequest, PROTOCOL_MAJOR,
-    PROTOCOL_MINOR,
+    method, topic, AbuseCheckRequest, AbuseKeyRequest, AllowlistConfig, BlockRequest,
+    CaptureFileRequest, CaptureStartRequest, ConnectionsRequest, DiagJobRequest as SpeedJobRequest,
+    DiagJobRequest, DnsLookupRequest, ErrorCode, ErrorPayload, FirewallRuleAction,
+    FirewallRuleEdit, FirewallRulesRequest, GeoLookupRequest, Heartbeat, HelloResponse,
+    ListEnableRequest, ListRefreshRequest, MtrStartRequest, PingStartRequest, PortCheckRequest,
+    PurgeRequest, RdpAttempts, RdpConfirmRequest, RdpEndSessionRequest, RdpLockoutRequest,
+    RdpNlaRequest, RdpPortRequest, RdpRestrictRequest, RecordStartRequest, SetGuardianPolicy,
+    SpeedRequest, SupportBundleRequest, SupportDiscardRequest, SupportReadRequest, SystemInfo,
+    UnblockRequest, PROTOCOL_MAJOR, PROTOCOL_MINOR,
 };
 use serde_json::Value;
 use tokio::sync::{mpsc, watch};
@@ -44,6 +46,7 @@ pub use capture::{CaptureHost, CaptureManager, PacketSink, SystemCaptureHost};
 pub use defense::{Defense, JsonPersistence, MemoryPersistence, Persistence};
 pub use detect::{AlertStore, DetectionService, KEEP_INCIDENTS};
 pub use diag::{Diag, MAX_RUNNING_JOBS};
+pub use intel::{IntelApi, IntelService, OfflineFetcher};
 pub use poller::{Poller, Snapshot};
 pub use rdp_shield::RdpShield;
 pub use speed::{SpeedApi, SpeedService, UnavailableSpeed};
@@ -77,6 +80,8 @@ pub struct EngineConfig {
     /// Where the blocks, the Guardian policy, the allowlist and the audit log are kept (`None`: in
     /// memory only, as in tests).
     pub defense_dir: Option<PathBuf>,
+    /// GeoIP databases, cached blocklists and their settings (`None`: nothing is kept).
+    pub intel_dir: Option<PathBuf>,
     /// How sensitive the detectors are.
     pub detect_preset: pw_detect::Preset,
     /// How often the detectors are ticked.
@@ -100,6 +105,7 @@ impl EngineConfig {
             logs_dir: data_dir().join("logs"),
             alerts_log: None,
             defense_dir: None,
+            intel_dir: None,
             detect_preset: pw_detect::Preset::Balanced,
             detect_interval: Duration::from_secs(1),
             capture_autostart: false,
@@ -128,11 +134,13 @@ pub struct Engine {
     detection: Arc<DetectionService>,
     shield: Arc<RdpShield>,
     speed: Arc<dyn SpeedApi>,
+    intel: Arc<dyn IntelApi>,
     _poller: AbortOnDrop,
     _detector: AbortOnDrop,
     _guardian: AbortOnDrop,
     _upkeep: AbortOnDrop,
     _shield: AbortOnDrop,
+    _intel: AbortOnDrop,
 }
 
 impl Engine {
@@ -153,6 +161,7 @@ impl Engine {
             Arc::new(pw_firewall::system_firewall()),
             Arc::new(pw_netstat::WindowsRdpControl),
             system_speed(),
+            system_intel_parts(),
         )
     }
 
@@ -177,9 +186,11 @@ impl Engine {
             firewall,
             control,
             Arc::new(UnavailableSpeed),
+            IntelParts::Offline,
         )
     }
 
+    #[allow(clippy::too_many_arguments)] // private constructor: one argument per injectable backend
     fn build(
         config: EngineConfig,
         netstat: Arc<dyn NetStat>,
@@ -188,6 +199,7 @@ impl Engine {
         firewall: Arc<dyn pw_firewall::Firewall>,
         control: Arc<dyn pw_netstat::rdp_control::RdpControl>,
         speed: Arc<dyn SpeedApi>,
+        intel_parts: IntelParts,
     ) -> Self {
         let (publish, latest) = watch::channel(None);
         let trust = TrustState::new(config.rdp_trust_days);
@@ -280,6 +292,22 @@ impl Engine {
             Arc::clone(&trust),
         ));
         detection.set_preset(preset_of(defense.policy().preset));
+        let intel: Arc<dyn IntelApi> = match intel_parts {
+            IntelParts::Offline => Arc::new(IntelService::new(
+                OfflineFetcher,
+                Arc::new(pw_intel::MemorySecretStore::new()),
+                config.intel_dir.clone(),
+                Arc::clone(&defense),
+            )),
+            #[cfg(feature = "net-http")]
+            IntelParts::Http(fetcher, secrets) => Arc::new(IntelService::new(
+                fetcher,
+                secrets,
+                config.intel_dir.clone(),
+                Arc::clone(&defense),
+            )),
+        };
+        let intel_task = tokio::spawn(intel_loop(Arc::clone(&intel)));
         let shield = Arc::new(RdpShield::new(
             control,
             Arc::clone(&defense_firewall),
@@ -338,11 +366,13 @@ impl Engine {
             detection,
             shield,
             speed,
+            intel,
             _poller: AbortOnDrop(task),
             _detector: AbortOnDrop(detector_task),
             _guardian: AbortOnDrop(guardian_task),
             _upkeep: AbortOnDrop(upkeep_task),
             _shield: AbortOnDrop(shield_task),
+            _intel: AbortOnDrop(intel_task),
         }
     }
 
@@ -405,6 +435,27 @@ impl Engine {
             pid: std::process::id(),
             uptime_secs: self.uptime_secs(),
             service_mode: self.config.service_mode,
+        }
+    }
+}
+
+/// What the engine is given to build the intel service with.
+pub(crate) enum IntelParts {
+    /// No network: the local database and cached lists work, nothing is downloaded.
+    Offline,
+    #[cfg(feature = "net-http")]
+    Http(pw_intel::HttpFetcher, Arc<dyn pw_intel::SecretStore>),
+}
+
+/// Refreshes the blocklists that are due, shortly after start and then every ten minutes.
+async fn intel_loop(intel: Arc<dyn IntelApi>) {
+    tokio::time::sleep(Duration::from_secs(30)).await;
+    let mut ticker = tokio::time::interval(Duration::from_secs(600));
+    ticker.set_missed_tick_behavior(MissedTickBehavior::Skip);
+    loop {
+        ticker.tick().await;
+        if let Err(err) = intel.tick().await {
+            tracing::warn!(reason = %err.message, "the blocklist refresh failed");
         }
     }
 }
@@ -718,6 +769,30 @@ impl Handler for Engine {
                 blocking(move || shield.end_session(&request)).await?;
                 Ok(Value::Null)
             }
+            method::INTEL_GEO_STATUS => to_value(&self.intel.geo_status()),
+            method::INTEL_GEO_UPDATE => to_value(&self.intel.geo_update()?),
+            method::INTEL_LOOKUP => {
+                let request: GeoLookupRequest = parse(payload)?;
+                to_value(&self.intel.lookup(&request)?)
+            }
+            method::INTEL_LISTS => to_value(&self.intel.lists()),
+            method::INTEL_LIST_ENABLE => {
+                let request: ListEnableRequest = parse(payload)?;
+                to_value(&self.intel.set_list_enabled(request).await?)
+            }
+            method::INTEL_LIST_REFRESH => {
+                let request: ListRefreshRequest = parse(payload)?;
+                to_value(&self.intel.refresh_list(request).await?)
+            }
+            method::INTEL_ABUSE_STATUS => to_value(&self.intel.abuse_status()),
+            method::INTEL_ABUSE_SET_KEY => {
+                let request: AbuseKeyRequest = parse(payload)?;
+                to_value(&self.intel.set_abuse_key(request)?)
+            }
+            method::INTEL_ABUSE_CHECK => {
+                let request: AbuseCheckRequest = parse(payload)?;
+                to_value(&self.intel.abuse_check(request).await?)
+            }
             method::SPEED_START => {
                 let request: SpeedRequest = parse(payload)?;
                 to_value(&self.speed.start(request)?)
@@ -915,10 +990,26 @@ fn data_dir() -> PathBuf {
         .join("PacketWard")
 }
 
+#[cfg(windows)]
+fn system_intel_parts() -> IntelParts {
+    #[cfg(feature = "net-http")]
+    {
+        match pw_intel::HttpFetcher::new(&pw_intel::HttpFetcherConfig::default()) {
+            Ok(fetcher) => {
+                return IntelParts::Http(fetcher, Arc::new(pw_intel::secret::KeyringSecretStore))
+            }
+            Err(err) => {
+                tracing::warn!(%err, "no network transport for the threat intelligence downloads")
+            }
+        }
+    }
+    IntelParts::Offline
+}
+
 /// The speed test of the real agent: HTTP(S) with the system proxy (needs the `speed-http` feature).
 #[cfg(windows)]
 fn system_speed() -> Arc<dyn SpeedApi> {
-    #[cfg(feature = "speed-http")]
+    #[cfg(feature = "net-http")]
     {
         use pw_diag::speed::{HttpTransport, HttpTransportConfig};
         match HttpTransport::new(&HttpTransportConfig::default()) {

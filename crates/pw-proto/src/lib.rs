@@ -13,6 +13,7 @@ mod envelope;
 mod error;
 mod firewall;
 mod handshake;
+mod intel;
 mod live;
 mod netstat;
 mod rdp;
@@ -44,6 +45,11 @@ pub use firewall::{
     PurgeRequest, PurgeResult, RuleAction, RuleDirection, SetGuardianPolicy, UnblockRequest,
 };
 pub use handshake::{ClientKind, HelloRequest, HelloResponse, PROTOCOL_MAJOR, PROTOCOL_MINOR};
+pub use intel::{
+    AbuseCheckRequest, AbuseCheckView, AbuseKeyRequest, AbuseStatusView, BlocklistsView, GeoEntry,
+    GeoLookupRequest, GeoLookupResult, GeoStatusView, ListEnableRequest, ListRefreshRequest,
+    ListStatusView,
+};
 pub use live::Heartbeat;
 pub use netstat::{
     AuditState, Connection, ConnectionCounts, ConnectionsRequest, ConnectionsResponse,
@@ -116,6 +122,15 @@ pub mod method {
     pub const RDP_CANCEL: &str = "rdp.cancel";
     pub const RDP_RESET: &str = "rdp.reset";
     pub const RDP_END_SESSION: &str = "rdp.end_session";
+    pub const INTEL_GEO_STATUS: &str = "intel.geo.status";
+    pub const INTEL_GEO_UPDATE: &str = "intel.geo.update";
+    pub const INTEL_LOOKUP: &str = "intel.lookup";
+    pub const INTEL_LISTS: &str = "intel.lists";
+    pub const INTEL_LIST_ENABLE: &str = "intel.list.enable";
+    pub const INTEL_LIST_REFRESH: &str = "intel.list.refresh";
+    pub const INTEL_ABUSE_STATUS: &str = "intel.abuse.status";
+    pub const INTEL_ABUSE_SET_KEY: &str = "intel.abuse.set_key";
+    pub const INTEL_ABUSE_CHECK: &str = "intel.abuse.check";
     pub const SPEED_START: &str = "speed.start";
     pub const SPEED_CANCEL: &str = "speed.cancel";
     pub const ALERTS_LIST: &str = "alerts.list";

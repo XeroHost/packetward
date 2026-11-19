@@ -360,6 +360,74 @@ impl Defense {
         });
     }
 
+    /// The addresses that must never be blocked, as a set (for the blocklists and the Guardian).
+    pub fn protected_set(&self) -> CidrSet {
+        protected_set(&self.protected())
+    }
+
+    /// Makes the firewall batch of a blocklist hold exactly `blocks` (protected addresses are carved
+    /// out by the firewall layer as well). Failures are logged: a list that cannot be applied must
+    /// not stop the others.
+    pub fn apply_list(&self, id: &str, blocks: &[Cidr]) {
+        let Ok(batch) = BatchId::list(id) else { return };
+        // Nothing to apply and nothing there: do not touch the firewall.
+        if blocks.is_empty()
+            && self
+                .firewall
+                .list_blocks(&batch)
+                .map_or(true, |b| b.is_empty())
+        {
+            return;
+        }
+        let protected = self.protected_set();
+        let opts = BlockOptions::new(&protected).skip_protected();
+        match self.firewall.apply_blocklist(&batch, blocks, &opts) {
+            Ok(outcome) => {
+                if !outcome.added.is_empty() || !outcome.removed.is_empty() {
+                    self.audit(
+                        "blocklist",
+                        "apply_list",
+                        id,
+                        &format!(
+                            "{} blocks, {} rules written",
+                            outcome.total_blocked, outcome.rule_writes
+                        ),
+                        "ok",
+                    );
+                }
+            }
+            Err(err) => {
+                tracing::warn!(list = id, %err, "could not apply the blocklist");
+                self.audit("blocklist", "apply_list", id, &err.to_string(), "failed");
+            }
+        }
+    }
+
+    /// Removes the firewall rules of a blocklist that was switched off.
+    pub fn clear_list(&self, id: &str) {
+        let Ok(batch) = BatchId::list(id) else { return };
+        if self
+            .firewall
+            .list_blocks(&batch)
+            .map_or(true, |b| b.is_empty())
+        {
+            return;
+        }
+        match self.firewall.clear_batch(&batch) {
+            Ok(removed) => self.audit(
+                "blocklist",
+                "clear_list",
+                id,
+                &format!("{removed} rules"),
+                "ok",
+            ),
+            Err(err) => {
+                tracing::warn!(list = id, %err, "could not clear the blocklist");
+                self.audit("blocklist", "clear_list", id, &err.to_string(), "failed");
+            }
+        }
+    }
+
     /// Adds an entry to the audit log on behalf of another part of the engine (RDP Shield).
     pub fn audit_entry(&self, actor: &str, action: &str, target: &str, detail: &str, result: &str) {
         self.audit(actor, action, target, detail, result);

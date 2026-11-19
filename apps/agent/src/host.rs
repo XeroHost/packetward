@@ -47,6 +47,7 @@ pub async fn run_agent(
             config.capture_autostart = true;
             config.alerts_log = Some(crate::logging::data_dir().join("alerts.jsonl"));
             config.defense_dir = Some(crate::logging::data_dir());
+            config.intel_dir = Some(crate::logging::data_dir().join("intel"));
             config
         },
         Arc::new(WindowsNetStat::new()),

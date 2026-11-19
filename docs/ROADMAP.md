@@ -111,19 +111,21 @@ fresh install is in Monitor.
 successful-logon IP is never excluded; reset restores factory state. Live checks are in TESTING.md (test VPS only).
 
 ## M8 — GeoIP map, threat intel & blocklists
-- [ ] DB-IP Lite country + ASN lookup, update check.
+- [x] DB-IP Lite country + ASN lookup (local `.mmdb`), manual download/update from the Threat Intel page (no scheduled update check yet).
 - [ ] Attack map: origin points/arcs to the server, intensity by pps, country leaderboard, click → IP detail.
+      (Country leaderboard of the live remote addresses is built; the ECharts world map is **not** built.)
 - [ ] IP detail drawer: geo, ASN, connections, alerts, AbuseIPDB (if key), block/allow actions.
-- [ ] Blocklists: XeroHost shared list (minisign-verified, pinned key) + opt-in public lists; scheduled refresh;
-      applied through batched firewall rules and the protected set.
+      (AbuseIPDB check by address is on the Threat Intel page; the drawer is **not** built.)
+- [x] Blocklists: XeroHost shared list (minisign-verified, pinned key; fail-closed until a key is pinned) + opt-in public lists;
+      scheduled refresh; applied through batched firewall rules and the protected set.
 **Accept:** map stays > 30 fps with 500 active sources (and static under reduce motion); a tampered blocklist
 is rejected; works offline except AbuseIPDB and list refresh.
 
 ## M9 — Speed test
-- [ ] `tools/speed-server` (axum) with limits + Dockerfile + deploy notes for XeroHost nodes.
-- [ ] Client: latency/jitter, multi-stream download/upload, server picker (auto by latency), custom servers.
-- [ ] Bin tests 1 GB / 10 GB / 50 GB with confirmation for 50 GB, progress, cancel.
-**Accept:** results within ~10% of a reference tool on the same link; cancel stops traffic immediately.
+- [x] `tools/speed-server` (axum) with limits + Dockerfile + deploy notes for XeroHost nodes.
+- [x] Client: latency/jitter, multi-stream download/upload, server picker (auto by latency), custom servers.
+- [x] Bin tests 1 GB / 10 GB / 50 GB with confirmation for 50 GB, progress, cancel.
+**Accept:** results within ~10% of a reference tool on the same link (**not measured**: needs a test VPS and a XeroHost node, see TESTING §F9); cancel stops traffic immediately (fake-tested).
 
 ## M10 — MTR advanced
 - [ ] ICMP/UDP/TCP modes, packet size, interval, hop limit, ASN/country per hop, IPv6, export.
