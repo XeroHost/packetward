@@ -114,6 +114,8 @@ pub trait Persistence: Send + Sync {
     fn load(&self) -> PersistedState;
     fn save(&self, state: &PersistedState);
     fn audit(&self, entry: &AuditEntry);
+    /// The newest audit entries (oldest first), at most `limit`.
+    fn read_audit(&self, limit: usize) -> Vec<AuditEntry>;
 }
 
 /// Keeps nothing (tests, tools).
@@ -129,6 +131,10 @@ impl Persistence for MemoryPersistence {
     fn save(&self, _: &PersistedState) {}
     fn audit(&self, entry: &AuditEntry) {
         lock(&self.audit_log).push(entry.clone());
+    }
+    fn read_audit(&self, limit: usize) -> Vec<AuditEntry> {
+        let log = lock(&self.audit_log);
+        log[log.len().saturating_sub(limit)..].to_vec()
     }
 }
 
@@ -181,6 +187,26 @@ impl Persistence for JsonPersistence {
         if let Ok(mut file) = fs::OpenOptions::new().create(true).append(true).open(path) {
             let _ = writeln!(file, "{line}");
         }
+    }
+
+    fn read_audit(&self, limit: usize) -> Vec<AuditEntry> {
+        // The current file, then the rotated one when the current is too short.
+        let mut entries: Vec<AuditEntry> = Vec::new();
+        for name in ["audit.jsonl", "audit.jsonl.1"] {
+            let Ok(text) = fs::read_to_string(self.dir.join(name)) else {
+                continue;
+            };
+            let mut chunk: Vec<AuditEntry> = text
+                .lines()
+                .filter_map(|line| serde_json::from_str(line).ok())
+                .collect();
+            chunk.extend(entries);
+            entries = chunk;
+            if entries.len() >= limit {
+                break;
+            }
+        }
+        entries.split_off(entries.len().saturating_sub(limit))
     }
 }
 
@@ -358,6 +384,29 @@ impl Defense {
             detail: detail.to_owned(),
             result: result.to_owned(),
         });
+    }
+
+    /// The newest audit entries matching `search` (case-insensitive over every field), newest first.
+    pub fn audit_entries(&self, limit: usize, search: Option<&str>) -> (Vec<AuditEntry>, bool) {
+        let needle = search.map(str::to_lowercase).filter(|s| !s.is_empty());
+        // Searching reads more so that a filter can still fill the page.
+        let all = self
+            .persistence
+            .read_audit(if needle.is_some() { 20_000 } else { limit + 1 });
+        let mut matched: Vec<AuditEntry> = all
+            .into_iter()
+            .rev()
+            .filter(|e| {
+                needle.as_deref().is_none_or(|n| {
+                    [&e.actor, &e.action, &e.target, &e.detail, &e.result]
+                        .iter()
+                        .any(|f| f.to_lowercase().contains(n))
+                })
+            })
+            .collect();
+        let truncated = matched.len() > limit;
+        matched.truncate(limit);
+        (matched, truncated)
     }
 
     /// The addresses that must never be blocked, as a set (for the blocklists and the Guardian).
@@ -1929,5 +1978,27 @@ mod tests {
         }
         assert!(protected_set(&entries).contains("203.0.113.5".parse().unwrap()));
         assert!(!protected_set(&entries).contains("203.0.113.99".parse().unwrap()));
+    }
+
+    #[test]
+    fn the_audit_log_is_read_newest_first_filtered_and_limited() {
+        let r = rig();
+        for i in 0..5 {
+            r.defense
+                .audit_entry("operator", "block", &format!("203.0.113.{i}"), "", "ok");
+        }
+        r.defense
+            .audit_entry("agent", "expire", "-", "2 blocks", "ok");
+        let (all, truncated) = r.defense.audit_entries(100, None);
+        assert_eq!(all.len(), 6);
+        assert!(!truncated);
+        assert_eq!(all[0].action, "expire", "newest first");
+        let (page, truncated) = r.defense.audit_entries(2, None);
+        assert_eq!(page.len(), 2);
+        assert!(truncated);
+        let (found, _) = r.defense.audit_entries(100, Some("203.0.113.3"));
+        assert_eq!(found.len(), 1);
+        let (found, _) = r.defense.audit_entries(100, Some("EXPIRE"));
+        assert_eq!(found.len(), 1, "case-insensitive");
     }
 }

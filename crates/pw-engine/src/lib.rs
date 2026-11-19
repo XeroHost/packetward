@@ -13,6 +13,7 @@ mod diag;
 mod intel;
 mod poller;
 mod rdp_shield;
+mod settings;
 mod speed;
 mod support;
 mod sys;
@@ -26,15 +27,16 @@ use pw_diag::SystemPinger;
 use pw_ipc::{EventReceiver, Handler};
 use pw_netstat::NetStat;
 use pw_proto::{
-    method, topic, AbuseCheckRequest, AbuseKeyRequest, AllowlistConfig, BlockRequest,
-    CaptureFileRequest, CaptureStartRequest, ConnectionsRequest, DiagJobRequest as SpeedJobRequest,
-    DiagJobRequest, DnsLookupRequest, ErrorCode, ErrorPayload, FirewallRuleAction,
-    FirewallRuleEdit, FirewallRulesRequest, GeoLookupRequest, Heartbeat, HelloResponse,
-    ListEnableRequest, ListRefreshRequest, MtrStartRequest, PingStartRequest, PortCheckRequest,
-    PurgeRequest, RdpAttempts, RdpConfirmRequest, RdpEndSessionRequest, RdpLockoutRequest,
-    RdpNlaRequest, RdpPortRequest, RdpRestrictRequest, RecordStartRequest, SetGuardianPolicy,
-    SpeedRequest, SupportBundleRequest, SupportDiscardRequest, SupportReadRequest, SystemInfo,
-    UnblockRequest, PROTOCOL_MAJOR, PROTOCOL_MINOR,
+    method, topic, AbuseCheckRequest, AbuseKeyRequest, AllowlistConfig, AuditEntryView, AuditQuery,
+    AuditView, BlockRequest, CaptureFileRequest, CaptureStartRequest, ConnectionsRequest,
+    DiagJobRequest as SpeedJobRequest, DiagJobRequest, DnsLookupRequest, ErrorCode, ErrorPayload,
+    FirewallRuleAction, FirewallRuleEdit, FirewallRulesRequest, GeoLookupRequest, Heartbeat,
+    HelloResponse, ListEnableRequest, ListRefreshRequest, MtrStartRequest, PingStartRequest,
+    PortCheckRequest, ProxyRequest, PurgeRequest, RdpAttempts, RdpConfirmRequest,
+    RdpEndSessionRequest, RdpLockoutRequest, RdpNlaRequest, RdpPortRequest, RdpRestrictRequest,
+    RecordStartRequest, SetGuardianPolicy, SpeedRequest, SupportBundleRequest,
+    SupportDiscardRequest, SupportReadRequest, SystemInfo, UnblockRequest, PROTOCOL_MAJOR,
+    PROTOCOL_MINOR,
 };
 use serde_json::Value;
 use tokio::sync::{mpsc, watch};
@@ -135,6 +137,7 @@ pub struct Engine {
     shield: Arc<RdpShield>,
     speed: Arc<dyn SpeedApi>,
     intel: Arc<dyn IntelApi>,
+    settings: settings::SettingsStore,
     _poller: AbortOnDrop,
     _detector: AbortOnDrop,
     _guardian: AbortOnDrop,
@@ -153,6 +156,8 @@ impl Engine {
     /// tests use an in-memory firewall, so nothing but the agent can change the machine's rules.
     #[cfg(windows)]
     pub fn with_system_firewall(config: EngineConfig, netstat: Arc<dyn NetStat>) -> Self {
+        // Read once: a change of the proxy setting applies at the next start.
+        let proxy = settings::saved_proxy(config.defense_dir.as_deref());
         Self::build(
             config,
             netstat,
@@ -160,8 +165,8 @@ impl Engine {
             None,
             Arc::new(pw_firewall::system_firewall()),
             Arc::new(pw_netstat::WindowsRdpControl),
-            system_speed(),
-            system_intel_parts(),
+            system_speed(proxy.clone()),
+            system_intel_parts(proxy),
         )
     }
 
@@ -308,6 +313,7 @@ impl Engine {
             )),
         };
         let intel_task = tokio::spawn(intel_loop(Arc::clone(&intel)));
+        let settings = settings::SettingsStore::open(config.defense_dir.as_deref());
         let shield = Arc::new(RdpShield::new(
             control,
             Arc::clone(&defense_firewall),
@@ -367,6 +373,7 @@ impl Engine {
             shield,
             speed,
             intel,
+            settings,
             _poller: AbortOnDrop(task),
             _detector: AbortOnDrop(detector_task),
             _guardian: AbortOnDrop(guardian_task),
@@ -769,6 +776,47 @@ impl Handler for Engine {
                 blocking(move || shield.end_session(&request)).await?;
                 Ok(Value::Null)
             }
+            method::SETTINGS_GET => to_value(&self.settings.view()),
+            method::SETTINGS_SET_PROXY => {
+                let request: ProxyRequest = parse(payload)?;
+                let view = self.settings.set_proxy(request.proxy)?;
+                self.defense.audit_entry(
+                    "operator",
+                    "set_proxy",
+                    "-",
+                    if view.proxy.is_some() {
+                        "proxy set"
+                    } else {
+                        "system proxy"
+                    },
+                    "ok",
+                );
+                to_value(&view)
+            }
+            method::LOGS_AUDIT => {
+                let query: AuditQuery = if payload.is_null() {
+                    AuditQuery::default()
+                } else {
+                    parse(payload)?
+                };
+                let limit = query.limit.map_or(500, |l| l.clamp(1, 2000) as usize);
+                let (entries, truncated) =
+                    self.defense.audit_entries(limit, query.search.as_deref());
+                to_value(&AuditView {
+                    entries: entries
+                        .into_iter()
+                        .map(|e| AuditEntryView {
+                            unix_ms: e.unix_ms,
+                            actor: e.actor,
+                            action: e.action,
+                            target: e.target,
+                            detail: e.detail,
+                            result: e.result,
+                        })
+                        .collect(),
+                    truncated,
+                })
+            }
             method::INTEL_GEO_STATUS => to_value(&self.intel.geo_status()),
             method::INTEL_GEO_UPDATE => to_value(&self.intel.geo_update()?),
             method::INTEL_LOOKUP => {
@@ -986,15 +1034,19 @@ fn parse_or_default<T: serde::de::DeserializeOwned + Default>(
 /// The agent data folder under `%ProgramData%`, falling back to the Windows default location.
 fn data_dir() -> PathBuf {
     std::env::var_os("ProgramData")
-        .map_or_else(|| PathBuf::from(r"C:ProgramData"), PathBuf::from)
+        .map_or_else(|| PathBuf::from(r"C:\ProgramData"), PathBuf::from)
         .join("PacketWard")
 }
 
 #[cfg(windows)]
-fn system_intel_parts() -> IntelParts {
+#[cfg_attr(not(feature = "net-http"), allow(unused_variables))]
+fn system_intel_parts(proxy: Option<String>) -> IntelParts {
     #[cfg(feature = "net-http")]
     {
-        match pw_intel::HttpFetcher::new(&pw_intel::HttpFetcherConfig::default()) {
+        match pw_intel::HttpFetcher::new(&pw_intel::HttpFetcherConfig {
+            proxy,
+            ..pw_intel::HttpFetcherConfig::default()
+        }) {
             Ok(fetcher) => {
                 return IntelParts::Http(fetcher, Arc::new(pw_intel::secret::KeyringSecretStore))
             }
@@ -1008,11 +1060,15 @@ fn system_intel_parts() -> IntelParts {
 
 /// The speed test of the real agent: HTTP(S) with the system proxy (needs the `speed-http` feature).
 #[cfg(windows)]
-fn system_speed() -> Arc<dyn SpeedApi> {
+#[cfg_attr(not(feature = "net-http"), allow(unused_variables))]
+fn system_speed(proxy: Option<String>) -> Arc<dyn SpeedApi> {
     #[cfg(feature = "net-http")]
     {
         use pw_diag::speed::{HttpTransport, HttpTransportConfig};
-        match HttpTransport::new(&HttpTransportConfig::default()) {
+        match HttpTransport::new(&HttpTransportConfig {
+            proxy,
+            ..HttpTransportConfig::default()
+        }) {
             // XeroHost nodes: the list is published in the blocklist repository (nodes.json); until a node
             // list is loaded only the user's own servers are used.
             Ok(transport) => return Arc::new(SpeedService::new(transport, Vec::new())),

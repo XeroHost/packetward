@@ -82,6 +82,15 @@
       "title": "Notifications",
       "description": "Which alerts pop up a Windows notification. Every alert always appears in the Alerts inbox.",
       "hint": "Notifications are shown by this app, so they appear while it is running (minimized to the tray counts). The agent keeps protecting the server either way."
+    },
+    "network": {
+      "title": "Network",
+      "description": "How PacketWard reaches the internet for update checks, speed tests, GeoIP and blocklist downloads, and AbuseIPDB.",
+      "proxy": "Proxy (empty = the Windows proxy settings)",
+      "save": "Save",
+      "hint": "http://, https:// or socks5:// with a host and port. Credentials in the address are not accepted.",
+      "saved": "Saved.",
+      "restart": "The change applies when the PacketWard service restarts (Services → PacketWard → Restart)."
     }
   },
   "about": {
@@ -938,5 +947,22 @@
       "isp": "ISP",
       "cached": "from cache"
     }
+  },
+  "logs": {
+    "title": "Audit log",
+    "hint": "Every action PacketWard took or refused: blocks, unblocks, blocklists, Guardian decisions and Remote Desktop changes. Newest first.",
+    "search": "Filter (actor, action, address, result…)",
+    "apply": "Apply",
+    "copyCsv": "Copy CSV",
+    "copyJson": "Copy JSON",
+    "copied": "Copied",
+    "truncated": "More entries match than are shown. Narrow the filter.",
+    "empty": "No entries yet.",
+    "time": "Time",
+    "actor": "Who",
+    "action": "Action",
+    "target": "Target",
+    "detail": "Detail",
+    "result": "Result"
   }
 }

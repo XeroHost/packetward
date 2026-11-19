@@ -342,6 +342,9 @@ const CALLABLE_METHODS: &[&str] = &[
     method::INTEL_ABUSE_STATUS,
     method::INTEL_ABUSE_SET_KEY,
     method::INTEL_ABUSE_CHECK,
+    method::SETTINGS_GET,
+    method::SETTINGS_SET_PROXY,
+    method::LOGS_AUDIT,
 ];
 
 fn is_callable(method_name: &str) -> bool {
@@ -592,6 +595,8 @@ mod tests {
                     || allowed.starts_with("rdp.")
                     || allowed.starts_with("speed.")
                     || allowed.starts_with("intel.")
+                    || allowed.starts_with("settings.")
+                    || allowed.starts_with("logs.")
                     || *allowed == method::SUPPORT_PREVIEW,
                 "{allowed}"
             );

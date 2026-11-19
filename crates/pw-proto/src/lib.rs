@@ -17,6 +17,7 @@ mod intel;
 mod live;
 mod netstat;
 mod rdp;
+mod settings;
 mod speed;
 mod subscribe;
 mod support;
@@ -61,6 +62,7 @@ pub use rdp::{
     RdpAttempts, RdpAudit, RdpConfirmRequest, RdpEndSessionRequest, RdpFinding, RdpLockoutRequest,
     RdpNlaRequest, RdpPending, RdpPortRequest, RdpRestrictRequest,
 };
+pub use settings::{AgentSettingsView, AuditEntryView, AuditQuery, AuditView, ProxyRequest};
 pub use speed::{
     SpeedEvent, SpeedKind, SpeedLatencyView, SpeedRequest, SpeedResultView, SpeedServerView,
     SpeedStarted, SpeedTransferView,
@@ -131,6 +133,9 @@ pub mod method {
     pub const INTEL_ABUSE_STATUS: &str = "intel.abuse.status";
     pub const INTEL_ABUSE_SET_KEY: &str = "intel.abuse.set_key";
     pub const INTEL_ABUSE_CHECK: &str = "intel.abuse.check";
+    pub const SETTINGS_GET: &str = "settings.get";
+    pub const SETTINGS_SET_PROXY: &str = "settings.set_proxy";
+    pub const LOGS_AUDIT: &str = "logs.audit";
     pub const SPEED_START: &str = "speed.start";
     pub const SPEED_CANCEL: &str = "speed.cancel";
     pub const ALERTS_LIST: &str = "alerts.list";

@@ -132,8 +132,10 @@ is rejected; works offline except AbuseIPDB and list refresh.
 **Accept:** TCP mode reaches hosts that drop ICMP (with Npcap).
 
 ## M11 — Settings, logs, proxy, updates, installer
-- [ ] Settings UI for everything in ARCHITECTURE §10; proxy applied to all outbound HTTP.
-- [ ] Logs page over `audit_events` (filters, export CSV/JSON).
+- [x] Settings UI: language/appearance/notifications/autostart (earlier), proxy applied to all outbound HTTP (speed test, GeoIP and blocklist
+      downloads, AbuseIPDB; read when the agent starts). The other agent settings live on their own pages (Guardian, Firewall, RDP Shield,
+      Capture, Threat Intel, Speed Test); there is no `config.toml` (see DECISIONS).
+- [x] Logs page over the audit log (`audit.jsonl`: filter, copy CSV/JSON). Not `audit_events` of SQLite: the store is not wired in (see PROGRESS).
 - [ ] NSIS installer with service hooks, WebView2 handling, uninstall purge.
 - [ ] Tauri updater with signed artifacts; **Stable + Beta** channels; release workflow on tag
       (`vX.Y.Z` → stable, `vX.Y.Z-beta.N` → beta).

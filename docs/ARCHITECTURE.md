@@ -495,6 +495,13 @@ ranges, blocklists (enabled, refresh interval), speed-test server list URL + cus
 language (auto: `es-*`→es, `pt-*`→pt-BR, else en; or manual), Appearance (theme dark/light/system, mono font,
 density, text size, reduce motion), notification mutes/quiet hours.
 
+**As built (M11).** There is no `config.toml`: each area keeps its own file in `%ProgramData%\PacketWard` (`defense.json` Guardian policy,
+allowlist and blocks; `intel/intel.json` blocklists; `alerts.jsonl`; `rdp_shield.json`; `settings.json` the proxy), all restricted to SYSTEM and
+Administrators when the agent starts. `settings.get` / `settings.set_proxy` read and write `settings.json`; the proxy (`http`, `https`, `socks5`,
+`socks5h`, host required, **no credentials**) is read once at agent start and passed to the HTTP clients of the speed test and of the intel
+downloads, so a change reports `restart_required` until the service restarts. `logs.audit` returns the newest audit entries (limit 1..2000,
+optional case-insensitive filter), newest first, read from `audit.jsonl` (+ the rotated `.1`). Protocol minor 11.
+
 ## 11. Testing strategy
 - `pw-detect`, `pw-core`, `pw-proto`, `pw-ipc` (in-memory), `pw-engine` (with fakes): unit + property tests on Linux CI.
 - Fakes for `CaptureBackend`, `Firewall`, `NetStat`, `Clock`. Guardian safety rules have dedicated tests

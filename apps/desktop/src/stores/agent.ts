@@ -14,6 +14,7 @@ import { useCaptureStore } from './capture'
 import { useDefenseStore } from './defense'
 import { useRdpStore } from './rdp'
 import { useIntelStore } from './intel'
+import { useLogsStore } from './logs'
 import { useSpeedStore } from './speed'
 import { useDiagStore } from './diag'
 import { useLiveStore } from './live'
@@ -69,6 +70,7 @@ export const useAgentStore = defineStore('agent', () => {
         useRdpStore().disconnect()
         useSpeedStore().reset()
         useIntelStore().reset()
+        useLogsStore().reset()
       } else {
         // Connecting counts as a sign of life: do not report "unresponsive" before the first beat.
         lastBeatAt.value = Date.now()

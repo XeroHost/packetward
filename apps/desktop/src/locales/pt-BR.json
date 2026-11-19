@@ -82,6 +82,15 @@
       "title": "Notificações",
       "description": "Quais alertas mostram uma notificação do Windows. Todos os alertas aparecem sempre na caixa de Alertas.",
       "hint": "As notificações são mostradas por este aplicativo, então aparecem enquanto ele estiver em execução (minimizado na bandeja conta). O agente protege o servidor de qualquer forma."
+    },
+    "network": {
+      "title": "Rede",
+      "description": "Como o PacketWard acessa a internet para verificar atualizações, testes de velocidade, downloads de GeoIP e listas de bloqueio, e AbuseIPDB.",
+      "proxy": "Proxy (vazio = as configurações de proxy do Windows)",
+      "save": "Salvar",
+      "hint": "http://, https:// ou socks5:// com host e porta. Credenciais no endereço não são aceitas.",
+      "saved": "Salvo.",
+      "restart": "A alteração é aplicada quando o serviço PacketWard reiniciar (Serviços → PacketWard → Reiniciar)."
     }
   },
   "about": {
@@ -938,5 +947,22 @@
       "isp": "ISP",
       "cached": "do cache"
     }
+  },
+  "logs": {
+    "title": "Registro de auditoria",
+    "hint": "Cada ação que o PacketWard executou ou recusou: bloqueios, desbloqueios, listas de bloqueio, decisões do Guardian e mudanças na Área de Trabalho Remota. Mais recente primeiro.",
+    "search": "Filtro (quem, ação, endereço, resultado…)",
+    "apply": "Aplicar",
+    "copyCsv": "Copiar CSV",
+    "copyJson": "Copiar JSON",
+    "copied": "Copiado",
+    "truncated": "Há mais entradas do que as exibidas. Refine o filtro.",
+    "empty": "Ainda não há entradas.",
+    "time": "Hora",
+    "actor": "Quem",
+    "action": "Ação",
+    "target": "Alvo",
+    "detail": "Detalhe",
+    "result": "Resultado"
   }
 }
