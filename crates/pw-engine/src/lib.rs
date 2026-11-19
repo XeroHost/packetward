@@ -15,6 +15,8 @@ mod poller;
 mod rdp_shield;
 mod settings;
 mod speed;
+#[cfg(feature = "store")]
+mod store_persist;
 mod support;
 mod sys;
 mod trust;
@@ -286,7 +288,7 @@ impl Engine {
         // servers, the addresses with a successful RDP logon and the user's allowlist.
         let context = Arc::new(RwLock::new(pw_netstat::NetworkContext::default()));
         let persistence: Arc<dyn Persistence> = match &config.defense_dir {
-            Some(dir) => Arc::new(JsonPersistence::new(dir.clone())),
+            Some(dir) => open_persistence(dir),
             None => Arc::new(MemoryPersistence::default()),
         };
         let defense_firewall = Arc::clone(&firewall);
@@ -444,6 +446,33 @@ impl Engine {
             service_mode: self.config.service_mode,
         }
     }
+}
+
+/// The defense state and audit log of the agent: SQLite when the `store` feature is on and the
+/// database opens, the JSON files otherwise (a broken database must never stop the protection).
+fn open_persistence(dir: &std::path::Path) -> Arc<dyn Persistence> {
+    #[cfg(feature = "store")]
+    {
+        match pw_store::Store::open_private(dir.join("packetward.db")) {
+            Ok(opened) => {
+                if let Some(recovery) = &opened.recovery {
+                    tracing::error!(
+                        backup = %recovery.backup.display(),
+                        reason = %recovery.reason,
+                        "the database was corrupt and was replaced; blocks, policy and audit log started empty"
+                    );
+                }
+                return Arc::new(store_persist::StorePersistence::new(
+                    Arc::new(opened.store),
+                    Some(dir.to_path_buf()),
+                ));
+            }
+            Err(err) => {
+                tracing::error!(%err, "could not open the database; using the JSON files");
+            }
+        }
+    }
+    Arc::new(JsonPersistence::new(dir.to_path_buf()))
 }
 
 /// What the engine is given to build the intel service with.

@@ -328,9 +328,16 @@ addresses are flagged `reserved`, at most 500 per call); AbuseIPDB is only conta
 The loop refreshes due lists 30 s after start and every 10 minutes. Protocol minor 9.
 
 ### 6.9 Store and logs (`pw-store`)
-- SQLite at `%ProgramData%\PacketWard\packetward.db`.
-- Tables: `audit_events`, `blocks`, `rules_meta`, `settings`, `intel_cache`, `alerts`. Retention policy
-  (default 30 days) with periodic pruning.
+- SQLite at `%ProgramData%\PacketWard\packetward.db` (`pw-store`, one connection behind a mutex, WAL; the engine restricts the
+  folder to SYSTEM + Administrators before opening it; a corrupt file is moved aside as `.corrupt-<unix>` and a fresh one is created).
+- Tables (as built): `audit` (90-day / row-capped retention, pruned on append), `blocks`, `alerts`, `kv` (settings, the RDP baseline),
+  `rdp_logons`, `intel_cache`.
+- **Wired in (M11, feature `store` of `pw-engine`, enabled by the agent):** the defense state (blocks, Guardian policy, allowlist; one JSON
+  value under the `kv` key `defense.state`) and the audit log. `StorePersistence` implements the engine's `Persistence` trait; a `defense.json`
+  from an older agent is imported once (renamed `defense.json.imported`), an old `audit.jsonl` stays untouched. If the database cannot be
+  opened the agent falls back to the JSON files, so a broken database never stops the protection. **Still on JSON files:** alerts
+  (`alerts.jsonl`), the RDP Shield transaction (`rdp_shield.json`), the intel lists (`intel/`) and `settings.json`; `blocks`, `alerts`,
+  `rdp_logons` and `intel_cache` tables exist but are not used by the engine yet.
 - Text logs via `tracing-appender` daily rotation in `%ProgramData%\PacketWard\logs`.
 - Audit event categories: network, capture, detection, guardian, firewall, settings, update.
 

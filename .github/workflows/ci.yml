@@ -26,6 +26,8 @@ jobs:
       # Optional features that need a C toolchain (ring): only the Linux runner can check them.
       - run: cargo clippy -p pw-speed-server --all-targets --features tls -- -D warnings
       - run: cargo test -p pw-speed-server --features tls
+      - run: cargo clippy -p pw-engine --all-targets --features store -- -D warnings
+      - run: cargo test -p pw-engine --features store
       - run: cargo clippy -p pw-intel --all-targets --features http,testing -- -D warnings
       - run: cargo test -p pw-intel --features http,testing
       - name: Generated TypeScript types are up to date

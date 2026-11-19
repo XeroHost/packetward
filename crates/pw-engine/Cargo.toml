@@ -12,6 +12,8 @@ publish = false
 default = []
 # The real HTTP(S) transport of the speed test and the intel downloads (ring needs a C toolchain). Enabled by the agent.
 net-http = ["pw-diag/speed", "pw-intel/http"]
+# Defense state and audit log in SQLite (pw-store compiles SQLite from C source). Enabled by the agent.
+store = ["dep:pw-store"]
 
 [dependencies]
 pw-capture = { path = "../pw-capture" }
@@ -21,6 +23,7 @@ pw-diag = { path = "../pw-diag" }
 pw-firewall = { path = "../pw-firewall" }
 pw-intel = { path = "../pw-intel" }
 pw-proto = { path = "../pw-proto" }
+pw-store = { path = "../pw-store", optional = true }
 pw-ipc = { path = "../pw-ipc" }
 pw-netstat = { path = "../pw-netstat" }
 base64 = "0.23"

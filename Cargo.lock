@@ -3822,6 +3822,7 @@ dependencies = [
  "pw-ipc",
  "pw-netstat",
  "pw-proto",
+ "pw-store",
  "serde",
  "serde_json",
  "tempfile",
