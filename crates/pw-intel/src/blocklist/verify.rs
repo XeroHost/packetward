@@ -43,7 +43,9 @@ impl Verifier {
         }
     }
 
-    /// A verifier for an explicit base64 key (tests, or a future key-rotation path).
+    /// A verifier for an explicit base64 key. Test-only (`testing` feature): production code can only ever verify
+    /// against the pinned key, so the fail-closed rule holds by construction.
+    #[cfg(any(test, feature = "testing"))]
     pub fn with_key(public_key_base64: impl Into<String>) -> Self {
         Self {
             key: Some(public_key_base64.into()),

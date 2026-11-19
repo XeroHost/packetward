@@ -209,6 +209,9 @@ impl tracing::Subscriber for Passive {
 
 impl LogCapture {
     /// Install a capturing subscriber for the current thread until the guard is dropped.
+    ///
+    /// Side effect: the first call also installs a process-wide no-op subscriber. A test binary that later calls
+    /// `tracing_subscriber::fmt().init()` would panic; use `try_init()` there.
     pub fn install() -> (Self, tracing::subscriber::DefaultGuard) {
         static GLOBAL: std::sync::Once = std::sync::Once::new();
         GLOBAL.call_once(|| {
