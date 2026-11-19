@@ -134,10 +134,16 @@ is rejected; works offline except AbuseIPDB and list refresh.
 ## M11 — Settings, logs, proxy, updates, installer
 - [ ] Settings UI for everything in ARCHITECTURE §10; proxy applied to all outbound HTTP.
 - [ ] Logs page over `audit_events` (filters, export CSV/JSON).
-- [ ] NSIS installer with service hooks, WebView2 handling, uninstall purge.
-- [ ] Tauri updater with signed artifacts; **Stable + Beta** channels; release workflow on tag
+- [x] NSIS installer with service hooks, WebView2 handling, uninstall purge.
+      (`tauri.release.conf.json` + `installer/hooks.nsh`, embedded WebView2 bootstrapper, per-machine, en/es/pt-BR, RDP reset
+      and firewall purge before the service is removed, `/PURGE`. The NSIS installer (stable and `-beta.N` versions) was built on the dev VPS with `pnpm tauri build` but never run:
+      clean install/upgrade/uninstall is TESTING §F10 and is pending for Windows Server 2019/2022 test VMs.)
+- [x] Tauri updater with signed artifacts; **Stable + Beta** channels; release workflow on tag
       (`vX.Y.Z` → stable, `vX.Y.Z-beta.N` → beta).
-- [ ] Optional Authenticode step in CI (runs only when signing secrets exist).
+      (Built and unit-tested; fails closed with the placeholder public key. Signed artifacts, `latest.json` and the channel
+      switch need the owner's keys (docs/RELEASE-KEYS.md) and were never exercised end to end: TESTING §F10.)
+- [x] Optional Authenticode step in CI (runs only when signing secrets exist).
+      (In `release.yml`; untested until a certificate exists.)
 **Accept:** clean install/upgrade/uninstall on Windows Server 2019 and 2022 VMs; switching channel works.
 
 ## M12 — Hardening & 1.0

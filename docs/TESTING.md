@@ -262,6 +262,58 @@ Every step below can cut Remote Desktop. Keep the provider's console open and a 
    The 50 GB test stays disabled until its checkbox is ticked. On the dev VPS never run more than 1 GB per test.
 3. Exceed the server's per-address budget: the page shows the *budget exceeded* message with no retry loop.
 
+## F10. Installer, upgrade, uninstall, updater (M11) — TEST VPS ONLY (Windows Server 2019 AND 2022, fresh snapshots)
+
+The installer was only compiled and statically checked on the development VPS (nothing was installed there). Every step
+below changes the machine: use a throwaway VPS with a provider console (VNC) as fallback. Installer log:
+`%TEMP%\packetward-installer.log` (elevated user's temp). Build the installer with the release workflow (tag a beta, take
+the artifact) or locally: `cargo build --release -p packetward-agent -p packetward-cli`, then in `apps\desktop`
+`pnpm tauri build --config src-tauri/tauri.release.conf.json` with `createUpdaterArtifacts` set to `false` in that file
+when you have no signing key. Output: `target\release\bundle\nsis\PacketWard_<version>_x64-setup.exe`.
+
+1. **Clean install, GUI** (a machine without WebView2 if possible): the language selector appears (English / Español /
+   Português) and the GPL-3.0 license page; the WebView2 bootstrapper runs. After finishing:
+   `Get-Service PacketWard` is *Running* and *Automatic*; `Get-LocalGroupMember 'PacketWard Operators'` lists the installing
+   user; `Get-NetFirewallRule -Group PacketWard` lists exactly one rule, `PacketWard agent (raw capture)` (inbound, allow,
+   program `…\packetward-agent.exe`); `pwctl status` answers; the files are in `C:\Program Files\PacketWard`
+   (`PacketWard.exe`, `packetward-agent.exe`, `pwctl.exe`). Sign out and in once, start PacketWard: the dashboard opens and the
+   Guardian is in **Monitor**. The log shows `exit=0` for *register and start the service* and *firewall rule (add)*.
+2. **Raw-socket hypothesis** (the reason for the rule, DECISIONS M4 row): with the rule present, `pwctl status` shows inbound
+   packets and no *blind* warning; delete only that rule, restart the agent, and confirm the warning returns. Record the
+   Windows build and the result in PROGRESS.
+3. **Silent install**: `PacketWard_x64-setup.exe /S /OPERATORSID=<sid>` from an elevated prompt as another account: no windows,
+   service running, that SID (not the installing account) in the operators group.
+4. **Upgrade through the installer**: install version N, change something (Guardian to Monitor with an allowlist entry, one
+   manual block, RDP Shield restriction confirmed), then run installer N+1 and choose *Do not uninstall*: the service was
+   stopped and started again (log: `stop the existing service`, `register and start the service`), the settings, blocks and
+   the RDP restriction are all still there, still exactly one `PacketWard agent (raw capture)` rule, no duplicate service.
+   Repeat with the default *Uninstall before installing*: expect a full uninstall and a fresh install (RDP reset to factory,
+   see ARCHITECTURE §9.1) — note the result.
+5. **Uninstall, normal** (Apps & features, or `"C:\Program Files\PacketWard\uninstall.exe"`), after step 4 with an active RDP
+   Shield restriction: Remote Desktop is back to port 3389 with the built-in rules enabled and no `PW-RDP-*` rules (check
+   from a *new* RDP connection before closing the old one); `Get-NetFirewallRule -Group PacketWard` is empty;
+   `Get-Service PacketWard` and the operators group are gone; `%ProgramData%\PacketWard` is **kept** (log says so).
+   Then the §G leave-no-trace check, except the data folder.
+6. **Uninstall with purge**: reinstall, then `uninstall.exe /S /PURGE` (and once through the GUI with *Delete the application
+   data* ticked): `%ProgramData%\PacketWard` and `%AppData%\PacketWard` are gone; §G is fully clean.
+7. **Uninstall tolerance**: stop the service first, then uninstall: the log shows the purge fallback and the uninstall still
+   completes. Make the RDP reset fail (for example rename `pwctl.exe`, keep an RDP Shield restriction): the uninstall finishes,
+   a message says the PacketWard rules were left in place, and RDP still works.
+8. **Updater** (needs the keys of docs/RELEASE-KEYS.md; without a public key the Updates section says *not configured* and
+   no request is made — verify that first with a build from this repository):
+   - With a real public key in `tauri.conf.json` and the secrets loaded, tag `v0.0.1-beta.1`, then `v0.0.1-beta.2`. The
+     pre-release `updater-beta` exists and its `latest.json` names beta.2; the stable `releases/latest/download/latest.json`
+     does not exist yet (404) until a normal tag.
+   - Install beta.1, Settings → Updates: channel *Beta*, *Check for updates* offers beta.2; *Download and install*: the
+     installer runs passively (UAC prompt), the app closes, the service is stopped and started again, the app can be started
+     again and shows beta.2. Switch to *Stable*: *Check* answers "latest version" or a not-found error, not beta.2.
+   - Tag `v0.0.1`: both channels now offer it (a beta user is offered the stable release); a stable user never sees betas.
+   - Tamper with an installer in a copy of the release (or serve a manifest with a wrong signature): the update is refused.
+   - *Check when PacketWard starts* defaults to off: with a packet capture or firewall log confirm no connection to
+     github.com is made at start; switch it on and restart: exactly one request, about five seconds after start.
+9. **Authenticode** (only when a certificate exists): the installer, `PacketWard.exe`, `packetward-agent.exe` and `pwctl.exe`
+   have a valid signature (`Get-AuthenticodeSignature`) and the SmartScreen prompt names the publisher.
+
 ## G. Leave-no-trace check
 
 After testing, all of these must be empty / `False`:
