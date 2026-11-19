@@ -8,9 +8,43 @@ license.workspace = true
 repository.workspace = true
 publish = false
 
+[lib]
+name = "pw_speed_server"
+path = "src/lib.rs"
+
 [[bin]]
 name = "pw-speed-server"
 path = "src/main.rs"
+
+[features]
+# Native TLS termination (rustls + ring). Off by default so the crate builds without a C toolchain for the
+# target; the Dockerfile and release builds enable it. Production may also sit behind a TLS reverse proxy.
+default = []
+tls = ["dep:rustls", "dep:tokio-rustls"]
+
+[dependencies]
+anyhow = "1"
+axum = { version = "0.8", default-features = false, features = ["http1", "json"] }
+bytes = "1"
+clap = { version = "4", features = ["derive", "env"] }
+futures-util = { version = "0.3", default-features = false }
+http-body = "1"
+hyper = { version = "1", features = ["http1", "server"] }
+hyper-util = { version = "0.1", features = ["tokio", "server", "http1", "service"] }
+rustls = { version = "0.23", optional = true, default-features = false, features = ["ring", "std", "tls12"] }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["macros", "net", "rt-multi-thread", "signal", "sync", "time"] }
+tokio-rustls = { version = "0.26", optional = true, default-features = false, features = ["ring", "tls12"] }
+toml = "0.8"
+tower = { version = "0.5", default-features = false, features = ["util"] }
+tracing.workspace = true
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+[dev-dependencies]
+reqwest = { version = "0.13", default-features = false, features = ["stream", "json"] }
+tokio = { workspace = true, features = ["io-util"] }
 
 [lints]
 workspace = true

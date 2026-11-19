@@ -1,0 +1,47 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# systemd unit for a XeroHost speed-test node.
+#   install -m 0755 pw-speed-server /usr/local/bin/
+#   useradd --system --no-create-home --shell /usr/sbin/nologin pw-speed
+#   install -d -m 0755 /etc/pw-speed-server && $EDITOR /etc/pw-speed-server/config.toml
+#   install -m 0644 pw-speed-server.service /etc/systemd/system/ && systemctl enable --now pw-speed-server
+[Unit]
+Description=PacketWard speed test server
+Documentation=https://github.com/XeroHost/packetward/tree/main/tools/speed-server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=pw-speed
+Group=pw-speed
+ExecStart=/usr/local/bin/pw-speed-server --config /etc/pw-speed-server/config.toml
+# Reload = restart: limiter state is in memory only and rebuilt on start.
+Restart=on-failure
+RestartSec=2
+# SIGTERM triggers graceful shutdown (in-flight transfers get shutdown_grace_secs, default 10 s).
+KillSignal=SIGTERM
+TimeoutStopSec=30
+LimitNOFILE=65536
+
+# Only needed when this process itself listens on a port below 1024 (native TLS on 443, no reverse proxy).
+# AmbientCapabilities=CAP_NET_BIND_SERVICE
+# CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=
+
+# Hardening: the service needs the network and nothing else (it never touches the disk).
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target
