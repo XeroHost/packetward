@@ -57,6 +57,9 @@ async fn spawn(tweak: impl FnOnce(&mut Config)) -> Node {
     tweak(&mut c);
     let server = start(c).await.unwrap();
     let base = format!("http://{}", server.local_addr());
+    // Another crate of the workspace may have enabled reqwest's `rustls-no-provider`: install the provider
+    // (an error only means one is already installed).
+    let _ = rustls::crypto::ring::default_provider().install_default();
     let client = Client::builder()
         .no_proxy()
         .pool_max_idle_per_host(0)

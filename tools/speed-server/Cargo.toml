@@ -44,6 +44,8 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 
 [dev-dependencies]
 reqwest = { version = "0.13", default-features = false, features = ["stream", "json"] }
+# In a workspace build other crates enable reqwest's `rustls-no-provider`; a client then needs a provider installed.
+rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
 tokio = { workspace = true, features = ["io-util"] }
 
 [lints]
