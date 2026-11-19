@@ -64,11 +64,11 @@ VM caps at ~31 ms per frame). Not seen yet: the GitHub Actions run of M2, and th
 **Accept:** MTR to a XeroHost node matches WinMTR within reason; DNS ALL returns every type present.
 
 ## M4 — Capture & support bundle
-- [ ] Npcap detection + lazy load; RawSocket backend; backend selection & UI explanation.
-- [ ] Decode → `PacketMeta`; bounded pipeline with dropped counter.
-- [ ] Live stats: pps/bps per protocol, top talkers (src IP, packets, bytes, proto mix).
-- [ ] Timed capture to `.pcapng` with filter, ring buffer option.
-- [ ] Support bundle → **local zip only**, with preview and local-IP anonymize option (`pwctl support-bundle` too).
+- [x] Npcap detection + lazy load; RawSocket backend; backend selection & UI explanation.
+- [x] Decode → `PacketMeta`; bounded pipeline with dropped counter.
+- [x] Live stats: pps/bps per protocol, top talkers (src IP, packets, bytes, proto mix).
+- [x] Timed capture to `.pcapng` with filter, ring buffer option.
+- [x] Support bundle → **local zip only**, with preview and local-IP anonymize option (`pwctl support-bundle` too).
 **Accept:** app starts without Npcap; with Npcap the pcapng opens in Wireshark; 200k pps synthetic load does
 not freeze the UI (drops are counted, not hidden).
 

@@ -242,7 +242,9 @@ pub struct RateView {
 pub struct ProtocolRate {
     /// `tcp`, `udp`, `icmp` or `other`.
     pub proto: String,
+    #[cfg_attr(feature = "ts-export", ts(type = "number"))]
     pub pps: u64,
+    #[cfg_attr(feature = "ts-export", ts(type = "number"))]
     pub bps: u64,
 }
 

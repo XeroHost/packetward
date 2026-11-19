@@ -18,6 +18,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 anyhow = "1"
+base64 = "0.23"
 pw-ipc = { path = "../../../crates/pw-ipc" }
 pw-proto = { path = "../../../crates/pw-proto" }
 serde.workspace = true

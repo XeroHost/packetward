@@ -48,4 +48,9 @@ here with its reason. Review them when you are back.
 | 2026-11-19 | M4 | `pw-capture` talks to Npcap through a hand-written `libloading` FFI instead of the `pcap` crate | Nothing links Npcap, no SDK needed, absolute-path DLL load (no PATH/cwd search) |
 | 2026-11-19 | M4 | RawSocket backend uses `RCVALL_IPLEVEL` (no promiscuous mode) | Least intrusive on the NIC |
 | 2026-11-19 | M5 | `pw-detect` takes time as u64 ns since the Unix epoch (same clock as `PacketMeta`), not `Instant` | Deterministic tests and one clock for capture and detection; ARCHITECTURE §6.2 to be updated at M5 integration |
+| 2026-11-19 | M4 | The live capture starts with the agent (`capture_autostart`) and can be stopped from the Capture page | It is passive and bounded (drops are counted); the traffic page and detectors need it |
+| 2026-11-19 | M4 | Detection must not depend on capture alone: the RawSocket backend is inbound-blind on the dev VPS | Feed pw-detect also from netstat counts, adapter bps and the 4625 feed; show a "blind" warning |
+| 2026-11-19 | M4 | An inbound allow rule for the agent exe is needed for raw-socket delivery (hypothesis, untested here) | Firewall changes are prohibited on the dev VPS: documented in TESTING §F4 and to be added by the installer (M11) in group `PacketWard` |
+| 2026-11-19 | M4 | Support bundle is delivered to the client in chunks and saved by the client in its own Documents folder; with anonymization on, the pcapng is left out | Operators may not be administrators; a pcapng cannot be anonymized; the agent must never write to client-supplied paths |
+| 2026-11-19 | M4 | Support bundle runs `ipconfig /all` and `route print` | The documented exception for read-only diagnostics; support always asks for them |
 | 2026-11-19 | M5 | SynFlood is suppressed for a source that is also port-scanning unless its SYN rate is ≥ 10× threshold | One scan = one alert |

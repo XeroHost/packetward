@@ -12,10 +12,11 @@ use pw_ipc::{Client, ClientError};
 use pw_proto::{
     method, topic, AccessReason, AgentConnection, BridgeEvent, CaptureLive, ClientKind,
     ConnectionsRequest, ConnectionsResponse, DiagEvent, ElevatedAction, ElevationOutcome,
-    ErrorCode, Heartbeat, LiveStats,
+    ErrorCode, Heartbeat, LiveStats, SavedBundle, SupportBundleInfo, SupportBundleRequest,
+    SupportChunk, SupportDiscardRequest, SupportReadRequest,
 };
 use tauri::ipc::Channel;
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Manager, State};
 
 use crate::sys::windows::{run_elevated_and_wait, Elevated};
 
@@ -246,6 +247,7 @@ const CALLABLE_METHODS: &[&str] = &[
     method::CAPTURE_RECORD_STOP,
     method::CAPTURE_FILES,
     method::CAPTURE_FILES_DELETE,
+    method::SUPPORT_PREVIEW,
 ];
 
 fn is_callable(method_name: &str) -> bool {
@@ -279,6 +281,85 @@ pub async fn agent_call(
             ClientError::Remote(remote) => format!("{:?}: {}", remote.code, remote.message),
             other => other.to_string(),
         })
+}
+
+/// Builds the support bundle through the agent and saves it in this user's Documents folder
+/// (`PacketWard\support`). The agent keeps the zip in a folder only administrators can read, so the
+/// bytes come over the pipe in chunks and are written here, with the user's own permissions.
+#[tauri::command]
+pub async fn support_bundle_save(
+    app: AppHandle,
+    bridge: State<'_, Bridge>,
+    request: SupportBundleRequest,
+) -> Result<SavedBundle, String> {
+    use base64::Engine as _;
+    const CHUNK: u32 = 256 * 1024;
+    let client = bridge
+        .client
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .clone()
+        .ok_or_else(|| "not_connected".to_owned())?;
+    let dir = app
+        .path()
+        .document_dir()
+        .map_err(|e| e.to_string())?
+        .join("PacketWard")
+        .join("support");
+    let info: SupportBundleInfo = client
+        .request(method::SUPPORT_CREATE, &request)
+        .await
+        .map_err(|err| match err {
+            ClientError::Remote(remote) if remote.code == ErrorCode::UnknownMethod => {
+                "unsupported".to_owned()
+            }
+            other => other.to_string(),
+        })?;
+    let result = async {
+        let mut data = Vec::with_capacity(usize::try_from(info.bytes).unwrap_or(0));
+        loop {
+            let chunk: SupportChunk = client
+                .request(
+                    method::SUPPORT_READ,
+                    &SupportReadRequest {
+                        id: info.id.clone(),
+                        offset: data.len() as u64,
+                        len: CHUNK,
+                    },
+                )
+                .await
+                .map_err(|e| e.to_string())?;
+            let bytes = base64::engine::general_purpose::STANDARD
+                .decode(chunk.data_b64)
+                .map_err(|e| e.to_string())?;
+            data.extend_from_slice(&bytes);
+            if chunk.eof || bytes.is_empty() {
+                break;
+            }
+        }
+        if data.len() as u64 != info.bytes {
+            return Err(format!("received {} of {} bytes", data.len(), info.bytes));
+        }
+        std::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+        let path = dir.join(&info.name);
+        std::fs::write(&path, data).map_err(|e| format!("{}: {e}", path.display()))?;
+        Ok(path)
+    }
+    .await;
+    // The agent keeps its copy for an hour; drop it as soon as it is saved (or failed).
+    let _ = client
+        .request::<_, serde_json::Value>(
+            method::SUPPORT_DISCARD,
+            &SupportDiscardRequest {
+                id: info.id.clone(),
+            },
+        )
+        .await;
+    result.map(|path| SavedBundle {
+        path: path.display().to_string(),
+        bytes: info.bytes,
+        items: info.items,
+    })
 }
 
 /// The agent's connection table (capped on the agent side). Called while the Connections page is
@@ -409,7 +490,9 @@ mod tests {
     fn only_diagnostics_and_capture_methods_are_callable_from_the_webview() {
         for allowed in CALLABLE_METHODS {
             assert!(
-                allowed.starts_with("diag.") || allowed.starts_with("capture."),
+                allowed.starts_with("diag.")
+                    || allowed.starts_with("capture.")
+                    || *allowed == method::SUPPORT_PREVIEW,
                 "{allowed}"
             );
             assert!(is_callable(allowed));
@@ -418,6 +501,10 @@ mod tests {
             method::SYSTEM_INFO,
             method::HELLO,
             method::SUBSCRIBE,
+            // Creating, reading and discarding bundles go through the dedicated command.
+            method::SUPPORT_CREATE,
+            method::SUPPORT_READ,
+            method::SUPPORT_DISCARD,
             "firewall.block",
             "",
         ] {

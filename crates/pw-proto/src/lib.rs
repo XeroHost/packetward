@@ -42,8 +42,8 @@ pub use netstat::{
 };
 pub use subscribe::{SubscribeRequest, SubscribeResponse, UnsubscribeRequest};
 pub use support::{
-    SupportBundleInfo, SupportBundleRequest, SupportChunk, SupportDiscardRequest, SupportItem,
-    SupportPreview, SupportReadRequest,
+    SavedBundle, SupportBundleInfo, SupportBundleRequest, SupportChunk, SupportDiscardRequest,
+    SupportItem, SupportPreview, SupportReadRequest,
 };
 pub use system::SystemInfo;
 

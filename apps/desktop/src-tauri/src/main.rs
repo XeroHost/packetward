@@ -109,6 +109,7 @@ fn main() -> anyhow::Result<()> {
             bridge::agent_watch,
             bridge::agent_connections,
             bridge::agent_call,
+            bridge::support_bundle_save,
             bridge::agent_elevate
         ])
         .setup(|app| {

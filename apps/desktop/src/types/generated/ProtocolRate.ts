@@ -4,4 +4,4 @@ export type ProtocolRate = {
 /**
  * `tcp`, `udp`, `icmp` or `other`.
  */
-proto: string, pps: bigint, bps: bigint, };
+proto: string, pps: number, bps: number, };

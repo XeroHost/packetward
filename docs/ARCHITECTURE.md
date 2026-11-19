@@ -149,6 +149,18 @@ NIC ─► CaptureBackend ─► decode (etherparse, no alloc) ─► PacketMeta
 - Backend selection: Npcap if present, else RawSocket; the UI shows which one is active and what is missing.
 - Outputs: live `PacketMeta` stream, timed capture to `.pcapng` (duration/size/filter), ring buffer.
 
+**Integration (M4).** `pw-engine::capture::CaptureManager` owns the live capture (one `pw_capture::Capture` thread, a bounded
+batch queue, a `StatsAggregator` ticked once per second) and publishes `CaptureLive` on the `capture.stats` topic. It is
+generic over a `CaptureHost` (the real machine or a fake), which is how it is tested without a network. The agent starts it
+at launch (`EngineConfig::capture_autostart`); an optional `PacketSink` receives every batch (the detection engine, M5).
+**Blind detection**: when the backend sees outbound packets but inbound stays at zero for 10 s the status says `blind`
+(the raw socket can be starved by Windows Firewall inbound filtering; detection must not depend on capture alone).
+Recordings (`capture.record.*`) open a second source on the same adapter, write `.pcapng` into
+`%ProgramData%\PacketWard\captures` (SYSTEM + Administrators only, protected DACL), keep headers only (128 bytes) unless the
+user confirms full payload, one recording at a time, files older than 7 days are deleted. `pw-capture` talks to Npcap through a
+hand-written `libloading` binding (absolute path to `System32\Npcap\wpcap.dll`), not the `pcap` crate.
+Default adapter: the first one that is up, not loopback and has a routable IPv4 address.
+
 ### 6.2 Detection (`pw-detect`) — pure, deterministic, heavily tested
 Per source IP, sliding windows (e.g. 1 s, 10 s, 60 s) tracking: packets, bytes, SYN count, SYN-ACK/ACK ratio,
 UDP packets, ICMP packets, distinct destination ports, new connections.
@@ -278,6 +290,14 @@ bytes/time), `GET /info` (location, node name, max size). Rate limits and max co
 countries, alerts), MTR to the chosen XeroHost node, adapter info, firewall rule summary, last 24 h audit log,
 app/OS versions. **Preview before saving**, with an option to anonymize local IPs. Saved **locally only**
 (default `Documents\PacketWard\support\`); the app never uploads it — the user attaches it to their ticket.
+
+**Integration (M4).** `support.bundle.preview|create|read|discard` (engine `support.rs`): the text files are built in memory
+(summary, traffic, adapters, capture backend, last-24 h agent log tails, `ipconfig /all` + `route print` — the only commands the
+project runs, read-only), optionally anonymized (this machine's addresses and name → `LOCAL-IPV4-n`/`HOSTNAME`, whole tokens
+only; the pcapng is then left out because it cannot be anonymized), previewed, then zipped. The agent keeps the zip in
+`%ProgramData%\PacketWard\support` (admin-only, deleted after 1 h) and the client reads it in 256 KiB base64 chunks and writes it to
+`Documents\PacketWard\support` with its own permissions (so non-admin operators can save it; no path is ever supplied by the
+client). `pwctl support-bundle` and the desktop command `support_bundle_save` do exactly that. Nothing is uploaded.
 
 ### 6.11 Notifications and tray
 - The agent publishes alerts on the `alerts` topic; the desktop process (running in the user's session, started

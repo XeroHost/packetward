@@ -375,5 +375,114 @@
       },
       "empty": "No hay puertos a la escucha."
     }
+  },
+  "traffic": {
+    "blind": "La captura ve lo que este servidor envía pero nada de lo que recibe, así que la detección de floods por captura no es fiable aquí. La detección por conexiones, ancho de banda e inicios de sesión RDP no se ve afectada. En Windows el firewall puede ocultar paquetes entrantes a una captura por raw socket; instalar Npcap lo evita.",
+    "notRunning": "La captura de paquetes no está en marcha, así que no hay estadísticas por paquete.",
+    "openCapture": "Abrir Captura",
+    "tiles": {
+      "inbound": "Entrante (captura)",
+      "outbound": "Saliente (captura)",
+      "dropped": "Paquetes perdidos",
+      "untracked": "Orígenes sin seguimiento"
+    },
+    "pps": "{rate} paquetes/s",
+    "droppedHint": "Contados, nunca ocultos: perdidos por cola llena o por el controlador",
+    "untrackedHint": "Paquetes de orígenes que no cupieron en la tabla (siguen en las tasas)",
+    "chartTitle": "Tráfico visto por la captura (últimos 2 minutos)",
+    "protocols": "Por protocolo",
+    "rate": "Tasa",
+    "packets": "Paquetes",
+    "bytes": "Bytes",
+    "talkers": "Principales orígenes entrantes",
+    "talkersHint": "Quién envió más paquetes a este servidor en el último segundo.",
+    "source": "Origen",
+    "noTalkers": "Aún no se ha visto tráfico entrante."
+  },
+  "capture": {
+    "backend": {
+      "title": "Motor de captura",
+      "kinds": {
+        "npcap": "Npcap",
+        "raw_socket": "Raw socket de Windows"
+      },
+      "available": "disponible",
+      "missing": "no disponible",
+      "inUse": "en uso",
+      "bpf": "filtros en el kernel",
+      "noBpf": "filtros por software",
+      "seesOut": "ve entrante y saliente",
+      "inboundOnly": "solo entrante",
+      "licenseNote": "PacketWard no incluye Npcap (su licencia no permite redistribuirlo). Si lo instala usted desde npcap.com, PacketWard lo usa automáticamente."
+    },
+    "live": {
+      "start": "Iniciar captura",
+      "stop": "Detener captura",
+      "state": "Estado",
+      "states": {
+        "stopped": "detenida",
+        "running": "en marcha",
+        "failed": "con error"
+      },
+      "adapter": "Adaptador",
+      "seen": "Paquetes vistos",
+      "dropped": "Perdidos"
+    },
+    "record": {
+      "title": "Grabar a un archivo",
+      "hint": "Guarda paquetes en un archivo .pcapng que puede abrir con Wireshark. Por defecto solo se conservan los primeros 128 bytes de cada paquete (cabeceras, no contenido).",
+      "name": "Nombre del archivo",
+      "mode": "Modo",
+      "modes": {
+        "timed": "Con duración",
+        "ring": "Búfer circular (últimos 200 MB)"
+      },
+      "seconds": "Segundos",
+      "filter": "Filtro (opcional)",
+      "payload": "Contenido",
+      "payloads": {
+        "headers": "Solo cabeceras (128 bytes)",
+        "full": "Paquetes completos"
+      },
+      "start": "Iniciar grabación",
+      "stop": "Detener grabación",
+      "fullWarning": "Los paquetes completos incluyen el contenido del tráfico (por ejemplo contraseñas o mensajes sin cifrar). Marque esto solo si lo necesita y mantendrá el archivo privado.",
+      "ringNote": "Sigue grabando hasta que lo detenga, borrando lo más antiguo para que los archivos nunca superen 200 MB.",
+      "running": "Grabando: {packets} paquetes, {size}",
+      "finished": "Grabación terminada ({reason}): {packets} paquetes.",
+      "reasons": {
+        "requested": "detenida por usted",
+        "duration": "tiempo cumplido",
+        "size_limit": "límite de tamaño",
+        "source_ended": "captura terminada",
+        "error": "error"
+      }
+    },
+    "files": {
+      "title": "Archivos grabados",
+      "where": "Guardados en",
+      "retention": "legibles solo por administradores; los archivos de más de 7 días se borran automáticamente.",
+      "confirm": "¿Borrar este archivo?",
+      "delete": "Borrar",
+      "cancel": "Cancelar",
+      "deleteFile": "Borrar {name}",
+      "empty": "Aún no hay grabaciones."
+    },
+    "bundle": {
+      "title": "Paquete de soporte",
+      "hint": "Un zip para el soporte de XeroHost: versiones, resumen de tráfico, adaptadores, registros recientes y una muestra corta de tráfico opcional. Vea exactamente qué contiene antes de guardarlo. Se guarda solo en este equipo y nunca se sube.",
+      "anonymize": "Ocultar las direcciones de esta máquina",
+      "logs": "Incluir el registro del agente (24 h)",
+      "captureSecs": "Muestra de tráfico (segundos)",
+      "preview": "Mostrar qué se incluirá",
+      "anonymizeNote": "Las direcciones de este servidor y su nombre se sustituyen por marcadores en los archivos de texto. La muestra de tráfico no se puede anonimizar, así que se omite.",
+      "hidden": "Se sustituirán {count} direcciones locales por marcadores.",
+      "binary": "Archivo binario: se graba al guardar.",
+      "save": "Guardar paquete",
+      "saving": "Creando el paquete…",
+      "neverUploaded": "PacketWard nunca lo sube.",
+      "saved": "Guardado en",
+      "attach": "Adjunte este archivo a su ticket de soporte."
+    }
   }
 }

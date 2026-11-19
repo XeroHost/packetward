@@ -21,13 +21,13 @@ Read this first when resuming after a stop or a context compaction.
 | M1 Proto/IPC/agent | done (main) |
 | M2 Netstat & dashboard | done (main) + RDP trust set |
 | M3 Basic diagnostics | done on dev (CI run 44496262640 green). Live smoke on this VPS: ping/MTR/DNS ALL/port check verified, MTR path identical to tracert. Pending on a test VPS: comparison with WinMTR against a XeroHost node (no node exists yet) |
-| M4 Capture & support bundle | not started |
-| M5 Detection & alerts | not started |
-| M6 Firewall manager | not started |
+| M4 Capture & support bundle | implemented on dev (capture manager, recordings, support bundle, Traffic/Capture pages); live checks on this VPS done; Npcap/inbound/200k pps pending for a test VPS |
+| M5 Detection & alerts | pw-detect core merged; engine integration pending |
+| M6 Firewall manager | pw-firewall core merged; engine/IPC/UI pending |
 | M7 Guardian | not started |
 | M7b RDP Shield | not started |
-| M8 GeoIP, intel, blocklists | not started |
-| M9 Speed test | not started |
+| M8 GeoIP, intel, blocklists | pw-intel core merged; integration/UI pending |
+| M9 Speed test | tools/speed-server merged; client/UI pending |
 | M10 MTR advanced | not started |
 | M11 Settings/logs/installer/updater | not started |
 | M12 Hardening & 1.0 | not started |

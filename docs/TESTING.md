@@ -163,6 +163,29 @@ The automated tests use a fake pinger; these steps prove the real ICMP/DNS/TCP p
    *Reachable from* column says *all interfaces* for `0.0.0.0`/`::`.
 7. Start 5 long pings: the fifth is refused with the *Too many diagnostics* message.
 
+## F4. Capture and support bundle (M4)
+
+Automated tests cover the pipeline, stats, recorder, blind detection, support bundle and anonymizer with fake sources. Live:
+
+1. `packetward-agent run --console` (elevated), then `pwctl status`: the *Capture* line names the backend (raw socket without
+   Npcap), the adapter and packets seen. Dashboard → Traffic shows inbound/outbound rates, the protocol table and top sources.
+2. **Raw socket inbound visibility (known issue)**: on the development VPS the raw socket saw outbound packets only; `pwctl status`
+   then shows the *blind* warning after about 10 s. On a **test VPS** create an inbound allow rule for `packetward-agent.exe`
+   (program-scoped, group `PacketWard`, e.g. with the firewall page once M6 is wired) and confirm inbound packets and top
+   sources appear and the warning goes away. If not, record the Windows build and report: the NDIS ETW provider is the fallback.
+3. **Npcap** (test VPS only; never on the dev VPS): install Npcap from npcap.com, restart the agent, confirm the backend switches
+   to Npcap (*kernel filters*, inbound and outbound), record 30 s with filter `tcp and port 3389` and open the .pcapng in
+   Wireshark (timestamps, 128-byte snaplen, original lengths). Uninstall Npcap and confirm the agent falls back without errors.
+4. **200k pps**: with Npcap, generate a flood from another machine (hping3/iperf3 UDP small packets); the UI stays responsive,
+   *Packets dropped* counts what was lost (never hidden), CPU of the agent stays bounded.
+5. Recording: timed (60 s), ring (stop after a minute; total of files ≤ 200 MB), full payload requires the explicit tick; files list
+   shows only .pcapng and a deleted file disappears; non-admin users cannot read the folder
+   (`icacls %ProgramData%\PacketWard\captures` shows only SYSTEM and Administrators).
+6. Support bundle: Capture → *Show what will be included*, open a few files in the preview, *Save bundle*; the zip is in
+   `Documents\PacketWard\support`, opens, and contains no file you did not see in the preview. With *Hide this machine's own
+   addresses* none of the server's addresses or its name appear in any text file (search them), and `capture.pcapng` is absent.
+   `pwctl support-bundle --capture-secs 10` produces the same zip from the command line.
+
 ## G. Leave-no-trace check
 
 After testing, all of these must be empty / `False`:

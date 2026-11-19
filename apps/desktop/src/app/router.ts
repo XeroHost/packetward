@@ -5,13 +5,17 @@ import { NAV_ITEMS } from './nav'
 const PlaceholderPage = () => import('@/features/placeholder/PlaceholderPage.vue')
 const DashboardPage = () => import('@/features/dashboard/DashboardPage.vue')
 const ConnectionsPage = () => import('@/features/connections/ConnectionsPage.vue')
+const TrafficPage = () => import('@/features/traffic/TrafficPage.vue')
+const CapturePage = () => import('@/features/capture/CapturePage.vue')
 const DiagnosticsPage = () => import('@/features/diagnostics/DiagnosticsPage.vue')
 const SettingsPage = () => import('@/features/settings/SettingsPage.vue')
 const AboutPage = () => import('@/features/about/AboutPage.vue')
 
 const pageComponents: Record<string, RouteRecordRaw['component']> = {
   dashboard: DashboardPage,
+  traffic: TrafficPage,
   connections: ConnectionsPage,
+  capture: CapturePage,
   diagnostics: DiagnosticsPage,
   settings: SettingsPage,
 }

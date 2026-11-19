@@ -375,5 +375,114 @@
       },
       "empty": "No listening ports."
     }
+  },
+  "traffic": {
+    "blind": "The capture sees what this server sends but nothing it receives, so flood detection from capture is unreliable here. Connection, bandwidth and RDP-logon detection are not affected. On Windows the firewall can hide inbound packets from a raw-socket capture; installing Npcap avoids this.",
+    "notRunning": "Packet capture is not running, so there are no per-packet statistics.",
+    "openCapture": "Open Capture",
+    "tiles": {
+      "inbound": "Inbound (capture)",
+      "outbound": "Outbound (capture)",
+      "dropped": "Packets dropped",
+      "untracked": "Untracked sources"
+    },
+    "pps": "{rate} packets/s",
+    "droppedHint": "Counted, never hidden: lost to a full queue or by the driver",
+    "untrackedHint": "Packets from sources the table had no room for (still in the rates)",
+    "chartTitle": "Traffic seen by the capture (last 2 minutes)",
+    "protocols": "By protocol",
+    "rate": "Rate",
+    "packets": "Packets",
+    "bytes": "Bytes",
+    "talkers": "Top inbound sources",
+    "talkersHint": "Who sent the most packets to this server in the last second.",
+    "source": "Source",
+    "noTalkers": "No inbound traffic seen yet."
+  },
+  "capture": {
+    "backend": {
+      "title": "Capture backend",
+      "kinds": {
+        "npcap": "Npcap",
+        "raw_socket": "Windows raw socket"
+      },
+      "available": "available",
+      "missing": "not available",
+      "inUse": "in use",
+      "bpf": "kernel filters",
+      "noBpf": "filters applied in software",
+      "seesOut": "sees inbound and outbound",
+      "inboundOnly": "inbound only",
+      "licenseNote": "PacketWard does not include Npcap (its license does not allow redistribution). If you install it yourself from npcap.com, PacketWard uses it automatically."
+    },
+    "live": {
+      "start": "Start capture",
+      "stop": "Stop capture",
+      "state": "State",
+      "states": {
+        "stopped": "stopped",
+        "running": "running",
+        "failed": "failed"
+      },
+      "adapter": "Adapter",
+      "seen": "Packets seen",
+      "dropped": "Dropped"
+    },
+    "record": {
+      "title": "Record to a file",
+      "hint": "Saves packets to a .pcapng file you can open in Wireshark. By default only the first 128 bytes of each packet are kept (headers, not content).",
+      "name": "File name",
+      "mode": "Mode",
+      "modes": {
+        "timed": "Timed",
+        "ring": "Ring buffer (latest 200 MB)"
+      },
+      "seconds": "Seconds",
+      "filter": "Filter (optional)",
+      "payload": "Content",
+      "payloads": {
+        "headers": "Headers only (128 bytes)",
+        "full": "Full packets"
+      },
+      "start": "Start recording",
+      "stop": "Stop recording",
+      "fullWarning": "Full packets include the content of the traffic (for example unencrypted passwords or messages). Tick this only if you need it and will keep the file private.",
+      "ringNote": "Keeps recording until you stop it, deleting the oldest part so the files never exceed 200 MB.",
+      "running": "Recording: {packets} packets, {size}",
+      "finished": "Recording finished ({reason}): {packets} packets.",
+      "reasons": {
+        "requested": "stopped by you",
+        "duration": "time reached",
+        "size_limit": "size limit reached",
+        "source_ended": "capture ended",
+        "error": "error"
+      }
+    },
+    "files": {
+      "title": "Recorded files",
+      "where": "Saved in",
+      "retention": "readable by administrators only; files older than 7 days are deleted automatically.",
+      "confirm": "Delete this file?",
+      "delete": "Delete",
+      "cancel": "Cancel",
+      "deleteFile": "Delete {name}",
+      "empty": "No recordings yet."
+    },
+    "bundle": {
+      "title": "Support bundle",
+      "hint": "A zip for XeroHost support: versions, traffic summary, adapters, recent logs and an optional short traffic sample. Look at exactly what it contains before saving. It is saved on this computer only and never uploaded.",
+      "anonymize": "Hide this machine’s own addresses",
+      "logs": "Include the agent log (24 h)",
+      "captureSecs": "Traffic sample (seconds)",
+      "preview": "Show what will be included",
+      "anonymizeNote": "Addresses of this server and its name are replaced by placeholders in the text files. The traffic sample cannot be anonymized, so it is left out.",
+      "hidden": "{count} local addresses will be replaced with placeholders.",
+      "binary": "Binary file: it is recorded when you save.",
+      "save": "Save bundle",
+      "saving": "Building the bundle…",
+      "neverUploaded": "PacketWard never uploads it.",
+      "saved": "Saved to",
+      "attach": "Attach this file to your support ticket."
+    }
   }
 }

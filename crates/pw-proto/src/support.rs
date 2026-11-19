@@ -74,6 +74,17 @@ pub struct SupportChunk {
     pub eof: bool,
 }
 
+/// Reply of the desktop shell's `support_bundle_save` command (not an agent method).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-export", derive(ts_rs::TS), ts(export))]
+pub struct SavedBundle {
+    /// Where the zip was saved, in the current user's Documents folder.
+    pub path: String,
+    #[cfg_attr(feature = "ts-export", ts(type = "number"))]
+    pub bytes: u64,
+    pub items: Vec<SupportItem>,
+}
+
 /// Payload of `support.bundle.discard`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts-export", derive(ts_rs::TS), ts(export))]
