@@ -16,10 +16,12 @@ use tokio::task::JoinSet;
 use tokio::time::Instant;
 
 use crate::cancel::CancelToken;
-use crate::echo::{
-    clamp_timeout, EchoReply, EchoRequest, EchoStatus, Pinger, DEFAULT_PAYLOAD, MAX_PAYLOAD,
-};
+use crate::echo::{clamp_timeout, EchoReply, EchoStatus, Pinger, DEFAULT_PAYLOAD, MAX_PAYLOAD};
 use crate::error::DiagError;
+use crate::mtr_adv::{
+    AdvMtrOptions, MtrError, PingerTransport, ProbeReply, ProbeRequest, ProbeStatus,
+    ProbeTransport, ReachKind,
+};
 use crate::names::{NameCache, ReverseLookup};
 use crate::ping::MIN_INTERVAL;
 use crate::sink::Sink;
@@ -200,6 +202,16 @@ pub struct MtrSnapshot {
 struct End {
     ttl: u8,
     reached: bool,
+    via: Option<ReachKind>,
+}
+
+/// A table as produced by the shared cycle engine: the simple snapshot plus how the destination
+/// answered. [`mtr()`] keeps the first, [`crate::mtr_adv::mtr_with`] builds its richer snapshot
+/// from both.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct CoreSnapshot {
+    pub(crate) snapshot: MtrSnapshot,
+    pub(crate) reached_via: Option<ReachKind>,
 }
 
 #[derive(Debug)]
@@ -208,6 +220,7 @@ struct MtrState {
     hops: Vec<HopStats>,
     end: Option<End>,
     cycles_done: u32,
+    next_seq: u32,
 }
 
 impl MtrState {
@@ -217,21 +230,21 @@ impl MtrState {
             hops: Vec::new(),
             end: None,
             cycles_done: 0,
+            next_seq: 0,
         }
     }
 
-    fn apply(&mut self, ttl: u8, outcome: &Result<EchoReply, DiagError>) {
+    fn apply(&mut self, ttl: u8, outcome: &Result<ProbeReply, MtrError>) {
         let idx = usize::from(ttl).saturating_sub(1);
         if self.hops.len() <= idx {
             self.hops.resize_with(idx + 1, HopStats::new);
         }
         let hop = &mut self.hops[idx];
         match outcome {
-            Ok(EchoReply {
-                status: EchoStatus::Success | EchoStatus::TtlExpired | EchoStatus::Unreachable,
+            Ok(ProbeReply {
+                status: ProbeStatus::Reached(_) | ProbeStatus::TtlExpired | ProbeStatus::Unreachable,
                 from: Some(from),
                 rtt: Some(rtt),
-                ..
             }) => hop.record_reply(*from, *rtt),
             _ => hop.record_lost(),
         }
@@ -251,25 +264,29 @@ impl MtrState {
     fn snapshot<R: ReverseLookup>(
         &self,
         total: u32,
-        names: &NameCache<R>,
+        names: Option<&NameCache<R>>,
         cancelled: bool,
-    ) -> MtrSnapshot {
+    ) -> CoreSnapshot {
         let hops = self
             .hops
             .iter()
             .enumerate()
             .map(|(i, h)| {
                 let ttl = u8::try_from(i + 1).unwrap_or(u8::MAX);
-                h.snapshot(ttl, h.addr().and_then(|a| names.name(a)))
+                let name = names.and_then(|n| h.addr().and_then(|a| n.name(a)));
+                h.snapshot(ttl, name)
             })
             .collect();
-        MtrSnapshot {
-            target: self.target,
-            cycle: self.cycles_done,
-            total_cycles: total,
-            hops,
-            destination_reached: self.end.is_some_and(|e| e.reached),
-            cancelled,
+        CoreSnapshot {
+            snapshot: MtrSnapshot {
+                target: self.target,
+                cycle: self.cycles_done,
+                total_cycles: total,
+                hops,
+                destination_reached: self.end.is_some_and(|e| e.reached),
+                cancelled,
+            },
+            reached_via: self.end.and_then(|e| e.via),
         }
     }
 }
@@ -290,16 +307,16 @@ fn terminal(reply: &EchoReply, target: IpAddr) -> Option<bool> {
     }
 }
 
-async fn probe_wave<P: Pinger + 'static>(
-    pinger: &Arc<P>,
-    requests: Vec<EchoRequest>,
+async fn probe_wave<T: ProbeTransport + 'static>(
+    transport: &Arc<T>,
+    requests: Vec<ProbeRequest>,
     cancel: &CancelToken,
-) -> Option<Vec<(u8, Result<EchoReply, DiagError>)>> {
+) -> Option<Vec<(u8, Result<ProbeReply, MtrError>)>> {
     let wanted: Vec<u8> = requests.iter().map(|r| r.ttl).collect();
     let mut set = JoinSet::new();
     for req in requests {
-        let pinger = Arc::clone(pinger);
-        set.spawn(async move { (req.ttl, pinger.echo(&req).await) });
+        let transport = Arc::clone(transport);
+        set.spawn(async move { (req.ttl, transport.probe(&req).await) });
     }
     let mut out = Vec::with_capacity(wanted.len());
     loop {
@@ -319,7 +336,8 @@ async fn probe_wave<P: Pinger + 'static>(
                 Err(DiagError::System {
                     code: 0,
                     message: "probe task failed".to_owned(),
-                }),
+                }
+                .into()),
             ));
         }
     }
@@ -332,12 +350,12 @@ enum CycleEnd {
     Cancelled,
 }
 
-async fn run_cycle<P: Pinger + 'static>(
-    pinger: &Arc<P>,
+async fn run_cycle<T: ProbeTransport + 'static>(
+    transport: &Arc<T>,
     state: &mut MtrState,
-    opts: &MtrOptions,
+    opts: &AdvMtrOptions,
     cancel: &CancelToken,
-) -> Result<CycleEnd, DiagError> {
+) -> Result<CycleEnd, MtrError> {
     let target = state.target;
     let known = state.end.map(|e| e.ttl);
     let mut upper = known.unwrap_or(opts.max_hops);
@@ -345,21 +363,27 @@ async fn run_cycle<P: Pinger + 'static>(
     let mut cycle_end: Option<End> = None;
     let mut answered = 0u32;
     let mut failed = 0u32;
-    let mut first_err: Option<DiagError> = None;
+    let mut first_err: Option<MtrError> = None;
     let mut lengthened = false;
 
     loop {
         let last = (next + u16::from(opts.parallelism) - 1).min(u16::from(upper));
-        let requests: Vec<EchoRequest> = (next..=last)
+        let requests: Vec<ProbeRequest> = (next..=last)
             .filter_map(|t| u8::try_from(t).ok())
-            .map(|ttl| EchoRequest {
-                target,
-                ttl,
-                payload_size: opts.packet_size,
-                timeout: opts.timeout,
+            .map(|ttl| {
+                state.next_seq = state.next_seq.wrapping_add(1);
+                ProbeRequest {
+                    target,
+                    mode: opts.mode,
+                    ttl,
+                    payload_size: opts.packet_size,
+                    port: opts.probe_port(),
+                    timeout: opts.timeout,
+                    seq: state.next_seq,
+                }
             })
             .collect();
-        let Some(results) = probe_wave(pinger, requests, cancel).await else {
+        let Some(results) = probe_wave(transport, requests, cancel).await else {
             return Ok(CycleEnd::Cancelled);
         };
         for (ttl, outcome) in results {
@@ -374,10 +398,14 @@ async fn run_cycle<P: Pinger + 'static>(
             state.apply(ttl, &outcome);
             match outcome {
                 Ok(reply) => {
-                    if let Some(reached) = terminal(&reply, target) {
-                        cycle_end = Some(End { ttl, reached });
+                    if let Some(reached) = terminal(&reply.to_echo(), target) {
+                        let via = match reply.status {
+                            ProbeStatus::Reached(kind) => Some(kind),
+                            _ => None,
+                        };
+                        cycle_end = Some(End { ttl, reached, via });
                     } else if Some(ttl) == known
-                        && reply.status == EchoStatus::TtlExpired
+                        && reply.status == ProbeStatus::TtlExpired
                         && reply.from.is_some()
                     {
                         lengthened = true;
@@ -417,8 +445,78 @@ async fn run_cycle<P: Pinger + 'static>(
     Ok(CycleEnd::Done)
 }
 
-/// Trace the route to `target`, delivering an [`MtrSnapshot`] to `sink` after every cycle, and
-/// return the last snapshot.
+/// The cycle engine shared by [`mtr()`] and [`crate::mtr_adv::mtr_with`]. `opts` must already be
+/// normalized (and validated) for `target`.
+///
+/// Delivers a [`CoreSnapshot`] to `sink` after every cycle and returns the last one. See [`mtr()`]
+/// for the cancellation rules.
+pub(crate) async fn run_trace<T, R, S>(
+    transport: Arc<T>,
+    target: IpAddr,
+    opts: &AdvMtrOptions,
+    names: &NameCache<R>,
+    cancel: &CancelToken,
+    sink: &mut S,
+) -> Result<CoreSnapshot, MtrError>
+where
+    T: ProbeTransport + 'static,
+    R: ReverseLookup,
+    S: Sink<CoreSnapshot>,
+{
+    transport.prepare(opts.mode, target)?;
+    let names = opts.resolve_names.then_some(names);
+    let mut state = MtrState::new(target);
+
+    for cycle in 0..opts.cycles {
+        if cancel.is_cancelled() {
+            return Ok(state.snapshot(opts.cycles, names, true));
+        }
+        let started = Instant::now();
+        match run_cycle(&transport, &mut state, opts, cancel).await? {
+            CycleEnd::Cancelled => return Ok(state.snapshot(opts.cycles, names, true)),
+            CycleEnd::Done => {}
+        }
+        state.cycles_done = cycle + 1;
+
+        if let Some(names) = names {
+            let addrs = state.addrs();
+            tokio::select! {
+                () = names.resolve(&addrs) => {}
+                () = cancel.cancelled() => {}
+            }
+        }
+        let snapshot = state.snapshot(opts.cycles, names, false);
+        let delivered = tokio::select! {
+            ok = sink.deliver(snapshot) => ok,
+            () = cancel.cancelled() => false,
+        };
+        if !delivered {
+            return Ok(state.snapshot(opts.cycles, names, true));
+        }
+        if cycle + 1 < opts.cycles {
+            tokio::select! {
+                () = tokio::time::sleep_until(started + opts.interval) => {}
+                () = cancel.cancelled() => {
+                    return Ok(state.snapshot(opts.cycles, names, true));
+                }
+            }
+        }
+    }
+    Ok(state.snapshot(opts.cycles, names, false))
+}
+
+/// Adapts a sink of simple snapshots to the engine's [`CoreSnapshot`].
+struct SimpleSink<'a, S>(&'a mut S);
+
+impl<S: Sink<MtrSnapshot>> Sink<CoreSnapshot> for SimpleSink<'_, S> {
+    async fn deliver(&mut self, item: CoreSnapshot) -> bool {
+        self.0.deliver(item.snapshot).await
+    }
+}
+
+/// Trace the route to `target` with ICMP echo, delivering an [`MtrSnapshot`] to `sink` after
+/// every cycle, and return the last snapshot. (For UDP / TCP-SYN probes, ASN / country and
+/// export see [`crate::mtr_adv`].)
 ///
 /// `names` resolves hop addresses to host names after each cycle (bounded by its own timeout,
 /// shared across runs); pass [`NameCache::disabled`] to skip that.
@@ -439,43 +537,14 @@ where
     R: ReverseLookup,
     S: Sink<MtrSnapshot>,
 {
-    let opts = options.normalized();
-    let mut state = MtrState::new(target);
-
-    for cycle in 0..opts.cycles {
-        if cancel.is_cancelled() {
-            return Ok(state.snapshot(opts.cycles, names, true));
-        }
-        let started = Instant::now();
-        match run_cycle(&pinger, &mut state, &opts, cancel).await? {
-            CycleEnd::Cancelled => return Ok(state.snapshot(opts.cycles, names, true)),
-            CycleEnd::Done => {}
-        }
-        state.cycles_done = cycle + 1;
-
-        let addrs = state.addrs();
-        tokio::select! {
-            () = names.resolve(&addrs) => {}
-            () = cancel.cancelled() => {}
-        }
-        let snapshot = state.snapshot(opts.cycles, names, false);
-        let delivered = tokio::select! {
-            ok = sink.deliver(snapshot) => ok,
-            () = cancel.cancelled() => false,
-        };
-        if !delivered {
-            return Ok(state.snapshot(opts.cycles, names, true));
-        }
-        if cycle + 1 < opts.cycles {
-            tokio::select! {
-                () = tokio::time::sleep_until(started + opts.interval) => {}
-                () = cancel.cancelled() => {
-                    return Ok(state.snapshot(opts.cycles, names, true));
-                }
-            }
-        }
+    let opts = AdvMtrOptions::from(&options.normalized()).normalized_for(target);
+    let transport = Arc::new(PingerTransport::new(pinger));
+    let mut sink = SimpleSink(sink);
+    match run_trace(transport, target, &opts, names, cancel, &mut sink).await {
+        Ok(last) => Ok(last.snapshot),
+        Err(MtrError::Diag(e)) => Err(e),
+        Err(MtrError::ModeUnavailable(m)) => Err(DiagError::InvalidInput(m.to_string())),
     }
-    Ok(state.snapshot(opts.cycles, names, false))
 }
 
 #[cfg(test)]

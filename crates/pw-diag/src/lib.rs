@@ -66,6 +66,7 @@ pub mod echo;
 pub mod error;
 pub mod fake;
 pub mod mtr;
+pub mod mtr_adv;
 pub mod names;
 pub mod ping;
 pub mod port;

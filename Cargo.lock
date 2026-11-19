@@ -3794,6 +3794,7 @@ dependencies = [
  "bytes",
  "futures-util",
  "hickory-resolver",
+ "pw-capture",
  "pw-speed-server",
  "reqwest",
  "rustls",
