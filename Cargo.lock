@@ -3757,6 +3757,7 @@ name = "pw-diag"
 version = "0.1.0"
 dependencies = [
  "hickory-resolver",
+ "pw-capture",
  "thiserror 2.0.21",
  "tokio",
  "tracing",

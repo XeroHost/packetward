@@ -11,6 +11,7 @@ publish = false
 [dependencies]
 # DNS over plain UDP/TCP only: no TLS/DoH/DoT features, so no C build dependency (ring, aws-lc).
 hickory-resolver = { version = "0.26", default-features = false, features = ["tokio", "system-config"] }
+pw-capture = { path = "../pw-capture" }
 thiserror.workspace = true
 tokio = { workspace = true, features = ["rt", "net", "time", "sync", "macros"] }
 tracing.workspace = true
