@@ -8,11 +8,13 @@
 //! they are stored. The kernel receive buffer is enlarged to ride out short stalls; what it still cannot
 //! hold is lost silently by Windows, which a raw socket cannot report (`kernel_drops` stays 0).
 //!
-//! **Known limitation, measured on the dev VPS** (Windows Server 2025, Red Hat VirtIO adapter, Windows
-//! Firewall on): with RDP and HTTPS traffic flowing, the socket delivered only *outbound* packets, none
-//! inbound, with `RCVALL_IPLEVEL` and with `RCVALL_ON`, bound to the adapter's address. Inbound visibility
-//! must be checked on every target machine (the live test prints the in/out split) before relying on this
-//! backend to see attacks; Npcap does not have this problem.
+//! **Observed on the dev VPS, cause not established:** (Windows Server 2025, Red Hat VirtIO adapter, Windows
+//! Firewall on) with RDP and HTTPS traffic flowing, the socket delivered only *outbound* packets and none
+//! inbound, with `RCVALL_IPLEVEL` and with `RCVALL_ON`, bound to the adapter's address. Suspected cause
+//! (a hypothesis, unverified because firewall changes and packet-drop auditing were out of scope): Windows
+//! Firewall filters inbound delivery to a raw socket per application, and the test executable has no
+//! inbound allow rule. Until this is resolved, inbound visibility must be checked on every target machine
+//! (the live test prints the in/out split) before relying on this backend to see attacks.
 
 use std::sync::Arc;
 
