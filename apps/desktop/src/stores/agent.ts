@@ -9,6 +9,7 @@ import {
   type ElevatedAction,
 } from '@/api/agent'
 import type { Heartbeat } from '@/types/generated/Heartbeat'
+import { useAlertsStore } from './alerts'
 import { useCaptureStore } from './capture'
 import { useDiagStore } from './diag'
 import { useLiveStore } from './live'
@@ -59,15 +60,22 @@ export const useAgentStore = defineStore('agent', () => {
         useLiveStore().reset()
         useDiagStore().reset()
         useCaptureStore().reset()
+        useAlertsStore().reset()
       } else {
         // Connecting counts as a sign of life: do not report "unresponsive" before the first beat.
         lastBeatAt.value = Date.now()
         now.value = Date.now()
+        // The inbox starts with what the agent already knows about.
+        void useAlertsStore().load()
       }
       return
     }
     if (event.type === 'stats') {
       useLiveStore().applyStats(event.data)
+      return
+    }
+    if (event.type === 'alert') {
+      useAlertsStore().applyEvent(event.data)
       return
     }
     if (event.type === 'capture') {

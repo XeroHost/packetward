@@ -2,7 +2,14 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { setTrayLocale } from '@/api/shell'
-import { loadUiPrefs, saveUiPrefs, systemLocale, type LanguageSetting } from '@/api/uiPrefs'
+import {
+  DEFAULT_NOTIFICATIONS,
+  loadUiPrefs,
+  saveUiPrefs,
+  systemLocale,
+  type LanguageSetting,
+  type NotificationPrefs,
+} from '@/api/uiPrefs'
 import { setI18nLocale } from '@/app/i18n'
 import { resolveLocale, type Locale } from '@/app/locale'
 import { useAppearanceStore } from './appearance'
@@ -12,6 +19,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const language = ref<LanguageSetting>('auto')
   const activeLocale = ref<Locale>('en')
   const systemTag = ref<string | null>(null)
+  const notifications = ref<NotificationPrefs>({ ...DEFAULT_NOTIFICATIONS })
   const ready = ref(false)
   const appearance = useAppearanceStore()
 
@@ -25,6 +33,7 @@ export const useSettingsStore = defineStore('settings', () => {
     const [prefs, tag] = await Promise.all([loadUiPrefs(), systemLocale()])
     systemTag.value = tag
     language.value = prefs.language
+    notifications.value = { ...DEFAULT_NOTIFICATIONS, ...prefs.notifications }
     appearance.hydrate(prefs.appearance)
     applyLanguage()
     ready.value = true
@@ -32,7 +41,12 @@ export const useSettingsStore = defineStore('settings', () => {
 
   async function persist(): Promise<void> {
     try {
-      await saveUiPrefs({ version: 1, language: language.value, appearance: appearance.prefs })
+      await saveUiPrefs({
+        version: 1,
+        language: language.value,
+        appearance: appearance.prefs,
+        notifications: notifications.value,
+      })
     } catch (err) {
       console.error('Could not save UI preferences', err)
     }
@@ -44,5 +58,22 @@ export const useSettingsStore = defineStore('settings', () => {
     await persist()
   }
 
-  return { language, activeLocale, ready, init, persist, setLanguage }
+  async function setNotification(
+    severity: keyof NotificationPrefs,
+    enabled: boolean,
+  ): Promise<void> {
+    notifications.value = { ...notifications.value, [severity]: enabled }
+    await persist()
+  }
+
+  return {
+    language,
+    activeLocale,
+    notifications,
+    ready,
+    init,
+    persist,
+    setLanguage,
+    setNotification,
+  }
 })

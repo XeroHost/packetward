@@ -11,6 +11,7 @@ publish = false
 [dependencies]
 pw-capture = { path = "../pw-capture" }
 pw-core = { path = "../pw-core" }
+pw-detect = { path = "../pw-detect" }
 pw-diag = { path = "../pw-diag" }
 pw-proto = { path = "../pw-proto" }
 pw-ipc = { path = "../pw-ipc" }
@@ -26,6 +27,7 @@ zip = { version = "9", default-features = false, features = ["deflate"] }
 windows = { workspace = true, features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Authorization"] }
 
 [dev-dependencies]
+pw-detect = { path = "../pw-detect", features = ["testgen"] }
 tempfile = "3"
 pw-ipc = { path = "../pw-ipc", features = ["memory"] }
 tokio = { workspace = true, features = ["macros", "rt", "sync", "test-util", "time"] }

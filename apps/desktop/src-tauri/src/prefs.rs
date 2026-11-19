@@ -92,12 +92,35 @@ impl Default for Appearance {
     }
 }
 
+/// Which alert severities pop up a Windows notification. Alerts always appear in the inbox.
+/// Default: critical and high only, no quiet hours.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct Notifications {
+    pub critical: bool,
+    pub high: bool,
+    pub medium: bool,
+    pub low: bool,
+}
+
+impl Default for Notifications {
+    fn default() -> Self {
+        Self {
+            critical: true,
+            high: true,
+            medium: false,
+            low: false,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct UiPrefs {
     pub version: u32,
     pub language: Language,
     pub appearance: Appearance,
+    pub notifications: Notifications,
 }
 
 impl Default for UiPrefs {
@@ -106,6 +129,7 @@ impl Default for UiPrefs {
             version: PREFS_VERSION,
             language: Language::Auto,
             appearance: Appearance::default(),
+            notifications: Notifications::default(),
         }
     }
 }
@@ -193,6 +217,12 @@ mod tests {
                 text_size: 125,
                 reduce_motion: true,
             },
+            notifications: Notifications {
+                critical: false,
+                high: true,
+                medium: true,
+                low: false,
+            },
         };
         save_to(&path, &prefs).unwrap();
         assert_eq!(load_from(&path), prefs);
@@ -206,6 +236,8 @@ mod tests {
         assert_eq!(json["appearance"]["monoFont"], "jetbrains");
         assert_eq!(json["appearance"]["textSize"], 100);
         assert_eq!(json["appearance"]["reduceMotion"], false);
+        assert_eq!(json["notifications"]["critical"], true);
+        assert_eq!(json["notifications"]["medium"], false);
     }
 
     #[test]

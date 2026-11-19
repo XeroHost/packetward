@@ -53,4 +53,7 @@ here with its reason. Review them when you are back.
 | 2026-11-19 | M4 | An inbound allow rule for the agent exe is needed for raw-socket delivery (hypothesis, untested here) | Firewall changes are prohibited on the dev VPS: documented in TESTING §F4 and to be added by the installer (M11) in group `PacketWard` |
 | 2026-11-19 | M4 | Support bundle is delivered to the client in chunks and saved by the client in its own Documents folder; with anonymization on, the pcapng is left out | Operators may not be administrators; a pcapng cannot be anonymized; the agent must never write to client-supplied paths |
 | 2026-11-19 | M4 | Support bundle runs `ipconfig /all` and `route print` | The documented exception for read-only diagnostics; support always asks for them |
+| 2026-11-19 | M5 | Alerts are persisted as JSON lines (`alerts.jsonl`, 500 kept in memory, rotated at 10 MB) instead of SQLite | `pw-store` does not exist yet; the file is enough for the inbox and is replaced when the store lands (M11 logs) |
+| 2026-11-19 | M5 | Failed-logon detection counts LogonType 3, 7 and 10 with a remote address | RDP with NLA logs failures as type 3; this also covers other network password guessing, which is the same attack |
+| 2026-11-19 | M5 | Toasts only for critical + high by default, no quiet hours; tray badge neutral/warning/alert | Decision M5-1=A; monitor/active/blocking tray states need the Guardian (M7) |
 | 2026-11-19 | M5 | SynFlood is suppressed for a source that is also port-scanning unless its SYN rate is ≥ 10× threshold | One scan = one alert |

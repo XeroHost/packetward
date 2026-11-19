@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 /// Bumped on breaking protocol changes. A different major means the two sides cannot talk.
 pub const PROTOCOL_MAJOR: u16 = 1;
 /// Bumped on backwards-compatible additions.
-pub const PROTOCOL_MINOR: u16 = 4;
+pub const PROTOCOL_MINOR: u16 = 5;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts-export", derive(ts_rs::TS), ts(export))]

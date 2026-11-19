@@ -40,6 +40,7 @@ pub async fn run_agent(
             let mut config = EngineConfig::new(AGENT_VERSION, service_mode);
             // Passive and bounded: the live capture feeds the traffic page and the detectors.
             config.capture_autostart = true;
+            config.alerts_log = Some(crate::logging::data_dir().join("alerts.jsonl"));
             config
         },
         Arc::new(WindowsNetStat::new()),

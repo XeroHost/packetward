@@ -26,6 +26,28 @@ export async function setTrayLocale(locale: string): Promise<void> {
   }
 }
 
+export type TrayState = 'neutral' | 'warning' | 'alert'
+
+/** Shows the machine's state in the tray icon (a coloured badge) and its tooltip. */
+export async function setTrayState(state: TrayState, tooltip: string): Promise<void> {
+  if (!isTauri()) return
+  try {
+    await invoke('tray_set_state', { state, tooltip })
+  } catch (err) {
+    console.warn('Could not update the tray icon', err)
+  }
+}
+
+/** A Windows notification. Failures (notifications disabled in Windows) are not worth a dialog. */
+export async function notifyAlert(title: string, body: string): Promise<void> {
+  if (!isTauri()) return
+  try {
+    await invoke('notify_alert', { title, body })
+  } catch (err) {
+    console.warn('Could not show the notification', err)
+  }
+}
+
 /** Whether the native window can currently be seen (not hidden to the tray, not minimized). */
 export async function getWindowVisible(): Promise<boolean> {
   if (!isTauri()) return true

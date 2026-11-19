@@ -186,6 +186,24 @@ Automated tests cover the pipeline, stats, recorder, blind detection, support bu
    addresses* none of the server's addresses or its name appear in any text file (search them), and `capture.pcapng` is absent.
    `pwctl support-bundle --capture-secs 10` produces the same zip from the command line.
 
+## F5. Alerts and notifications (M5)
+
+Automated tests cover every detector on its fixture and the quiet "normal traffic" fixture, the engine wiring (netstat, failed logons,
+capture sink), the alert store and the inbox/notification logic. Live, on a **test VPS**:
+
+1. **RDP brute force**: from another machine try 15 wrong passwords against the server's RDP within a minute. An *RDP password guessing*
+   alert appears in Alerts with the attacker's address; *Audit Logon* failure auditing must be on (`pwctl status` warns if not). With
+   NLA the events are LogonType 3, without it type 10: test both if you can. Your own RDP address (with a successful logon) is shown as
+   *protected source*, never blocked.
+2. **Connection flood**: from another machine open 300+ connections to a listening port (for example with a small script); a *Connection
+   flood* alert shows the address and the number of connections and ends about a minute after you stop.
+3. **SYN / UDP / ICMP flood and port scan** (needs working capture: Npcap, or the firewall rule from §F4): `hping3 -S --flood`, UDP
+   flood, `ping -f`, and `nmap -p 1-1000` from another machine each raise their alert; a normal day of traffic raises none.
+4. **Notifications**: with the window closed to the tray, trigger a high alert: a Windows toast appears naming the attack and the source;
+   the tray icon gets a red badge and a tooltip while it lasts. In Settings → Notifications, switch High off: no toast for the next high
+   alert, but it is still in the inbox. Medium/low never pop up by default.
+5. Restart the agent: the inbox still lists the earlier alerts (marked finished); *Clear finished* removes them for good.
+
 ## G. Leave-no-trace check
 
 After testing, all of these must be empty / `False`:

@@ -6,7 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::{CaptureLive, DiagEvent, Heartbeat, LiveStats};
+use crate::{AlertView, CaptureLive, DiagEvent, Heartbeat, LiveStats};
 
 /// Why the agent pipe refused this Windows user.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -67,6 +67,7 @@ pub enum BridgeEvent {
     Stats(LiveStats),
     Diag(DiagEvent),
     Capture(CaptureLive),
+    Alert(AlertView),
 }
 
 /// What the UI may ask the agent executable to do with administrator rights.

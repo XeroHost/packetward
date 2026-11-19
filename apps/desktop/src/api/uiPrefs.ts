@@ -17,10 +17,26 @@ export interface AppearancePrefs {
   reduceMotion: boolean
 }
 
+/** Which alert severities pop up a Windows notification (alerts always appear in the inbox). */
+export interface NotificationPrefs {
+  critical: boolean
+  high: boolean
+  medium: boolean
+  low: boolean
+}
+
 export interface UiPrefs {
   version: 1
   language: LanguageSetting
   appearance: AppearancePrefs
+  notifications: NotificationPrefs
+}
+
+export const DEFAULT_NOTIFICATIONS: NotificationPrefs = {
+  critical: true,
+  high: true,
+  medium: false,
+  low: false,
 }
 
 export const DEFAULT_UI_PREFS: UiPrefs = {
@@ -33,6 +49,7 @@ export const DEFAULT_UI_PREFS: UiPrefs = {
     textSize: 100,
     reduceMotion: false,
   },
+  notifications: { ...DEFAULT_NOTIFICATIONS },
 }
 
 /** True when running inside the Tauri webview (false in plain browsers and unit tests). */

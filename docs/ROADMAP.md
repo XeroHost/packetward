@@ -73,12 +73,12 @@ VM caps at ~31 ms per frame). Not seen yet: the GitHub Actions run of M2, and th
 not freeze the UI (drops are counted, not hidden).
 
 ## M5 — Detection engine & alerts
-- [ ] Sliding windows per source IP; detectors SynFlood, UdpFlood, IcmpFlood, PortScan, ConnFlood, Aggregate.
-- [ ] RDP brute-force watcher (Security log 4625) → RdpBruteForce detector.
-- [ ] Alerts stored + `alerts` subscription + in-app inbox.
-- [ ] Windows toast notifications (from the UI/tray process) + tray icon state (neutral/monitor/active/blocking),
-      with per-severity mute in Settings.
-- [ ] Fixtures + synthetic generators; deterministic tests per detector.
+- [x] Sliding windows per source IP; detectors SynFlood, UdpFlood, IcmpFlood, PortScan, ConnFlood, Aggregate.
+- [x] RDP brute-force watcher (Security log 4625) → RdpBruteForce detector.
+- [x] Alerts stored + `alerts` subscription + in-app inbox.
+- [x] Windows toast notifications (from the UI/tray process) + tray icon state, with per-severity mute in Settings.
+      (Tray: neutral / warning / alert badge now; the Guardian monitor/active/blocking states arrive with M7.)
+- [x] Fixtures + synthetic generators; deterministic tests per detector.
 **Accept:** each detector fires on its fixture and stays quiet on a "normal traffic" fixture; a toast appears
 for a critical alert while the main window is closed.
 

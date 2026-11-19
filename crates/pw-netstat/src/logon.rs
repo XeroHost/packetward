@@ -141,6 +141,26 @@ pub fn parse_logon_event(xml: &str) -> Option<LogonEvent> {
     })
 }
 
+/// Extracts a **failed** logon from a remote address (Security 4625), the input of RDP brute-force
+/// detection. RDP with Network Level Authentication logs these as LogonType 3 (network), without NLA
+/// as 10 (remote interactive); 7 is a failed reconnect. Failures without a remote address (a local
+/// console, service accounts logging on from the machine itself) are dropped.
+///
+/// These events never enter the trust set: a bot that fails logons must not earn protection.
+pub fn parse_failed_logon_event(xml: &str) -> Option<LogonEvent> {
+    let id = element_text(xml, "EventID")?.parse::<u32>().ok()?;
+    if id != 4625 {
+        return None;
+    }
+    if !matches!(data_named(xml, "LogonType")?, "3" | "7" | "10") {
+        return None;
+    }
+    Some(LogonEvent {
+        addr: client_address(data_named(xml, "IpAddress")?)?,
+        at_unix_ms: parse_system_time(attribute(xml, "TimeCreated", "SystemTime")?)?,
+    })
+}
+
 /// Addresses with a successful RDP logon inside a sliding window. Bounded: when more than `cap`
 /// distinct addresses appear, the least recently seen ones are dropped.
 #[derive(Debug)]
@@ -277,6 +297,34 @@ mod tests {
         assert_eq!(event.addr, "2001:db8::5".parse::<IpAddr>().unwrap());
         let event = parse_logon_event(&xml_4624("10", "::ffff:203.0.113.9")).unwrap();
         assert_eq!(event.addr, "203.0.113.9".parse::<IpAddr>().unwrap());
+    }
+
+    #[test]
+    fn failed_rdp_logons_give_the_attacker_address_for_nla_and_non_nla() {
+        let nla = xml_4624("3", "198.51.100.9").replace("4624", "4625");
+        let event = parse_failed_logon_event(&nla).unwrap();
+        assert_eq!(event.addr, "198.51.100.9".parse::<IpAddr>().unwrap());
+        assert!(event.at_unix_ms > 0);
+        let classic = xml_4624("10", "2001:db8::7").replace("4624", "4625");
+        assert!(parse_failed_logon_event(&classic).is_some());
+    }
+
+    #[test]
+    fn failed_logon_parser_ignores_everything_else() {
+        let bad_type = xml_4624("2", "198.51.100.9").replace("4624", "4625"); // interactive console
+        assert_eq!(parse_failed_logon_event(&bad_type), None);
+        for ip in ["-", "", "127.0.0.1", "::1", "0.0.0.0"] {
+            let local = xml_4624("3", ip).replace("4624", "4625");
+            assert_eq!(parse_failed_logon_event(&local), None, "{ip:?}");
+        }
+        // A success is not a failure, and failures never parse as successes.
+        assert_eq!(
+            parse_failed_logon_event(&xml_4624("10", "198.51.100.9")),
+            None
+        );
+        let failed = xml_4624("10", "198.51.100.9").replace("4624", "4625");
+        assert_eq!(parse_logon_event(&failed), None);
+        assert_eq!(parse_failed_logon_event(""), None);
     }
 
     #[test]

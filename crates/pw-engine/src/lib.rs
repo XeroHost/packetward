@@ -7,6 +7,7 @@
 
 mod capture;
 mod connections;
+mod detect;
 mod diag;
 mod poller;
 mod support;
@@ -32,6 +33,7 @@ use tokio::task::JoinHandle;
 use tokio::time::{Instant, MissedTickBehavior};
 
 pub use capture::{CaptureHost, CaptureManager, PacketSink, SystemCaptureHost};
+pub use detect::{AlertStore, DetectionService, KEEP_INCIDENTS};
 pub use diag::{Diag, MAX_RUNNING_JOBS};
 pub use poller::{Poller, Snapshot};
 pub use trust::{TrustState, DEFAULT_WINDOW_DAYS};
@@ -58,6 +60,13 @@ pub struct EngineConfig {
     pub support_dir: PathBuf,
     /// The agent log folder, read for the support bundle.
     pub logs_dir: PathBuf,
+    /// Alerts are appended here as JSON lines so the inbox survives restarts. `None` (the default of
+    /// `EngineConfig::new`) keeps them in memory only; the agent sets the real path.
+    pub alerts_log: Option<PathBuf>,
+    /// How sensitive the detectors are.
+    pub detect_preset: pw_detect::Preset,
+    /// How often the detectors are ticked.
+    pub detect_interval: Duration,
     /// Start the live capture when the engine starts. Off by default so tests and tools that build
     /// an engine never open a capture; the agent turns it on.
     pub capture_autostart: bool,
@@ -75,6 +84,9 @@ impl EngineConfig {
             capture_dir: data_dir().join("captures"),
             support_dir: data_dir().join("support"),
             logs_dir: data_dir().join("logs"),
+            alerts_log: None,
+            detect_preset: pw_detect::Preset::Balanced,
+            detect_interval: Duration::from_secs(1),
             capture_autostart: false,
         }
     }
@@ -96,7 +108,9 @@ pub struct Engine {
     diag: Diag<SystemPinger>,
     capture: Arc<CaptureManager>,
     support: support::SupportService,
+    alerts: Arc<AlertStore>,
     _poller: AbortOnDrop,
+    _detector: AbortOnDrop,
 }
 
 impl Engine {
@@ -125,6 +139,41 @@ impl Engine {
                 trust.set_feed(state);
             });
         }
+        // Detection: fed by netstat, the adapter counters, the failed-logon feed and (when it works)
+        // the packet capture. The alerts it raises are kept, persisted and pushed to subscribers.
+        let alerts = Arc::new(AlertStore::new(config.alerts_log.clone()));
+        let detection = Arc::new(DetectionService::new(
+            config.detect_preset,
+            Arc::clone(&alerts),
+        ));
+        {
+            let netstat = Arc::clone(&netstat);
+            let detection = Arc::clone(&detection);
+            tokio::task::spawn_blocking(move || {
+                let feed: pw_netstat::LogonSink =
+                    Arc::new(move |event| detection.logon_failure(event));
+                if !netstat.start_failure_feed(feed) {
+                    tracing::warn!(
+                        "failed logons cannot be read: RDP brute force will not be detected"
+                    );
+                }
+            });
+        }
+        let detector_task = tokio::spawn(detect_loop(
+            Arc::clone(&detection),
+            latest.clone(),
+            Arc::clone(&trust),
+            config.detect_interval,
+        ));
+        let packet_sink: PacketSink = {
+            let detection = Arc::clone(&detection);
+            Arc::new(move |batch| {
+                detection.ingest(batch);
+                if let Some(extra) = &sink {
+                    extra(batch);
+                }
+            })
+        };
         let task = tokio::spawn(poll_loop(
             netstat,
             publish,
@@ -132,7 +181,11 @@ impl Engine {
             config.rdp_refresh_every,
             trust,
         ));
-        let capture = Arc::new(CaptureManager::new(host, config.capture_dir.clone(), sink));
+        let capture = Arc::new(CaptureManager::new(
+            host,
+            config.capture_dir.clone(),
+            Some(packet_sink),
+        ));
         if config.capture_autostart {
             let capture = Arc::clone(&capture);
             tokio::spawn(async move {
@@ -157,7 +210,9 @@ impl Engine {
             diag: Diag::new(Arc::new(SystemPinger)),
             support,
             capture,
+            alerts,
             _poller: AbortOnDrop(task),
+            _detector: AbortOnDrop(detector_task),
         }
     }
 
@@ -187,6 +242,35 @@ impl Engine {
             pid: std::process::id(),
             uptime_secs: self.uptime_secs(),
             service_mode: self.config.service_mode,
+        }
+    }
+}
+
+/// Ticks the detectors every `period` with the latest network snapshot, and keeps the set of
+/// protected sources (addresses with a successful RDP logon) current.
+async fn detect_loop(
+    detection: Arc<DetectionService>,
+    latest: watch::Receiver<Option<Arc<Snapshot>>>,
+    trust: Arc<TrustState>,
+    period: Duration,
+) {
+    let mut ticker = tokio::time::interval(period);
+    ticker.set_missed_tick_behavior(MissedTickBehavior::Skip);
+    loop {
+        ticker.tick().await;
+        let snapshot = latest.borrow().clone();
+        let trusted: Vec<String> = trust
+            .addresses(poller::unix_ms())
+            .into_iter()
+            .map(|a| a.addr)
+            .collect();
+        let detection = Arc::clone(&detection);
+        let job = tokio::task::spawn_blocking(move || {
+            detection.set_protected(detect::protected_from(&trusted));
+            detect::tick_now(&detection, snapshot.as_deref())
+        });
+        if let Err(err) = job.await {
+            tracing::error!(%err, "the detection tick failed");
         }
     }
 }
@@ -333,6 +417,11 @@ impl Handler for Engine {
                 self.support.discard(&request.id);
                 Ok(Value::Null)
             }
+            method::ALERTS_LIST => to_value(&self.alerts.list()),
+            method::ALERTS_CLEAR => {
+                self.alerts.clear_ended();
+                to_value(&self.alerts.list())
+            }
             other => Err(ErrorPayload::new(
                 ErrorCode::UnknownMethod,
                 format!("unknown method `{other}`"),
@@ -392,6 +481,7 @@ impl Handler for Engine {
                 Ok(rx)
             }
             topic::DIAG_PROGRESS => Ok(self.diag.subscribe()),
+            topic::ALERTS => Ok(self.alerts.subscribe()),
             topic::CAPTURE_STATS => {
                 let (tx, rx) = mpsc::channel(SUBSCRIPTION_QUEUE);
                 let mut live = self.capture.subscribe();

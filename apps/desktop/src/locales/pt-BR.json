@@ -17,7 +17,8 @@
     "threatIntel": "Inteligência de ameaças",
     "logs": "Registros",
     "settings": "Configurações",
-    "about": "Sobre"
+    "about": "Sobre",
+    "alerts": "Alertas"
   },
   "topbar": {
     "agent": {
@@ -75,6 +76,11 @@
       "en": "English",
       "es": "Español",
       "ptBR": "Português (Brasil)"
+    },
+    "notifications": {
+      "title": "Notificações",
+      "description": "Quais alertas mostram uma notificação do Windows. Todos os alertas aparecem sempre na caixa de Alertas.",
+      "hint": "As notificações são mostradas por este aplicativo, então aparecem enquanto ele estiver em execução (minimizado na bandeja conta). O agente protege o servidor de qualquer forma."
     }
   },
   "about": {
@@ -483,6 +489,85 @@
       "neverUploaded": "O PacketWard nunca o envia.",
       "saved": "Salvo em",
       "attach": "Anexe este arquivo ao seu ticket de suporte."
+    }
+  },
+  "alerts": {
+    "filter": "Filtro",
+    "all": "Todos ({count})",
+    "ongoing": "Em andamento ({count})",
+    "ongoingBadge": "em andamento",
+    "clearEnded": "Limpar encerrados",
+    "failed": "Não foi possível ler a lista de alertas do agente.",
+    "protected": "origem protegida",
+    "source": "Origem",
+    "distributed": "muitos endereços",
+    "duration": "durou {time}",
+    "none": "Nenhum alerta. Quando o PacketWard vir um flood, uma varredura ou uma tentativa de força bruta, aparecerá aqui.",
+    "noneOngoing": "Nada está acontecendo agora.",
+    "unread": "{count} alertas novos",
+    "severity": {
+      "low": "Baixa",
+      "medium": "Média",
+      "high": "Alta",
+      "critical": "Crítica"
+    },
+    "toast": {
+      "title": "{severity}: {summary}",
+      "fromSource": "De {source}",
+      "distributed": "De muitos endereços"
+    },
+    "tray": {
+      "neutral": "PacketWard — sem alertas ativos",
+      "warning": "PacketWard — alerta em andamento",
+      "alert": "PacketWard — ataque em andamento"
+    },
+    "summary": {
+      "syn_flood": "Flood SYN",
+      "syn_flood_distributed": "Flood SYN de muitos endereços",
+      "udp_flood": "Flood UDP",
+      "udp_flood_distributed": "Flood UDP de muitos endereços",
+      "icmp_flood": "Flood ICMP (ping)",
+      "icmp_flood_distributed": "Flood ICMP de muitos endereços",
+      "port_scan_vertical": "Varredura de portas",
+      "port_scan_horizontal": "Varredura de rede",
+      "conn_flood": "Flood de conexões",
+      "rdp_brute_force": "Tentativa de adivinhar senhas RDP",
+      "volumetric_attack": "Link saturado"
+    },
+    "explain": {
+      "syn_flood": "Um endereço abre uma enorme quantidade de conexões que nunca completa, para esgotar o servidor.",
+      "syn_flood_distributed": "Muitos endereços abrem conexões que nunca completam.",
+      "udp_flood": "Um endereço envia um volume muito alto de pacotes UDP.",
+      "udp_flood_distributed": "Chega um volume muito alto de pacotes UDP de muitos endereços.",
+      "icmp_flood": "Um endereço envia um volume muito alto de pacotes de ping.",
+      "icmp_flood_distributed": "Chega um volume muito alto de pacotes de ping de muitos endereços.",
+      "port_scan_vertical": "Um endereço sonda muitas portas deste servidor, procurando algo para atacar.",
+      "port_scan_horizontal": "Um endereço sonda a mesma porta em muitos equipamentos.",
+      "conn_flood": "Um endereço mantém ou abre um número incomum de conexões.",
+      "rdp_brute_force": "Um endereço falha repetidamente ao entrar por Área de Trabalho Remota: alguém está testando senhas.",
+      "volumetric_attack": "O tráfego de entrada usa quase todo o link de rede."
+    },
+    "metrics": {
+      "syn": "Pacotes SYN",
+      "syn_total": "Pacotes SYN (todos)",
+      "syn_unattributed": "Pacotes SYN (muitas origens)",
+      "synack_out": "SYN-ACK enviados",
+      "ack": "ACK",
+      "ack_total": "ACK (todos)",
+      "completion_permille": "Concluídas",
+      "packets": "Pacotes",
+      "packets_unattributed": "Pacotes (muitas origens)",
+      "bytes": "Dados",
+      "bytes_unattributed": "Dados (muitas origens)",
+      "distinct_ports": "Portas sondadas",
+      "distinct_hosts": "Equipamentos sondados",
+      "concurrent_connections": "Conexões",
+      "new_connections": "Novas conexões",
+      "failures": "Logons falhos",
+      "inbound_bps": "Entrada",
+      "link_bps": "Link",
+      "utilization_permille": "Uso do link",
+      "sustained_secs": "Sustentado"
     }
   }
 }

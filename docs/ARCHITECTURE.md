@@ -175,6 +175,18 @@ Detectors (each with configurable thresholds and a severity):
 Detectors receive time explicitly (`now: Instant`) so tests are deterministic. Test with `fixtures/*.pcapng` and
 synthetic generators.
 
+**Integration (M5).** `pw-engine::detect::DetectionService` owns one `pw_detect::Engine` and ticks it every second (wall-clock
+nanoseconds since the Unix epoch, the same clock as `PacketMeta`; `pw-detect` takes `now_ns: u64`, not `Instant`). Inputs that exist
+without capture: **netstat** (per-remote concurrent and new TCP connections → ConnFlood), the **adapter counters** (inbound bps and link
+speed → Aggregate) and the **failed-logon feed** (Security 4625, LogonType 3/7/10 from a remote address → RdpBruteForce; subscribed
+live, no history). **Capture** (when the backend actually sees inbound packets) adds the SYN/UDP/ICMP flood and scan detectors through
+the capture `PacketSink`. The protected set (trusted RDP clients) only sets the alert's `protected` flag: alerts are always raised and
+nothing is blocked here. `AlertStore` keeps the 500 most recent incidents (one per id, merged across started/escalated/ended, peak
+severity kept), appends every change to `%ProgramData%\PacketWard\alerts.jsonl` (rotated at 10 MB; reloaded at start, incidents that were
+running are shown as ended) and pushes them on the `alerts` topic; `alerts.list` / `alerts.clear` (removes ended incidents). The
+desktop app turns them into the inbox, the unread badge, the tray badge and Windows notifications (severities chosen in Settings; default
+critical + high).
+
 ### 6.3 Guardian / auto-blocker (`pw-engine::guardian`)
 - Policy = list of rules: `detector + threshold + window → action (Alert | Block { ttl })`.
 - Escalation: repeat offenders get TTL × 2 up to a max (e.g. 15 min → 30 → 60 … → 24 h).

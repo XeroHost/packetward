@@ -5,8 +5,10 @@ import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import { NAV_ITEMS } from '@/app/nav'
 import BrandLogo from '@/components/pw/BrandLogo.vue'
+import { useAlertsStore } from '@/stores/alerts'
 
 const { t } = useI18n()
+const alerts = useAlertsStore()
 </script>
 
 <template>
@@ -25,6 +27,13 @@ const { t } = useI18n()
           >
             <component :is="item.icon" class="size-4 shrink-0" aria-hidden="true" />
             <span class="truncate">{{ t(item.labelKey) }}</span>
+            <span
+              v-if="item.id === 'alerts' && alerts.unread > 0"
+              class="bg-danger text-text-on-brand ml-auto min-w-5 rounded-full px-1.5 text-center text-[10px] leading-5 font-semibold"
+              :aria-label="t('alerts.unread', { count: alerts.unread })"
+            >
+              {{ alerts.unread > 99 ? '99+' : alerts.unread }}
+            </span>
           </RouterLink>
         </li>
       </ul>

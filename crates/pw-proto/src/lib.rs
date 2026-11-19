@@ -5,6 +5,7 @@
 //! feature the types also derive `ts_rs::TS`; `cargo test -p pw-proto --features ts-export`
 //! regenerates `apps/desktop/src/types/generated`.
 
+mod alerts;
 mod bridge;
 mod capture;
 mod diag;
@@ -17,6 +18,7 @@ mod subscribe;
 mod support;
 mod system;
 
+pub use alerts::{AlertKindView, AlertList, AlertMetric, AlertPhaseView, AlertSeverity, AlertView};
 pub use bridge::{AccessReason, AgentConnection, BridgeEvent, ElevatedAction, ElevationOutcome};
 pub use capture::{
     BackendKindView, BackendStatusView, CaptureCounters, CaptureFile, CaptureFileRequest,
@@ -72,6 +74,8 @@ pub mod method {
     pub const SUPPORT_CREATE: &str = "support.bundle.create";
     pub const SUPPORT_READ: &str = "support.bundle.read";
     pub const SUPPORT_DISCARD: &str = "support.bundle.discard";
+    pub const ALERTS_LIST: &str = "alerts.list";
+    pub const ALERTS_CLEAR: &str = "alerts.clear";
     pub const SUBSCRIBE: &str = "subscribe";
     pub const UNSUBSCRIBE: &str = "unsubscribe";
 }
@@ -85,5 +89,7 @@ pub mod topic {
     /// Progress of diagnostics jobs (ping replies, MTR snapshots), see [`crate::DiagEvent`].
     /// Live capture statistics once per second, see [`crate::CaptureLive`].
     pub const CAPTURE_STATS: &str = "capture.stats";
+    /// Every change of an incident (started, escalated, ended), see [`crate::AlertView`].
+    pub const ALERTS: &str = "alerts";
     pub const DIAG_PROGRESS: &str = "diag.progress";
 }

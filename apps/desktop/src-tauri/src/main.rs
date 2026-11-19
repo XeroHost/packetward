@@ -72,6 +72,29 @@ fn tray_set_locale(app: tauri::AppHandle, locale: String) -> Result<(), String> 
     tray::set_locale(&app, &locale).map_err(|err| err.to_string())
 }
 
+/// Shows what is going on in the tray icon (a coloured badge) and its tooltip.
+#[tauri::command]
+fn tray_set_state(
+    app: tauri::AppHandle,
+    state: tray::TrayState,
+    tooltip: String,
+) -> Result<(), String> {
+    tray::set_state(&app, state, &tooltip).map_err(|err| err.to_string())
+}
+
+/// Pops up a Windows notification. The UI decides which alerts deserve one (the user's severity
+/// settings); this process is the one that can show it, the agent service cannot.
+#[tauri::command]
+fn notify_alert(app: tauri::AppHandle, title: String, body: String) -> Result<(), String> {
+    use tauri_plugin_notification::NotificationExt;
+    app.notification()
+        .builder()
+        .title(title)
+        .body(body)
+        .show()
+        .map_err(|err| err.to_string())
+}
+
 fn startup_locale(app: &tauri::AppHandle) -> &'static str {
     let saved = prefs_file(app)
         .map(|path| prefs::load_from(&path).language)
@@ -97,6 +120,7 @@ fn main() -> anyhow::Result<()> {
             Some(vec![MINIMIZED_FLAG]),
         ))
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_notification::init())
         .manage(bridge::Bridge::default())
         .invoke_handler(tauri::generate_handler![
             ui_prefs_load,
@@ -110,6 +134,8 @@ fn main() -> anyhow::Result<()> {
             bridge::agent_connections,
             bridge::agent_call,
             bridge::support_bundle_save,
+            tray_set_state,
+            notify_alert,
             bridge::agent_elevate
         ])
         .setup(|app| {

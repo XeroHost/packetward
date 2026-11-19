@@ -101,6 +101,69 @@ pub fn init(app: &AppHandle, locale: &str) -> tauri::Result<()> {
     Ok(())
 }
 
+/// What the tray icon says about the machine right now.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TrayState {
+    /// Nothing is happening.
+    Neutral,
+    /// Low or medium alerts are ongoing.
+    Warning,
+    /// High or critical alerts are ongoing.
+    Alert,
+}
+
+impl TrayState {
+    /// Badge colour (RGB) drawn over the app icon; none for the neutral state.
+    fn badge(self) -> Option<[u8; 3]> {
+        match self {
+            Self::Neutral => None,
+            Self::Warning => Some([0xF5, 0xA5, 0x24]),
+            Self::Alert => Some([0xE5, 0x48, 0x4D]),
+        }
+    }
+}
+
+/// Draws a filled circle in the bottom-right corner of an RGBA image (about a third of its width).
+pub fn with_badge(rgba: &[u8], width: u32, height: u32, color: [u8; 3]) -> Vec<u8> {
+    let mut out = rgba.to_vec();
+    let radius = (width.min(height) as f32) * 0.18;
+    let cx = width as f32 - radius - 1.0;
+    let cy = height as f32 - radius - 1.0;
+    for y in 0..height {
+        for x in 0..width {
+            let (dx, dy) = (x as f32 + 0.5 - cx, y as f32 + 0.5 - cy);
+            if dx * dx + dy * dy <= radius * radius {
+                let at = ((y * width + x) * 4) as usize;
+                if let Some(pixel) = out.get_mut(at..at + 4) {
+                    pixel.copy_from_slice(&[color[0], color[1], color[2], 0xFF]);
+                }
+            }
+        }
+    }
+    out
+}
+
+/// Updates the tray icon badge and tooltip (translated by the UI).
+pub fn set_state(app: &AppHandle, state: TrayState, tooltip: &str) -> tauri::Result<()> {
+    let Some(tray) = app.tray_by_id(TRAY_ID) else {
+        return Ok(());
+    };
+    tray.set_tooltip(Some(tooltip))?;
+    if let Some(base) = app.default_window_icon() {
+        let icon = match state.badge() {
+            Some(color) => tauri::image::Image::new_owned(
+                with_badge(base.rgba(), base.width(), base.height(), color),
+                base.width(),
+                base.height(),
+            ),
+            None => base.clone(),
+        };
+        tray.set_icon(Some(icon))?;
+    }
+    Ok(())
+}
+
 /// Re-labels the tray menu when the user changes the interface language.
 pub fn set_locale(app: &AppHandle, locale: &str) -> tauri::Result<()> {
     if let Some(tray) = app.tray_by_id(TRAY_ID) {
@@ -142,6 +205,27 @@ mod tests {
         ] {
             assert_eq!(detect_locale(tag), expected, "{tag:?}");
         }
+    }
+
+    #[test]
+    fn the_badge_only_touches_the_corner() {
+        let (w, h) = (32u32, 32u32);
+        let base = vec![10u8; (w * h * 4) as usize];
+        let out = with_badge(&base, w, h, [1, 2, 3]);
+        assert_eq!(out.len(), base.len());
+        let pixel = |x: u32, y: u32| &out[((y * w + x) * 4) as usize..][..4];
+        assert_eq!(
+            pixel(0, 0),
+            &[10, 10, 10, 10],
+            "the far corner is untouched"
+        );
+        assert_eq!(
+            pixel(w - 4, h - 4),
+            &[1, 2, 3, 255],
+            "the badge is bottom right"
+        );
+        assert!(TrayState::Neutral.badge().is_none());
+        assert_ne!(TrayState::Warning.badge(), TrayState::Alert.badge());
     }
 
     #[test]

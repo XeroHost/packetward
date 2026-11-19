@@ -85,6 +85,12 @@ pub trait NetStat: Send + Sync + 'static {
         TrustFeed::Unavailable
     }
 
+    /// Starts delivering **failed** remote logons (Security 4625) as they happen, for brute-force
+    /// detection. Returns whether the event log could be used. No history is loaded.
+    fn start_failure_feed(&self, _sink: LogonSink) -> bool {
+        false
+    }
+
     /// The TCP port of the RDP listener.
     fn rdp_port(&self) -> u16 {
         DEFAULT_RDP_PORT

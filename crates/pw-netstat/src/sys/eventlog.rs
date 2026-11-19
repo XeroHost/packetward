@@ -19,7 +19,7 @@ use windows::Win32::System::EventLog::{
     EVT_HANDLE, EVT_SUBSCRIBE_NOTIFY_ACTION,
 };
 
-use crate::logon::parse_logon_event;
+use crate::logon::{parse_failed_logon_event, parse_logon_event, LogonEvent};
 use crate::LogonSink;
 
 const SECURITY_CHANNEL: &str = "Security";
@@ -91,6 +91,8 @@ fn render_xml(event: EVT_HANDLE) -> Option<String> {
 /// What the subscription callback needs: where to send parsed logons.
 struct Context {
     sink: LogonSink,
+    /// Turns a rendered event into a logon (success or failure feeds use different parsers).
+    parse: fn(&str) -> Option<LogonEvent>,
 }
 
 /// A live `EvtSubscribe` subscription; closing it stops the callbacks.
@@ -124,7 +126,7 @@ unsafe extern "system" fn on_event(
         let context = unsafe { &*context.cast::<Context>() };
         // A panic must never unwind into Windows.
         let _ = catch_unwind(AssertUnwindSafe(|| {
-            if let Some(logon) = render_xml(event).as_deref().and_then(parse_logon_event) {
+            if let Some(logon) = render_xml(event).as_deref().and_then(context.parse) {
                 (context.sink)(logon);
             }
         }));
@@ -136,9 +138,11 @@ fn subscribe(
     channel: &str,
     query: &str,
     sink: &LogonSink,
+    parse: fn(&str) -> Option<LogonEvent>,
 ) -> Result<Subscription, windows::core::Error> {
     let context = Box::into_raw(Box::new(Context {
         sink: Arc::clone(sink),
+        parse,
     }));
     let channel = wide(channel);
     let query = wide(query);
@@ -223,7 +227,7 @@ pub struct LogonFeed {
 /// fixed budget. `Unavailable` when the Security log cannot be subscribed to.
 pub fn start_feed(window_ms: u64, sink: LogonSink) -> (TrustFeed, Option<LogonFeed>) {
     let mut subscriptions = Vec::new();
-    match subscribe(SECURITY_CHANNEL, SECURITY_FILTER, &sink) {
+    match subscribe(SECURITY_CHANNEL, SECURITY_FILTER, &sink, parse_logon_event) {
         Ok(subscription) => subscriptions.push(subscription),
         Err(err) => {
             tracing::warn!(%err, "cannot subscribe to the Security log; RDP logons will not be learned");
@@ -231,7 +235,12 @@ pub fn start_feed(window_ms: u64, sink: LogonSink) -> (TrustFeed, Option<LogonFe
         }
     }
     // The Terminal Services channel is a second, optional source (it can be disabled).
-    match subscribe(TERMINAL_SERVICES_CHANNEL, TERMINAL_SERVICES_FILTER, &sink) {
+    match subscribe(
+        TERMINAL_SERVICES_CHANNEL,
+        TERMINAL_SERVICES_FILTER,
+        &sink,
+        parse_logon_event,
+    ) {
         Ok(subscription) => subscriptions.push(subscription),
         Err(err) => tracing::debug!(%err, "no Terminal Services event channel"),
     }
@@ -250,6 +259,33 @@ pub fn start_feed(window_ms: u64, sink: LogonSink) -> (TrustFeed, Option<LogonFe
             _subscriptions: subscriptions,
         }),
     )
+}
+
+/// 4625 (an account failed to log on) from the network, remote interactive or reconnect.
+const FAILURE_FILTER: &str = "*[System[(EventID=4625)] and EventData[(Data[@Name='LogonType']='3' or Data[@Name='LogonType']='7' or Data[@Name='LogonType']='10')]]";
+
+/// The live subscription of failed logons; dropping it stops it.
+pub struct FailureFeed {
+    _subscription: Subscription,
+}
+
+/// Subscribes to *new* failed logons (no history: brute force is judged in real time). `None` when the
+/// Security log cannot be subscribed to.
+pub fn start_failure_feed(sink: &LogonSink) -> Option<FailureFeed> {
+    match subscribe(
+        SECURITY_CHANNEL,
+        FAILURE_FILTER,
+        sink,
+        parse_failed_logon_event,
+    ) {
+        Ok(subscription) => Some(FailureFeed {
+            _subscription: subscription,
+        }),
+        Err(err) => {
+            tracing::warn!(%err, "cannot subscribe to failed logons; RDP brute force will not be detected");
+            None
+        }
+    }
 }
 
 /// The "Audit Logon" subcategory (events 4624/4625).

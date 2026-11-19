@@ -10,7 +10,7 @@ use pw_ipc::pipe::{self, PIPE_NAME};
 use pw_ipc::scm::{self, AgentService};
 use pw_ipc::{Client, ClientError};
 use pw_proto::{
-    method, topic, AccessReason, AgentConnection, BridgeEvent, CaptureLive, ClientKind,
+    method, topic, AccessReason, AgentConnection, AlertView, BridgeEvent, CaptureLive, ClientKind,
     ConnectionsRequest, ConnectionsResponse, DiagEvent, ElevatedAction, ElevationOutcome,
     ErrorCode, Heartbeat, LiveStats, SavedBundle, SupportBundleInfo, SupportBundleRequest,
     SupportChunk, SupportDiscardRequest, SupportReadRequest,
@@ -69,6 +69,10 @@ impl Emitter {
 
     fn diag(&self, event: DiagEvent) -> bool {
         self.channel.send(BridgeEvent::Diag(event)).is_ok()
+    }
+
+    fn alert(&self, alert: AlertView) -> bool {
+        self.channel.send(BridgeEvent::Alert(alert)).is_ok()
     }
 
     fn capture(&self, stats: CaptureLive) -> bool {
@@ -148,6 +152,14 @@ async fn run_connected(client: Client, out: &mut Emitter, slot: &ClientSlot) -> 
             None
         }
     };
+    // Alerts (every change of an incident); older agents have none and the inbox stays empty.
+    let mut alerts = match client.subscribe(topic::ALERTS).await {
+        Ok(subscription) => Some(subscription),
+        Err(err) => {
+            tracing::info!(%err, "the agent does not publish alerts");
+            None
+        }
+    };
     // Live capture statistics; older agents do not have them and the Traffic page then stays empty.
     let mut capture = match client.subscribe(topic::CAPTURE_STATS).await {
         Ok(subscription) => Some(subscription),
@@ -185,6 +197,14 @@ async fn run_connected(client: Client, out: &mut Emitter, slot: &ClientSlot) -> 
                 }
                 None => return true,
             },
+            alert = next_alert(&mut alerts) => match alert {
+                Some(alert) => {
+                    if !out.alert(alert) {
+                        return false;
+                    }
+                }
+                None => return true,
+            },
             stats = next_capture(&mut capture) => match stats {
                 Some(stats) => {
                     if !out.capture(stats) {
@@ -210,6 +230,14 @@ async fn run_connected(client: Client, out: &mut Emitter, slot: &ClientSlot) -> 
 async fn next_stats(subscription: &mut Option<pw_ipc::Subscription>) -> Option<LiveStats> {
     match subscription {
         Some(subscription) => subscription.recv_as::<LiveStats>().await,
+        None => std::future::pending().await,
+    }
+}
+
+/// The next `alerts` event; never completes when the agent offers none.
+async fn next_alert(subscription: &mut Option<pw_ipc::Subscription>) -> Option<AlertView> {
+    match subscription {
+        Some(subscription) => subscription.recv_as::<AlertView>().await,
         None => std::future::pending().await,
     }
 }
@@ -248,6 +276,8 @@ const CALLABLE_METHODS: &[&str] = &[
     method::CAPTURE_FILES,
     method::CAPTURE_FILES_DELETE,
     method::SUPPORT_PREVIEW,
+    method::ALERTS_LIST,
+    method::ALERTS_CLEAR,
 ];
 
 fn is_callable(method_name: &str) -> bool {
@@ -492,6 +522,7 @@ mod tests {
             assert!(
                 allowed.starts_with("diag.")
                     || allowed.starts_with("capture.")
+                    || allowed.starts_with("alerts.")
                     || *allowed == method::SUPPORT_PREVIEW,
                 "{allowed}"
             );

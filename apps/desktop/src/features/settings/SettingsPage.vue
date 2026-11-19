@@ -22,6 +22,7 @@ const appearance = useAppearanceStore()
 const settings = useSettingsStore()
 
 const TEXT_SIZES: readonly TextSize[] = [90, 100, 110, 125]
+const SEVERITIES = ['critical', 'high', 'medium', 'low'] as const
 
 const themeValue = computed(() => appearance.prefs.theme)
 
@@ -170,6 +171,28 @@ function onLanguage(v: unknown): void {
           }}</span>
         </div>
       </div>
+    </section>
+
+    <!-- Notifications -->
+    <section
+      class="bg-surface border-border flex flex-col gap-5 rounded-lg border p-[var(--card-p)]"
+      style="box-shadow: var(--shadow-card)"
+    >
+      <header>
+        <h2 class="text-base">{{ t('settings.notifications.title') }}</h2>
+        <p class="text-text-muted">{{ t('settings.notifications.description') }}</p>
+      </header>
+      <div class="grid grid-cols-[12rem_1fr] items-center gap-x-4 gap-y-3">
+        <template v-for="severity in SEVERITIES" :key="severity">
+          <Label :for="`sw-notify-${severity}`">{{ t(`alerts.severity.${severity}`) }}</Label>
+          <Switch
+            :id="`sw-notify-${severity}`"
+            :model-value="settings.notifications[severity]"
+            @update:model-value="(on: boolean) => settings.setNotification(severity, on)"
+          />
+        </template>
+      </div>
+      <p class="text-text-muted text-xs">{{ t('settings.notifications.hint') }}</p>
     </section>
 
     <!-- Startup -->

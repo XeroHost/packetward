@@ -17,7 +17,8 @@
     "threatIntel": "Threat Intel",
     "logs": "Logs",
     "settings": "Settings",
-    "about": "About"
+    "about": "About",
+    "alerts": "Alerts"
   },
   "topbar": {
     "agent": {
@@ -75,6 +76,11 @@
       "en": "English",
       "es": "Español",
       "ptBR": "Português (Brasil)"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "description": "Which alerts pop up a Windows notification. Every alert always appears in the Alerts inbox.",
+      "hint": "Notifications are shown by this app, so they appear while it is running (minimized to the tray counts). The agent keeps protecting the server either way."
     }
   },
   "about": {
@@ -483,6 +489,85 @@
       "neverUploaded": "PacketWard never uploads it.",
       "saved": "Saved to",
       "attach": "Attach this file to your support ticket."
+    }
+  },
+  "alerts": {
+    "filter": "Filter",
+    "all": "All ({count})",
+    "ongoing": "Ongoing ({count})",
+    "ongoingBadge": "ongoing",
+    "clearEnded": "Clear finished",
+    "failed": "The alert list could not be read from the agent.",
+    "protected": "protected source",
+    "source": "Source",
+    "distributed": "many addresses",
+    "duration": "lasted {time}",
+    "none": "No alerts. When PacketWard sees a flood, a scan or a brute-force attempt it will show up here.",
+    "noneOngoing": "Nothing is happening right now.",
+    "unread": "{count} new alerts",
+    "severity": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "critical": "Critical"
+    },
+    "toast": {
+      "title": "{severity}: {summary}",
+      "fromSource": "From {source}",
+      "distributed": "From many addresses"
+    },
+    "tray": {
+      "neutral": "PacketWard — no active alerts",
+      "warning": "PacketWard — alert in progress",
+      "alert": "PacketWard — attack in progress"
+    },
+    "summary": {
+      "syn_flood": "SYN flood",
+      "syn_flood_distributed": "SYN flood from many addresses",
+      "udp_flood": "UDP flood",
+      "udp_flood_distributed": "UDP flood from many addresses",
+      "icmp_flood": "ICMP (ping) flood",
+      "icmp_flood_distributed": "ICMP flood from many addresses",
+      "port_scan_vertical": "Port scan",
+      "port_scan_horizontal": "Network sweep",
+      "conn_flood": "Connection flood",
+      "rdp_brute_force": "RDP password guessing",
+      "volumetric_attack": "Link saturated"
+    },
+    "explain": {
+      "syn_flood": "One address is opening a huge number of connections it never completes, to exhaust the server.",
+      "syn_flood_distributed": "Many addresses are opening connections they never complete.",
+      "udp_flood": "One address is sending a very high volume of UDP packets.",
+      "udp_flood_distributed": "A very high volume of UDP packets is arriving from many addresses.",
+      "icmp_flood": "One address is sending a very high volume of ping packets.",
+      "icmp_flood_distributed": "A very high volume of ping packets is arriving from many addresses.",
+      "port_scan_vertical": "One address is probing many ports of this server, looking for something to attack.",
+      "port_scan_horizontal": "One address is probing the same port on many hosts.",
+      "conn_flood": "One address holds or opens an unusual number of connections.",
+      "rdp_brute_force": "One address keeps failing to log in over Remote Desktop: someone is guessing passwords.",
+      "volumetric_attack": "Incoming traffic is using almost all of the network link."
+    },
+    "metrics": {
+      "syn": "SYN packets",
+      "syn_total": "SYN packets (all)",
+      "syn_unattributed": "SYN packets (many sources)",
+      "synack_out": "SYN-ACK sent",
+      "ack": "ACKs",
+      "ack_total": "ACKs (all)",
+      "completion_permille": "Completed",
+      "packets": "Packets",
+      "packets_unattributed": "Packets (many sources)",
+      "bytes": "Data",
+      "bytes_unattributed": "Data (many sources)",
+      "distinct_ports": "Ports probed",
+      "distinct_hosts": "Hosts probed",
+      "concurrent_connections": "Connections",
+      "new_connections": "New connections",
+      "failures": "Failed logons",
+      "inbound_bps": "Inbound",
+      "link_bps": "Link",
+      "utilization_permille": "Link use",
+      "sustained_secs": "Sustained"
     }
   }
 }

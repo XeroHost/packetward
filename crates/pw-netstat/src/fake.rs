@@ -20,6 +20,7 @@ struct State {
     /// Logons delivered when the feed starts (the "initial load").
     history: Vec<LogonEvent>,
     sink: Option<LogonSink>,
+    failure_sink: Option<LogonSink>,
 }
 
 /// Scripted network state: set what the "OS" reports, change it between polls.
@@ -69,6 +70,14 @@ impl FakeNetStat {
         }
     }
 
+    /// Delivers a failed logon, as the 4625 subscription would. No-op before the feed starts.
+    pub fn push_failure(&self, event: LogonEvent) {
+        let sink = self.state().failure_sink.clone();
+        if let Some(sink) = sink {
+            sink(event);
+        }
+    }
+
     /// Makes `connections()` fail, to test that a failing source does not stop the poller.
     pub fn set_connections_failing(&self, failing: bool) {
         self.state().fail_connections = failing;
@@ -78,6 +87,15 @@ impl FakeNetStat {
 impl NetStat for FakeNetStat {
     fn logon_audit(&self) -> LogonAudit {
         self.state().audit
+    }
+
+    fn start_failure_feed(&self, sink: LogonSink) -> bool {
+        let mut state = self.state();
+        if state.feed_unavailable {
+            return false;
+        }
+        state.failure_sink = Some(sink);
+        true
     }
 
     fn start_logon_feed(&self, _window_ms: u64, sink: LogonSink) -> TrustFeed {
