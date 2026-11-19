@@ -42,11 +42,20 @@ automated tests on a real pipe with a restricted token and by reading the live D
 standard account is TESTING.md §D and has not been done yet. The M1 run on GitHub Actions was reported green by the maintainer.)
 
 ## M2 — Netstat & dashboard
-- [ ] TCP/UDP tables with PID/process, IPv4+IPv6; adapters; interface counters → bps/pps in/out.
-- [ ] RDP sessions + client IPs.
-- [ ] Dashboard: live in/out bandwidth chart, connection count, top remote IPs by connections.
-- [ ] Connections page: virtualized, filterable table (proto, state, process, remote IP), copy IP.
+- [x] TCP/UDP tables with PID/process, IPv4+IPv6; adapters; interface counters → bps/pps in/out.
+      (Only real adapters are summed: filter layers, loopback and VPN/tunnel adapters are excluded from the total;
+      tunnels with traffic are listed apart.)
+- [x] RDP sessions + client IPs.
+      (Client IPs are the TCP peers of the RDP port. `WTSClientAddress` is only what the client reports about itself
+      and differed from the real peer on a live session. IPv6 clients are not identified by WTS yet.)
+- [x] Dashboard: live in/out bandwidth chart, connection count, top remote IPs by connections.
+- [x] Connections page: virtualized, filterable table (proto, state, process, remote IP), copy IP.
+      (Sortable, keyboard-navigable. The context menu with Lookup/Block/Allow/MTR waits for the features it calls.)
 **Accept:** values match `netstat -ano` and Task Manager within tolerance; 5k connections stay smooth.
+(Met on the dev VPS: counts equal `netstat -ano` (63=63; 70/25/21 as a service; 5027/5075 vs 5026/5077 at 5k rows);
+inbound bandwidth integrated over 661.8 MB was -4.9 % (UI) and +2.6 % (Windows perf counter) against the OS byte
+counter; scroll at 5k real and 50k synthetic rows stays at the idle frame cadence of that VM (p95 ≈ 43 ms, the
+VM caps at ~31 ms per frame). Not seen yet: the GitHub Actions run of M2, and the page at 1280×720 Compact by eye.)
 
 ## M3 — Basic diagnostics
 - [ ] Ping (v4/v6), MTR simple with streaming per-cycle results, DNS lookup (all record types), port check.

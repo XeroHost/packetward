@@ -11,11 +11,11 @@ publish = false
 [dependencies]
 pw-proto = { path = "../pw-proto" }
 thiserror.workspace = true
-tracing.workspace = true
 
 # The Win32 backend only exists on Windows; everything else (table parsing, rates, aggregation,
 # interface classification, the fake) is platform-agnostic and tested on Linux.
 [target.'cfg(windows)'.dependencies]
+tracing.workspace = true
 windows = { workspace = true, features = [
   "Win32_Foundation",
   "Win32_NetworkManagement_IpHelper",

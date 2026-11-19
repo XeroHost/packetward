@@ -104,6 +104,34 @@ Run it **unelevated** as a user that is in the operators group (see D3).
    *Do not toggle this from an elevated session: the autostart library then writes to `HKLM`, which affects every
    user.* Undo: `Remove-ItemProperty HKCU:\Software\Microsoft\Windows\CurrentVersion\Run -Name PacketWard`.
 
+## F2. Network data (M2)
+
+With the agent running (console or service):
+
+1. `pwctl status` prints traffic, connection counts and `RDP peers`. Compare with `netstat -ano`: totals and
+   ESTABLISHED/LISTENING counts must match (a couple of rows of churn between the two reads is normal).
+2. Dashboard: the *Established connections* tile and the hint (total / waiting to close) match `netstat -ano`.
+3. **RDP clients**: connect over RDP from another machine. *Connected from* lists the address
+   `netstat -ano | findstr :3389` shows as the peer, with the RDP badge in *Top remote addresses* and in
+   Connections. The address under "client reports" may differ (NAT/VPN); that is expected.
+4. **Bandwidth**: start a sustained download and compare. Use the OS byte counter as ground truth
+   (`(Get-NetAdapterStatistics).ReceivedBytes` before/after) against the integral of the chart; compare with the
+   Windows performance counter via `Get-CimInstance Win32_PerfFormattedData_Tcpip_NetworkInterface` (counter names
+   are localized, the WMI class is not). Expect within ±10 % over a window of tens of seconds; second-by-second
+   values of bursty traffic will not line up because the two samplers are not aligned.
+5. **Adapters**: only real adapters say *Counted in the totals*. Filter layers (names ending in `-WFP...` /
+   `-QoS Packet Scheduler`) must not appear; a VPN adapter with traffic appears as *Tunnel / VPN* and is not summed.
+6. **Many connections**: open a few thousand loopback connections (a small script that holds N sockets) and open
+   Connections: the summary says "Showing N of N", scrolling stays smooth, sort and filter respond. The table keeps
+   one request in flight and refreshes every 2 s only while the window is visible.
+7. **Hide to tray**: hide the window with ✕; the "Updated hh:mm:ss" time on Connections must stop changing, and
+   resume when the window is shown again.
+8. Keyboard: in the connections grid, arrows/PageUp/PageDown/Home/End move the active row, `c` copies its address.
+9. Layout: 1280×720 with *Compact* density shows no horizontal scrolling and no clipped tiles.
+
+Dev only: a dev build (`pnpm tauri dev` or `pnpm dev`) accepts `?rows=N` in the URL to show N synthetic
+connections instead of the agent's table, for performance checks.
+
 ## G. Leave-no-trace check
 
 After testing, all of these must be empty / `False`:

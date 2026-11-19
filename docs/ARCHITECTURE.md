@@ -186,8 +186,18 @@ synthetic generators.
 
 ### 6.5 Netstat (`pw-netstat`)
 - `GetExtendedTcpTable` / `GetExtendedUdpTable` (IPv4+IPv6, with owning PID → process name).
-- `GetAdaptersAddresses`, `GetIfTable2` for adapters and byte/packet counters (bandwidth without capture).
-- Active RDP sessions and client IPs (WTS API).
+- `GetIfTable2` for adapters and byte/packet counters (bandwidth without capture) and `GetIpForwardTable2` for
+  which interface carries a default route. Windows lists several rows per NIC (filter/QoS layers repeat the
+  adapter's counters, loopback, tunnels), so totals only sum **real adapters**: up, not a filter layer, Ethernet or
+  Wi-Fi, and either a hardware NIC with a connector or the holder of a default route (virtio NICs are not always
+  flagged as hardware). VPN/tunnel adapters (WireGuard, ZeroTier, Radmin, TAP...) are never summed but are listed
+  when they carry traffic.
+- Active RDP sessions (WTS API) and **RDP client IPs = the established TCP peers of the RDP port** (port read from
+  the registry, default 3389). `WTSClientAddress` is what the client reports about itself (NAT, VPN, overlay
+  networks) and differs from the address the server sees, so it is shown as informational only. Anything that must
+  act on the real source (the badge, the Guardian protected set) uses the TCP peers.
+- Table buffers are parsed from raw bytes with explicit offsets (no unsafe, tested on Linux). Process names are
+  cached by PID + creation time to survive PID reuse.
 - Connections-per-remote-IP aggregation feeds `ConnFlood` when no capture backend is running.
 
 ### 6.6 Diagnostics (`pw-diag`)
@@ -276,12 +286,20 @@ Discreet XeroHost presence: "by XeroHost" in the sidebar footer and About, a "Co
   `version_mismatch` error and closes. The desktop shows "agent outdated" or "app outdated" accordingly.
 - Error codes: `bad_request`, `not_handshaken`, `version_mismatch`, `unknown_method`, `unknown_topic`,
   `frame_too_large` (the connection is closed because the stream cannot be re-aligned), `internal`.
-- M1 surface: `session.hello`, `system.info`, `subscribe`/`unsubscribe`, topic `live.heartbeat` (1 s).
+- Surface: `session.hello`, `system.info`, `subscribe`/`unsubscribe`, `netstat.connections`; topics
+  `live.heartbeat` and `live.stats` (1 s; per-interface and total bps/pps, link speed, connection counts by state,
+  top remote addresses, RDP sessions and RDP peers). Protocol 1.1 added the last two items. `netstat.connections`
+  returns at most 20 000 rows and is also cut by a byte budget so it always fits one frame, with `total` and
+  `truncated`; counts and rankings are computed from the full table. Process names are sent once per PID.
+  An agent older than the app answers `unknown_method`/`unknown_topic` and the UI says so.
 - Desktop bridge: `src-tauri` runs one supervisor task per window that (re)connects to the pipe and sends the webview
   a single `tauri::ipc::Channel` stream of `BridgeEvent`s: connection status (`connected`, `not_installed`,
   `stopped`, `starting`, `access_denied` + reason, `agent_outdated`, `ui_outdated`, `error`) and, when connected,
   the agent's pushed events. Anything but `connected` makes the UI show the "agent unavailable" screen.
   The bridge types live in `pw-proto` so they are exported to TypeScript like the protocol.
+  The shell also announces `window-visibility` (hidden to the tray, shown, minimized): WebView2 keeps reporting
+  `document.visibilityState = "visible"` after `window.hide()`, so the UI combines both signals to stop drawing
+  charts and polling the connection table for a window nobody sees.
 
 ## 8. Security model
 - Only the agent is privileged. The pipe ACL is the authorization boundary: SYSTEM, Administrators and members of
