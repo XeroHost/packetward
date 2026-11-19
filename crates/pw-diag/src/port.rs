@@ -441,6 +441,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "asks the system resolver (network traffic)"]
     async fn tcp_unresolvable_host_is_an_error_result_not_a_panic() {
         // The reserved `.invalid` TLD never resolves (RFC 6761); the lookup stays local or fails fast.
         let r = tcp_connect("nonexistent.invalid", 80, Duration::from_secs(5))

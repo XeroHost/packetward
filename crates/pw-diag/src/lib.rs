@@ -90,3 +90,69 @@ pub use report::{format_report, format_utc, ReportContext};
 pub use sink::{FnSink, NullSink, Sink};
 pub use stats::{RttStats, RttSummary};
 pub use sys::SystemPinger;
+
+#[cfg(test)]
+mod send_sync_tests {
+    //! Compile-time guarantees the engine relies on: the public types are `Send + Sync` and the
+    //! futures of the public async entry points are `Send` (so they can be `tokio::spawn`ed),
+    //! including the production reverse-DNS chain.
+    use super::*;
+    use std::sync::Arc;
+    use std::time::Duration;
+
+    fn assert_send<T: Send>(_: &T) {}
+    fn assert_send_sync<T: Send + Sync>() {}
+
+    #[tokio::test]
+    async fn public_api_is_send_and_sync() {
+        assert_send_sync::<SystemPinger>();
+        assert_send_sync::<DnsClient<HickoryBackend>>();
+        assert_send_sync::<NameCache<DnsClient<HickoryBackend>>>();
+        assert_send_sync::<PortCheckLimiter>();
+        assert_send_sync::<CancelToken>();
+        assert_send_sync::<PingOptions>();
+        assert_send_sync::<MtrSnapshot>();
+        assert_send_sync::<DnsLookup>();
+        assert_send_sync::<PortCheck>();
+        assert_send_sync::<DiagError>();
+
+        let options = DnsOptions {
+            resolver: ResolverChoice::Custom(vec!["127.0.0.1".parse().unwrap()]),
+            timeout: Duration::from_secs(1),
+        };
+        let client = DnsClient::with_options(&options).unwrap();
+        {
+            let lookup = client.lookup("example.com", DnsRecordType::All);
+            assert_send(&lookup);
+        }
+        let mtr_options = MtrOptions::default();
+        let ping_options = PingOptions::default();
+
+        let names = NameCache::new(Arc::new(client), Duration::from_secs(1));
+        let cancel = CancelToken::new();
+        let target: std::net::IpAddr = "127.0.0.1".parse().unwrap();
+
+        let (mut tx, _rx) = tokio::sync::mpsc::channel::<MtrSnapshot>(1);
+        let trace = mtr(
+            Arc::new(SystemPinger),
+            target,
+            &mtr_options,
+            &names,
+            &cancel,
+            &mut tx,
+        );
+        assert_send(&trace);
+
+        let (mut ptx, _prx) = tokio::sync::mpsc::channel::<PingReply>(1);
+        let echo = ping(&SystemPinger, target, &ping_options, &cancel, &mut ptx);
+        assert_send(&echo);
+
+        let connect = tcp_connect("127.0.0.1", 80, Duration::from_secs(1));
+        assert_send(&connect);
+        let probe = udp_check("127.0.0.1", 53, Duration::from_secs(1));
+        assert_send(&probe);
+        let limited = PortCheckLimiter::default();
+        let limited_connect = limited.tcp_connect("127.0.0.1", 80, Duration::from_secs(1));
+        assert_send(&limited_connect);
+    }
+}
