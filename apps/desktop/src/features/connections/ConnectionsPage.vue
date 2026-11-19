@@ -263,7 +263,10 @@ const sampled = computed(() =>
   live.sampledAt ? new Date(live.sampledAt).toLocaleTimeString() : null,
 )
 const rdpPeers = computed(() => live.rdpPeers)
+const rdpTrusted = computed(() => live.rdpTrusted)
 const rdpLabel = computed(() => t('connections.rdpBadge'))
+const rdpTrustedLabel = computed(() => t('connections.rdpTrustedBadge'))
+const rdpTrustedTip = computed(() => t('connections.rdpTrustedBadgeTip'))
 const rdpTip = computed(() => t('connections.rdpBadgeTip'))
 const copyLabel = computed(() => t('common.copy'))
 const unknownProcess = (pid: number) => t('connections.unknownProcess', { pid })
@@ -434,9 +437,14 @@ const GRID = 'grid grid-cols-[4rem_minmax(0,1.4fr)_minmax(0,1.4fr)_8rem_minmax(0
                 <span class="truncate font-mono" :title="r.row.local">{{ r.row.local }}</span>
                 <span
                   v-if="rdpPeers.has(r.row.local_addr)"
-                  class="border-brand-fg/50 text-brand-fg shrink-0 rounded-full border px-1.5 text-[10px] leading-4"
-                  :title="rdpTip"
-                  >{{ rdpLabel }}</span
+                  class="shrink-0 rounded-full border px-1.5 text-[10px] leading-4"
+                  :class="
+                    rdpTrusted.has(r.row.local_addr)
+                      ? 'border-success/50 text-success'
+                      : 'border-brand-fg/50 text-brand-fg'
+                  "
+                  :title="rdpTrusted.has(r.row.local_addr) ? rdpTrustedTip : rdpTip"
+                  >{{ rdpTrusted.has(r.row.local_addr) ? rdpTrustedLabel : rdpLabel }}</span
                 >
                 <button
                   type="button"
@@ -455,9 +463,14 @@ const GRID = 'grid grid-cols-[4rem_minmax(0,1.4fr)_minmax(0,1.4fr)_8rem_minmax(0
                 <span class="truncate font-mono" :title="r.row.remote">{{ r.row.remote }}</span>
                 <span
                   v-if="rdpPeers.has(r.row.remote_addr)"
-                  class="border-brand-fg/50 text-brand-fg shrink-0 rounded-full border px-1.5 text-[10px] leading-4"
-                  :title="rdpTip"
-                  >{{ rdpLabel }}</span
+                  class="shrink-0 rounded-full border px-1.5 text-[10px] leading-4"
+                  :class="
+                    rdpTrusted.has(r.row.remote_addr)
+                      ? 'border-success/50 text-success'
+                      : 'border-brand-fg/50 text-brand-fg'
+                  "
+                  :title="rdpTrusted.has(r.row.remote_addr) ? rdpTrustedTip : rdpTip"
+                  >{{ rdpTrusted.has(r.row.remote_addr) ? rdpTrustedLabel : rdpLabel }}</span
                 >
                 <button
                   type="button"

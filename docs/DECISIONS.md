@@ -23,3 +23,4 @@ These are settled. Do not re-open them in code; if one blocks you, ask.
 | CLI | **Basic `pwctl` in v1**: `status`, `guardian off|monitor|active`, `unblock --all`, `firewall purge`, `support-bundle`. |
 | UI kit | **shadcn-vue** (components copied into the repo, on Reka UI + Tailwind v4). |
 | Update channels | **Stable + Beta**, selectable in Settings. |
+| Guardian: which RDP clients are protected (2026-11-19) | **Addresses with a successful RDP logon in the last 30 days** (configurable, 1–365): Security 4624 type 10 or 7 (remote address only) and TerminalServices 1149. Not "connected now", not `WTSClientAddress`, not every peer of the RDP port. Learned with `EvtSubscribe` plus one bounded initial load, never by searching the log. If the "Audit Logon" policy (success/failure) is off, the UI and `pwctl status` warn, because without those events neither the protection nor RdpBruteForce work. See ARCHITECTURE §6.3. |

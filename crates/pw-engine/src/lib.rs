@@ -7,6 +7,7 @@
 
 mod connections;
 mod poller;
+mod trust;
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -23,6 +24,7 @@ use tokio::task::JoinHandle;
 use tokio::time::{Instant, MissedTickBehavior};
 
 pub use poller::{Poller, Snapshot};
+pub use trust::{TrustState, DEFAULT_WINDOW_DAYS};
 
 /// Events buffered per subscription before the producer waits for the consumer.
 const SUBSCRIPTION_QUEUE: usize = 4;
@@ -37,6 +39,9 @@ pub struct EngineConfig {
     pub poll_interval: Duration,
     /// The RDP sessions are refreshed every this many polls.
     pub rdp_refresh_every: u32,
+    /// How many days back a successful RDP logon keeps an address trusted (1..=365). Will be set
+    /// from `config.toml` once the config model exists.
+    pub rdp_trust_days: u32,
 }
 
 impl EngineConfig {
@@ -47,6 +52,7 @@ impl EngineConfig {
             heartbeat_interval: Duration::from_secs(1),
             poll_interval: Duration::from_secs(1),
             rdp_refresh_every: 5,
+            rdp_trust_days: DEFAULT_WINDOW_DAYS,
         }
     }
 }
@@ -71,11 +77,23 @@ impl Engine {
     /// Starts the engine and its network poller. Must be called inside a tokio runtime.
     pub fn new(config: EngineConfig, netstat: Arc<dyn NetStat>) -> Self {
         let (publish, latest) = watch::channel(None);
+        let trust = TrustState::new(config.rdp_trust_days);
+        // Learning RDP logons reads the event log (a bounded initial load, then live events); it
+        // blocks, so it runs on a blocking thread and never delays the first snapshot.
+        {
+            let netstat = Arc::clone(&netstat);
+            let trust = Arc::clone(&trust);
+            tokio::task::spawn_blocking(move || {
+                let state = netstat.start_logon_feed(trust.window_ms(), trust.sink());
+                trust.set_feed(state);
+            });
+        }
         let task = tokio::spawn(poll_loop(
             netstat,
             publish,
             config.poll_interval,
             config.rdp_refresh_every,
+            trust,
         ));
         Self {
             config,
@@ -109,8 +127,13 @@ async fn poll_loop(
     publish: watch::Sender<Option<Arc<Snapshot>>>,
     period: Duration,
     rdp_every: u32,
+    trust: Arc<TrustState>,
 ) {
-    let mut poller = Some(Poller::new(Arc::clone(&netstat), rdp_every));
+    let mut poller = Some(Poller::new(
+        Arc::clone(&netstat),
+        rdp_every,
+        Arc::clone(&trust),
+    ));
     let mut ticker = tokio::time::interval(period);
     // A slow poll delays the next one instead of queueing a burst of catch-up polls.
     ticker.set_missed_tick_behavior(MissedTickBehavior::Skip);
@@ -119,7 +142,7 @@ async fn poll_loop(
         // If a previous poll panicked the poller was lost with it; start over with a fresh one.
         let mut current = poller
             .take()
-            .unwrap_or_else(|| Poller::new(Arc::clone(&netstat), rdp_every));
+            .unwrap_or_else(|| Poller::new(Arc::clone(&netstat), rdp_every, Arc::clone(&trust)));
         let job = tokio::task::spawn_blocking(move || {
             let snapshot = current.poll(std::time::Instant::now(), poller::unix_ms());
             (current, snapshot)
@@ -520,5 +543,98 @@ mod tests {
         let response: ConnectionsResponse = serde_json::from_value(reply).unwrap();
         assert_eq!(response.total, 0);
         assert!(response.connections.is_empty());
+    }
+
+    async fn stats_until(
+        sub: &mut pw_ipc::Subscription,
+        ready: impl Fn(&LiveStats) -> bool,
+    ) -> LiveStats {
+        for _ in 0..100 {
+            let stats: LiveStats = sub.recv_as().await.unwrap();
+            if ready(&stats) {
+                return stats;
+            }
+        }
+        panic!("the expected stats never arrived");
+    }
+
+    const DAY_MS: u64 = 24 * 60 * 60 * 1000;
+
+    #[tokio::test]
+    async fn live_stats_carries_the_rdp_trust_set_audit_and_feed_state() {
+        use pw_netstat::logon::LogonEvent;
+        use pw_proto::{AuditState, LogonAudit, TrustFeed};
+        let now = poller::unix_ms();
+        let fake = Arc::new(FakeNetStat::new());
+        fake.set_logon_audit(LogonAudit {
+            success: AuditState::Enabled,
+            failure: AuditState::Disabled,
+        });
+        fake.set_logon_history(vec![
+            LogonEvent {
+                addr: "143.20.99.200".parse().unwrap(),
+                at_unix_ms: now - 3 * DAY_MS,
+            },
+            LogonEvent {
+                addr: "198.51.100.9".parse().unwrap(),
+                at_unix_ms: now - 40 * DAY_MS,
+            },
+        ]);
+        let (client, _connector) =
+            connect_with(fast(EngineConfig::new("1", true)), fake.clone()).await;
+        let mut sub = client.subscribe(topic::LIVE_STATS).await.unwrap();
+
+        let stats = stats_until(&mut sub, |s| s.rdp_trust.feed == TrustFeed::Ready).await;
+        let trust = &stats.rdp_trust;
+        assert_eq!(trust.window_days, 30);
+        assert_eq!(trust.audit.success, AuditState::Enabled);
+        assert_eq!(trust.audit.failure, AuditState::Disabled);
+        let addrs: Vec<&str> = trust.addresses.iter().map(|a| a.addr.as_str()).collect();
+        assert_eq!(
+            addrs,
+            ["143.20.99.200"],
+            "the 40-day-old logon is outside the window"
+        );
+
+        // A live event from the subscription shows up, most recent first.
+        fake.push_logon(LogonEvent {
+            addr: "203.0.113.7".parse().unwrap(),
+            at_unix_ms: poller::unix_ms(),
+        });
+        let stats = stats_until(&mut sub, |s| s.rdp_trust.addresses.len() == 2).await;
+        assert_eq!(stats.rdp_trust.addresses[0].addr, "203.0.113.7");
+    }
+
+    #[tokio::test]
+    async fn an_unreadable_event_log_is_reported_and_trusts_nobody() {
+        use pw_proto::TrustFeed;
+        let fake = Arc::new(FakeNetStat::new());
+        fake.set_logon_feed_unavailable(true);
+        let (client, _connector) = connect_with(fast(EngineConfig::new("1", true)), fake).await;
+        let mut sub = client.subscribe(topic::LIVE_STATS).await.unwrap();
+        let stats = stats_until(&mut sub, |s| s.rdp_trust.feed != TrustFeed::Loading).await;
+        assert_eq!(stats.rdp_trust.feed, TrustFeed::Unavailable);
+        assert!(stats.rdp_trust.addresses.is_empty());
+    }
+
+    #[tokio::test]
+    async fn the_trust_window_is_configurable_and_clamped() {
+        let mut config = fast(EngineConfig::new("1", true));
+        config.rdp_trust_days = 7;
+        let (client, _connector) = connect_with(config, Arc::new(FakeNetStat::new())).await;
+        let mut sub = client.subscribe(topic::LIVE_STATS).await.unwrap();
+        assert_eq!(
+            stats_until(&mut sub, |_| true).await.rdp_trust.window_days,
+            7
+        );
+
+        let mut config = fast(EngineConfig::new("1", true));
+        config.rdp_trust_days = 0; // nonsense: clamped to the minimum, never "trust nobody forever"
+        let (client, _connector) = connect_with(config, Arc::new(FakeNetStat::new())).await;
+        let mut sub = client.subscribe(topic::LIVE_STATS).await.unwrap();
+        assert_eq!(
+            stats_until(&mut sub, |_| true).await.rdp_trust.window_days,
+            1
+        );
     }
 }

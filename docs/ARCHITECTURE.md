@@ -166,9 +166,31 @@ synthetic generators.
 ### 6.3 Guardian / auto-blocker (`pw-engine::guardian`)
 - Policy = list of rules: `detector + threshold + window → action (Alert | Block { ttl })`.
 - Escalation: repeat offenders get TTL × 2 up to a max (e.g. 15 min → 30 → 60 … → 24 h).
-- **Protected set** (never blocked, checked before every block): allowlist IPs/CIDRs, active RDP client
-  addresses (WTSQuerySessionInformation `WTSClientAddress`, refreshed every few seconds), default gateways,
-  DNS servers, loopback/link-local, configured management ranges, speed-test servers.
+- **Protected set** (never blocked, checked before every block): allowlist IPs/CIDRs, **trusted RDP clients**
+  (below), default gateways, DNS servers, loopback/link-local, configured management ranges, speed-test servers.
+- **Trusted RDP clients = addresses with a successful RDP logon in the last N days** (N = 30, configurable
+  `1..=365`), *not* only the ones connected now. Rationale: a legitimate user who mistypes the password when
+  reconnecting must not lock themselves out, while a bot that merely connects to the RDP port, or only fails to
+  sign in, never earns protection (measured on the dev VPS: the peers of port 3389 included addresses from the
+  top failed-logon list, and `WTSClientAddress` is only what the client reports about itself).
+  - Counted events: Security **4624** with `LogonType` 10 (new RDP session) **or 7** (an RDP *reconnect*; a type 7
+    without a remote address is a console unlock and is ignored), and TerminalServices-RemoteConnectionManager
+    **1149** (authentication succeeded). Failed logons (4625) never count.
+  - **No long searches.** The agent subscribes with `EvtSubscribe` (future events) and does one *bounded* initial
+    load of recent history (newest first, XPath time filter, at most 5000 events and 10 s); the subscription is
+    opened first so nothing is missed in between. Implemented in `pw-netstat` (`sys/eventlog.rs`, parser and
+    `TrustSet` are pure and tested on Linux) and published by the engine in `live.stats.rdp_trust`.
+  - **Audit policy check.** The agent reads the "Audit Logon" subcategory (`AuditQuerySystemPolicy`, success and
+    failure). Without success events no logon can be learned; without failure events `RdpBruteForce` cannot work.
+    When either is off (or cannot be read) the UI shows a banner on every page and `pwctl status` prints a warning
+    with the fix (`auditpol /set /subcategory:"Logon" /success:enable /failure:enable`). PacketWard does not change
+    the audit policy itself.
+  - **Limitation to close in M-store:** the Security log can be much shorter than 30 days (the dev VPS only reached
+    back two days, flooded by brute force) and a clean install knows nothing yet. The learned set must be persisted
+    in `pw-store` and merged on start so trust survives log rollover; until then the protection is only as old as the
+    log. While the set is empty (or the feed is `unavailable`) the Guardian must stay in Monitor behaviour for RDP
+    rules rather than guess.
+  - IPv6 clients are handled when the event reports them; `WTSClientAddress` is informational only.
 - Circuit breaker: max N new blocks per minute; beyond that → alert "possible distributed attack, upstream
   mitigation recommended" instead of creating thousands of rules.
 - Modes: `Off`, `Monitor` (dry-run: logs what it would block), `Active`. **Default after install: `Monitor`.**
@@ -197,9 +219,7 @@ synthetic generators.
   `WTSClientAddress` is what the client reports about itself (NAT, VPN, overlay networks) and differed from the TCP
   peer on a live session; and a TCP peer on the RDP port may be a brute-force bot sitting in NLA before any logon.
   The UI labels peers as "connected to the RDP port", not as the legitimate client.
-  **Open decision for the Guardian protected set** (to be settled with the owner, not yet implemented): WTS address,
-  TCP peers, or TCP peers that also have a successful RDP logon (Security 4624 type 10 / TerminalServices 1149).
-  Using all peers would make RdpBruteForce unable to block anyone attacking the RDP port.
+  **Decision (2026-11-19):** the Guardian protects addresses with a successful RDP logon in the last N days; see §6.3 and DECISIONS.md.
 - Table buffers are parsed from raw bytes with explicit offsets (no unsafe, tested on Linux). Process names are
   cached by PID + creation time to survive PID reuse.
 - Connections-per-remote-IP aggregation feeds `ConnFlood` when no capture backend is running.

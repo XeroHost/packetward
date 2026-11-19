@@ -27,6 +27,7 @@ const totals = computed(() => live.stats?.totals ?? null)
 const counts = computed(() => live.stats?.connections ?? null)
 const peers = computed(() => live.stats?.rdp_peers ?? [])
 const sessions = computed(() => live.stats?.rdp_sessions ?? [])
+const trust = computed(() => live.stats?.rdp_trust ?? null)
 
 const linkHint = computed(() =>
   totals.value && totals.value.link_speed_bps > 0
@@ -179,7 +180,13 @@ const cardClass = 'bg-surface border-border flex flex-col gap-3 rounded-lg borde
       <div v-else-if="live.stats" class="flex flex-col gap-3">
         <div v-if="peers.length" class="flex flex-wrap items-center gap-x-4 gap-y-1">
           <span class="text-text-muted text-xs">{{ t('dashboard.rdp.peers') }}</span>
-          <IpCell v-for="peer in peers" :key="peer" :addr="peer" rdp />
+          <IpCell
+            v-for="peer in peers"
+            :key="peer"
+            :addr="peer"
+            rdp
+            :trusted="live.rdpTrusted.has(peer)"
+          />
         </div>
         <ul v-if="sessions.length" class="flex flex-col" data-testid="rdp-sessions">
           <li
@@ -204,6 +211,35 @@ const cardClass = 'bg-surface border-border flex flex-col gap-3 rounded-lg borde
           </li>
         </ul>
         <p class="text-text-muted text-xs">{{ t('dashboard.rdp.note') }}</p>
+      </div>
+      <div
+        v-if="trust"
+        class="border-border flex flex-col gap-2 border-t pt-3"
+        data-testid="rdp-trust"
+      >
+        <div>
+          <h3 class="text-sm font-medium">
+            {{ t('dashboard.rdp.trustedTitle', { days: trust.window_days }) }}
+          </h3>
+          <p class="text-text-muted text-xs">{{ t('dashboard.rdp.trustedDescription') }}</p>
+        </div>
+        <p v-if="trust.feed === 'loading'" class="text-text-muted text-sm">
+          {{ t('dashboard.rdp.trustedLoading') }}
+        </p>
+        <p v-else-if="trust.feed === 'unavailable'" class="text-warning text-sm">
+          {{ t('dashboard.rdp.trustedUnavailable') }}
+        </p>
+        <p v-else-if="!trust.addresses.length" class="text-text-muted text-sm">
+          {{ t('dashboard.rdp.trustedEmpty') }}
+        </p>
+        <ul v-else class="flex flex-wrap gap-x-5 gap-y-1">
+          <li v-for="entry in trust.addresses" :key="entry.addr" class="flex items-center gap-2">
+            <IpCell :addr="entry.addr" />
+            <span class="text-text-muted text-xs">{{
+              new Date(entry.last_logon_unix_ms).toLocaleDateString()
+            }}</span>
+          </li>
+        </ul>
       </div>
     </section>
 

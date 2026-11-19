@@ -8,6 +8,7 @@
 pub mod aggregate;
 pub mod classify;
 pub mod fake;
+pub mod logon;
 pub mod rates;
 pub mod rdp;
 mod sys;
@@ -16,7 +17,10 @@ pub mod tables;
 use std::collections::BTreeMap;
 use std::io;
 
-use pw_proto::{Connection, RdpSession};
+use std::sync::Arc;
+
+use logon::LogonEvent;
+use pw_proto::{Connection, LogonAudit, RdpSession, TrustFeed};
 
 pub use classify::{classify_kind, counts_toward_total};
 pub use rates::{Counters, RateTracker, Rates};
@@ -64,7 +68,23 @@ pub struct ConnectionTable {
 }
 
 /// Source of network state. Implementations block, so callers run them off the async runtime.
+/// Receives each successful RDP logon the event log feed learns about (from any thread).
+pub type LogonSink = Arc<dyn Fn(LogonEvent) + Send + Sync>;
+
 pub trait NetStat: Send + Sync + 'static {
+    /// The "Audit Logon" policy. Without success events no RDP logon can be learned; without failure
+    /// events RDP brute force cannot be detected.
+    fn logon_audit(&self) -> LogonAudit {
+        LogonAudit::default()
+    }
+
+    /// Starts learning successful RDP logons: subscribes to new events and loads recent history within
+    /// a fixed budget (`window_ms` back). Blocks until that initial load is done. Returns whether the
+    /// event log could be used; the feed stays alive for as long as the source does.
+    fn start_logon_feed(&self, _window_ms: u64, _sink: LogonSink) -> TrustFeed {
+        TrustFeed::Unavailable
+    }
+
     /// The TCP port of the RDP listener.
     fn rdp_port(&self) -> u16 {
         DEFAULT_RDP_PORT

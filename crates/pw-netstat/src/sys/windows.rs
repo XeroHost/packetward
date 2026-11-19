@@ -406,6 +406,7 @@ fn configured_rdp_port() -> u16 {
 #[derive(Default)]
 pub struct WindowsNetStat {
     names: Mutex<ProcessNames>,
+    feed: Mutex<Option<crate::sys::eventlog::LogonFeed>>,
 }
 
 impl WindowsNetStat {
@@ -419,6 +420,16 @@ impl WindowsNetStat {
 }
 
 impl NetStat for WindowsNetStat {
+    fn logon_audit(&self) -> pw_proto::LogonAudit {
+        crate::sys::eventlog::logon_audit()
+    }
+
+    fn start_logon_feed(&self, window_ms: u64, sink: crate::LogonSink) -> pw_proto::TrustFeed {
+        let (state, feed) = crate::sys::eventlog::start_feed(window_ms, sink);
+        *self.feed.lock().unwrap_or_else(PoisonError::into_inner) = feed;
+        state
+    }
+
     fn rdp_port(&self) -> u16 {
         configured_rdp_port()
     }

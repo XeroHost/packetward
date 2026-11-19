@@ -75,6 +75,11 @@ export const useLiveStore = defineStore('live', () => {
   /** Addresses with an established connection to the RDP port: the real RDP clients. */
   const rdpPeers = computed(() => new Set(stats.value?.rdp_peers ?? []))
 
+  /** Addresses with a successful RDP logon in the trust window (the ones the Guardian will protect). */
+  const rdpTrusted = computed(
+    () => new Set((stats.value?.rdp_trust.addresses ?? []).map((entry) => entry.addr)),
+  )
+
   // ---- Connections page -------------------------------------------------------------------
   const rows = shallowRef<ConnectionRow[]>([])
   const total = ref(0)
@@ -123,6 +128,7 @@ export const useLiveStore = defineStore('live', () => {
     stats,
     tick,
     rdpPeers,
+    rdpTrusted,
     rows,
     total,
     truncated,

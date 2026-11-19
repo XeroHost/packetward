@@ -2,6 +2,7 @@
 import type { ConnectionCounts } from "./ConnectionCounts";
 import type { InterfaceStats } from "./InterfaceStats";
 import type { RdpSession } from "./RdpSession";
+import type { RdpTrust } from "./RdpTrust";
 import type { RemoteTalker } from "./RemoteTalker";
 import type { TrafficTotals } from "./TrafficTotals";
 
@@ -18,4 +19,4 @@ rdp_peers: Array<string>,
 /**
  * The TCP port the RDP listener uses (3389 unless reconfigured).
  */
-rdp_port: number, };
+rdp_port: number, rdp_trust: RdpTrust, };

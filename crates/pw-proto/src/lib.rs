@@ -20,9 +20,10 @@ pub use error::{ErrorCode, ErrorPayload};
 pub use handshake::{ClientKind, HelloRequest, HelloResponse, PROTOCOL_MAJOR, PROTOCOL_MINOR};
 pub use live::Heartbeat;
 pub use netstat::{
-    Connection, ConnectionCounts, ConnectionsRequest, ConnectionsResponse, InterfaceKind,
-    InterfaceStats, LiveStats, Proto, RdpSession, RdpSessionState, RemoteTalker, TcpState,
-    TrafficTotals, DEFAULT_CONNECTION_LIMIT,
+    AuditState, Connection, ConnectionCounts, ConnectionsRequest, ConnectionsResponse,
+    InterfaceKind, InterfaceStats, LiveStats, LogonAudit, Proto, RdpSession, RdpSessionState,
+    RdpTrust, RemoteTalker, TcpState, TrafficTotals, TrustFeed, TrustedAddress,
+    DEFAULT_CONNECTION_LIMIT,
 };
 pub use subscribe::{SubscribeRequest, SubscribeResponse, UnsubscribeRequest};
 pub use system::SystemInfo;

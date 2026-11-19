@@ -4,9 +4,10 @@
 use std::io;
 use std::sync::{Mutex, MutexGuard, PoisonError};
 
-use pw_proto::RdpSession;
+use pw_proto::{LogonAudit, RdpSession, TrustFeed};
 
-use crate::{ConnectionTable, InterfaceSample, NetStat};
+use crate::logon::LogonEvent;
+use crate::{ConnectionTable, InterfaceSample, LogonSink, NetStat};
 
 #[derive(Default)]
 struct State {
@@ -14,6 +15,11 @@ struct State {
     interfaces: Vec<InterfaceSample>,
     rdp: Vec<RdpSession>,
     fail_connections: bool,
+    audit: LogonAudit,
+    feed_unavailable: bool,
+    /// Logons delivered when the feed starts (the "initial load").
+    history: Vec<LogonEvent>,
+    sink: Option<LogonSink>,
 }
 
 /// Scripted network state: set what the "OS" reports, change it between polls.
@@ -43,6 +49,26 @@ impl FakeNetStat {
         self.state().rdp = sessions;
     }
 
+    pub fn set_logon_audit(&self, audit: LogonAudit) {
+        self.state().audit = audit;
+    }
+
+    pub fn set_logon_history(&self, history: Vec<LogonEvent>) {
+        self.state().history = history;
+    }
+
+    pub fn set_logon_feed_unavailable(&self, unavailable: bool) {
+        self.state().feed_unavailable = unavailable;
+    }
+
+    /// Delivers a live logon event, as a subscription callback would. No-op before the feed starts.
+    pub fn push_logon(&self, event: LogonEvent) {
+        let sink = self.state().sink.clone();
+        if let Some(sink) = sink {
+            sink(event);
+        }
+    }
+
     /// Makes `connections()` fail, to test that a failing source does not stop the poller.
     pub fn set_connections_failing(&self, failing: bool) {
         self.state().fail_connections = failing;
@@ -50,6 +76,25 @@ impl FakeNetStat {
 }
 
 impl NetStat for FakeNetStat {
+    fn logon_audit(&self) -> LogonAudit {
+        self.state().audit
+    }
+
+    fn start_logon_feed(&self, _window_ms: u64, sink: LogonSink) -> TrustFeed {
+        let history = {
+            let mut state = self.state();
+            if state.feed_unavailable {
+                return TrustFeed::Unavailable;
+            }
+            state.sink = Some(sink.clone());
+            state.history.clone()
+        };
+        for event in history {
+            sink(event);
+        }
+        TrustFeed::Ready
+    }
+
     fn connections(&self) -> io::Result<ConnectionTable> {
         let state = self.state();
         if state.fail_connections {

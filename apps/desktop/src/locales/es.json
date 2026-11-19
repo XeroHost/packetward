@@ -197,7 +197,12 @@
         "connected": "Conectada",
         "disconnected": "Desconectada",
         "other": "Otra"
-      }
+      },
+      "trustedTitle": "Direcciones con un logon RDP correcto (últimos {days} días)",
+      "trustedDescription": "Son las direcciones que el Guardian nunca bloqueará. Un bot que solo se conecta o falla al iniciar sesión nunca aparece aquí.",
+      "trustedLoading": "Leyendo los logons recientes del registro de eventos…",
+      "trustedUnavailable": "No se puede leer el registro de eventos de seguridad: no se puede aprender ninguna dirección.",
+      "trustedEmpty": "No hay ningún logon RDP correcto en el registro de eventos para este periodo."
     }
   },
   "common": {
@@ -245,6 +250,17 @@
     "noMatch": "Ninguna conexión coincide con los filtros.",
     "unknownProcess": "PID {pid}",
     "unsupported": "El agente instalado es más antiguo que esta aplicación y no puede dar la lista de conexiones. Actualiza PacketWard.",
-    "failed": "No se pudo leer la lista de conexiones del agente. Lo intentará de nuevo."
+    "failed": "No se pudo leer la lista de conexiones del agente. Lo intentará de nuevo.",
+    "rdpTrustedBadge": "RDP · sesión iniciada",
+    "rdpTrustedBadgeTip": "Conectado al puerto RDP y con un logon RDP correcto"
+  },
+  "audit": {
+    "successOff": "Windows no audita los inicios de sesión correctos: PacketWard no puede saber qué clientes RDP son legítimos, así que el Guardian no podría protegerlos.",
+    "successUnknown": "No se pudo leer la política de auditoría de inicios de sesión correctos: PacketWard no sabe si se registran los logons RDP.",
+    "failureOff": "Windows no audita los inicios de sesión fallidos: no se pueden detectar ataques de fuerza bruta contra RDP.",
+    "failureUnknown": "No se pudo leer la política de auditoría de inicios de sesión fallidos: la detección de fuerza bruta RDP puede no funcionar.",
+    "feedUnavailable": "No se puede leer el registro de eventos de seguridad, así que no se aprenden los logons RDP correctos.",
+    "howToFix": "Actívalas ambas desde una consola de administrador:",
+    "command": "auditpol /set /subcategory:\"Logon\" /success:enable /failure:enable"
   }
 }

@@ -160,8 +160,14 @@ export function previewStats(seq: number): LiveStats {
         client_name: 'LAPTOP',
       },
     ],
-    rdp_peers: [RDP_PEER],
+    rdp_peers: [RDP_PEER, '198.51.100.99'],
     rdp_port: 3389,
+    rdp_trust: {
+      window_days: 30,
+      feed: 'ready',
+      audit: { success: 'enabled', failure: 'enabled' },
+      addresses: [{ addr: RDP_PEER, last_logon_unix_ms: Date.now() - 3 * 24 * 60 * 60 * 1000 }],
+    },
   }
 }
 

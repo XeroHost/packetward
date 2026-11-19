@@ -9,7 +9,11 @@ use pw_netstat::aggregate::{count_connections, rdp_peers, top_remote};
 use pw_netstat::{
     classify_kind, counts_toward_total, ConnectionTable, NetStat, RateTracker, DEFAULT_RDP_PORT,
 };
-use pw_proto::{InterfaceKind, InterfaceStats, LiveStats, RdpSession, TrafficTotals};
+use pw_proto::{
+    InterfaceKind, InterfaceStats, LiveStats, LogonAudit, RdpSession, RdpTrust, TrafficTotals,
+};
+
+use crate::trust::TrustState;
 
 /// How many remote addresses `live.stats` carries.
 pub const TOP_REMOTE: usize = 10;
@@ -41,10 +45,16 @@ pub struct Poller {
     rdp_sessions: Vec<RdpSession>,
     rdp_port: u16,
     last_table: Arc<ConnectionTable>,
+    trust: Arc<TrustState>,
+    /// The audit policy changes rarely; re-read it every this many polls.
+    polls_since_audit: u32,
+    audit: LogonAudit,
 }
 
+const AUDIT_EVERY: u32 = 30;
+
 impl Poller {
-    pub fn new(netstat: Arc<dyn NetStat>, rdp_every: u32) -> Self {
+    pub fn new(netstat: Arc<dyn NetStat>, rdp_every: u32, trust: Arc<TrustState>) -> Self {
         Self {
             netstat,
             tracker: RateTracker::new(),
@@ -54,6 +64,9 @@ impl Poller {
             rdp_sessions: Vec::new(),
             rdp_port: DEFAULT_RDP_PORT,
             last_table: Arc::new(ConnectionTable::default()),
+            trust,
+            polls_since_audit: u32::MAX, // read on the first poll
+            audit: LogonAudit::default(),
         }
     }
 
@@ -82,6 +95,12 @@ impl Poller {
             }
         }
 
+        self.polls_since_audit = self.polls_since_audit.saturating_add(1);
+        if self.polls_since_audit >= AUDIT_EVERY {
+            self.polls_since_audit = 0;
+            self.audit = self.netstat.logon_audit();
+        }
+
         let (interfaces, totals) = match self.netstat.interfaces() {
             Ok(samples) => self.interface_stats(now, &samples),
             Err(err) => {
@@ -100,6 +119,12 @@ impl Poller {
             rdp_sessions: self.rdp_sessions.clone(),
             rdp_peers: rdp_peers(&table.rows, self.rdp_port),
             rdp_port: self.rdp_port,
+            rdp_trust: RdpTrust {
+                window_days: self.trust.window_days(),
+                feed: self.trust.feed(),
+                audit: self.audit,
+                addresses: self.trust.addresses(unix_ms),
+            },
         };
         Snapshot { stats, table }
     }
@@ -209,7 +234,7 @@ mod tests {
     }
 
     fn poller(fake: &Arc<FakeNetStat>) -> Poller {
-        Poller::new(fake.clone(), 5)
+        Poller::new(fake.clone(), 5, TrustState::new(30))
     }
 
     #[test]
@@ -365,7 +390,7 @@ mod tests {
     #[test]
     fn sequence_increases_and_rdp_data_is_refreshed_every_n_polls() {
         let fake = Arc::new(FakeNetStat::new());
-        let mut poller = Poller::new(fake.clone(), 3);
+        let mut poller = Poller::new(fake.clone(), 3, TrustState::new(30));
         let session = |user: &str| RdpSession {
             session_id: 1,
             user: user.into(),

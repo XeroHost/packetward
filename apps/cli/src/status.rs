@@ -10,7 +10,7 @@ use std::process::ExitCode;
 use pw_ipc::access::{self, AccessProblem};
 use pw_ipc::pipe::{self, OPERATORS_GROUP, PIPE_NAME};
 use pw_ipc::{Client, ClientError};
-use pw_proto::{method, topic, ClientKind, LiveStats, SystemInfo};
+use pw_proto::{method, topic, AuditState, ClientKind, LiveStats, SystemInfo, TrustFeed};
 
 const EXIT_OTHER: u8 = 1;
 const EXIT_NOT_RUNNING: u8 = 2;
@@ -133,5 +133,49 @@ async fn print_traffic(client: &Client) {
             stats.rdp_peers.join(", "),
             stats.rdp_port
         );
+    }
+    print_rdp_trust(&stats);
+}
+
+/// Logon-audit warnings and the addresses trusted because of a successful RDP logon.
+fn print_rdp_trust(stats: &LiveStats) {
+    let trust = &stats.rdp_trust;
+    let audit = |state: AuditState| match state {
+        AuditState::Enabled => "on",
+        AuditState::Disabled => "OFF",
+        AuditState::Unknown => "unknown",
+    };
+    println!(
+        "Logon audit: success {}, failure {}",
+        audit(trust.audit.success),
+        audit(trust.audit.failure)
+    );
+    if trust.audit.success != AuditState::Enabled {
+        println!(
+            "  WARNING: successful logons are not audited (or the policy could not be read), so"
+        );
+        println!("  PacketWard cannot learn which RDP clients are legitimate and the Guardian cannot protect them.");
+    }
+    if trust.audit.failure != AuditState::Enabled {
+        println!(
+            "  WARNING: failed logons are not audited (or the policy could not be read), so RDP"
+        );
+        println!("  brute-force detection cannot work.");
+    }
+    if trust.audit.success != AuditState::Enabled || trust.audit.failure != AuditState::Enabled {
+        println!("  Enable both with an administrator shell: auditpol /set /subcategory:\"Logon\" /success:enable /failure:enable");
+    }
+    let feed = match trust.feed {
+        TrustFeed::Loading => "loading",
+        TrustFeed::Ready => "ready",
+        TrustFeed::Unavailable => "UNAVAILABLE (cannot read the Security event log)",
+    };
+    println!(
+        "RDP trusted: {} address(es) with a successful logon in the last {} days (event feed {feed})",
+        trust.addresses.len(),
+        trust.window_days
+    );
+    for address in trust.addresses.iter().take(5) {
+        println!("  {}", address.addr);
     }
 }

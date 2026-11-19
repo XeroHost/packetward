@@ -47,8 +47,8 @@ standard account is TESTING.md §D and has not been done yet. The M1 run on GitH
       tunnels with traffic are listed apart.)
 - [x] RDP sessions + client IPs.
       (Shows both the sessions with the address the client reports (WTS) and the TCP peers of the RDP port. They
-      differed on a live session and neither proves a legitimate client: which one the Guardian protects is an open
-      decision. IPv6 clients are not identified by WTS yet.)
+      differed on a live session and neither proves a legitimate client: the Guardian protects addresses with a successful
+      RDP logon in the last 30 days (DECISIONS.md, ARCHITECTURE §6.3); the event feed and the logon-audit warning are in. IPv6 clients are not identified by WTS yet.)
 - [x] Dashboard: live in/out bandwidth chart, connection count, top remote IPs by connections.
 - [x] Connections page: virtualized, filterable table (proto, state, process, remote IP), copy IP.
       (Sortable, keyboard-navigable. The context menu with Lookup/Block/Allow/MTR waits for the features it calls.)

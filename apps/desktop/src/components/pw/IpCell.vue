@@ -9,8 +9,10 @@ import { copyText } from '@/lib/clipboard'
 const props = defineProps<{
   addr: string
   port?: number | null
-  /** The address of a current RDP client (a TCP peer of the RDP port). */
+  /** A TCP peer of the RDP port (connected; not necessarily logged in). */
   rdp?: boolean
+  /** Also has a successful RDP logon in the trust window. */
+  trusted?: boolean
 }>()
 
 const { t } = useI18n()
@@ -43,10 +45,11 @@ onBeforeUnmount(() => {
     <Badge
       v-if="rdp"
       variant="outline"
-      class="border-brand-fg/50 text-brand-fg h-4 px-1.5 text-[10px] leading-none"
-      :title="t('connections.rdpBadgeTip')"
+      class="h-4 px-1.5 text-[10px] leading-none"
+      :class="trusted ? 'border-success/50 text-success' : 'border-brand-fg/50 text-brand-fg'"
+      :title="trusted ? t('connections.rdpTrustedBadgeTip') : t('connections.rdpBadgeTip')"
     >
-      {{ t('connections.rdpBadge') }}
+      {{ trusted ? t('connections.rdpTrustedBadge') : t('connections.rdpBadge') }}
     </Badge>
     <button
       type="button"

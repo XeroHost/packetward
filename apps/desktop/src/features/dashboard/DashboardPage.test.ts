@@ -95,6 +95,31 @@ describe('DashboardPage', () => {
     expect(text).toContain('100.64.0.9')
   })
 
+  it('lists the addresses with a successful RDP logon and badges trusted peers differently', () => {
+    connect()
+    useLiveStore().applyStats(previewStats(1))
+    const wrapper = mountPage()
+    const trust = wrapper.get('[data-testid="rdp-trust"]').text()
+    expect(trust).toContain('successful RDP logon (last 30 days)')
+    expect(trust).toContain('203.0.113.50')
+    // A peer with a logon is "signed in"; one that only holds a connection is just "RDP".
+    expect(wrapper.text()).toContain('RDP · signed in')
+    const untrusted = wrapper.findAll('span').find((e) => e.text().startsWith('198.51.100.99'))
+    expect(untrusted?.text()).not.toContain('signed in')
+  })
+
+  it('says so when the event feed is unavailable or still loading', () => {
+    connect()
+    const stats = previewStats(1)
+    stats.rdp_trust.feed = 'loading'
+    stats.rdp_trust.addresses = []
+    useLiveStore().applyStats(stats)
+    expect(mountPage().text()).toContain('Reading recent logons')
+    stats.rdp_trust.feed = 'unavailable'
+    useLiveStore().applyStats({ ...stats })
+    expect(mountPage().text()).toContain('Cannot read the Security event log')
+  })
+
   it('warns when the agent is older than the app', () => {
     connect(0)
     expect(mountPage().text()).toContain('older than this app')

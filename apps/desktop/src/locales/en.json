@@ -197,7 +197,12 @@
         "connected": "Connected",
         "disconnected": "Disconnected",
         "other": "Other"
-      }
+      },
+      "trustedTitle": "Addresses with a successful RDP logon (last {days} days)",
+      "trustedDescription": "These are the addresses the Guardian will never block. A bot that only connects or fails to sign in never appears here.",
+      "trustedLoading": "Reading recent logons from the event log…",
+      "trustedUnavailable": "Cannot read the Security event log: no address can be learned.",
+      "trustedEmpty": "No successful RDP logon found in the event log for this period."
     }
   },
   "common": {
@@ -245,6 +250,17 @@
     "noMatch": "No connection matches the filters.",
     "unknownProcess": "PID {pid}",
     "unsupported": "The installed agent is older than this app and cannot provide the connection list. Update PacketWard.",
-    "failed": "Could not read the connection list from the agent. It will try again."
+    "failed": "Could not read the connection list from the agent. It will try again.",
+    "rdpTrustedBadge": "RDP · signed in",
+    "rdpTrustedBadgeTip": "Connected to the RDP port and has a successful RDP logon"
+  },
+  "audit": {
+    "successOff": "Windows is not auditing successful logons: PacketWard cannot learn which RDP clients are legitimate, so the Guardian could not protect them.",
+    "successUnknown": "The audit policy for successful logons could not be read: PacketWard cannot tell whether RDP logons are recorded.",
+    "failureOff": "Windows is not auditing failed logons: RDP brute-force attacks cannot be detected.",
+    "failureUnknown": "The audit policy for failed logons could not be read: RDP brute-force detection may not work.",
+    "feedUnavailable": "The Security event log cannot be read, so successful RDP logons are not being learned.",
+    "howToFix": "Turn both on from an administrator shell:",
+    "command": "auditpol /set /subcategory:\"Logon\" /success:enable /failure:enable"
   }
 }

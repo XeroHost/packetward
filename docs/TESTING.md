@@ -129,6 +129,18 @@ With the agent running (console or service):
 8. Keyboard: in the connections grid, arrows/PageUp/PageDown/Home/End move the active row, `c` copies its address.
 9. Layout: 1280×720 with *Compact* density shows no horizontal scrolling and no clipped tiles.
 
+10. **Logon audit and trusted RDP clients** (needs the agent running as administrator or SYSTEM):
+    - `pwctl status` prints `Logon audit: success on, failure on` when the "Logon" audit subcategory is enabled
+      (check with `auditpol /get /subcategory:"Logon"`; the output is localized). Turn one off with
+      `auditpol /set /subcategory:"Logon" /failure:disable`, restart nothing: within ~30 s `pwctl status` shows OFF
+      with a WARNING and the app shows a banner on every page. **Restore it afterwards** with
+      `auditpol /set /subcategory:"Logon" /success:enable /failure:enable`.
+    - `RDP trusted: N address(es)` lists addresses with a successful RDP logon in the last 30 days. Cross-check with
+      `Get-WinEvent -LogName Security -FilterXPath "*[System[(EventID=4624)] and EventData[Data[@Name='LogonType']='10']]"`
+      (and type 7). Note the Security log may be much shorter than 30 days.
+    - Sign in over RDP from another machine: the new address appears within seconds (live subscription, no restart).
+    - A bot's failed attempts (4625) or a bare connection must **not** add an address.
+
 Dev only: a dev build (`pnpm tauri dev` or `pnpm dev`) accepts `?rows=N` in the URL to show N synthetic
 connections instead of the agent's table, for performance checks.
 

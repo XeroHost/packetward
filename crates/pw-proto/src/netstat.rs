@@ -184,6 +184,66 @@ pub struct RdpSession {
     pub client_name: String,
 }
 
+/// Whether Windows records an event kind.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-export", derive(ts_rs::TS), ts(export))]
+#[serde(rename_all = "snake_case")]
+pub enum AuditState {
+    Enabled,
+    Disabled,
+    /// Could not be determined (no privilege to query the policy, API error).
+    #[default]
+    Unknown,
+}
+
+/// The "Audit Logon" policy. Without success events there are no RDP logons to learn trusted
+/// addresses from, and without failure events nothing can detect RDP brute force.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-export", derive(ts_rs::TS), ts(export))]
+pub struct LogonAudit {
+    pub success: AuditState,
+    pub failure: AuditState,
+}
+
+/// State of the event-log feed that learns which addresses logged in over RDP.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-export", derive(ts_rs::TS), ts(export))]
+#[serde(rename_all = "snake_case")]
+pub enum TrustFeed {
+    /// Starting up: the bounded initial load has not finished.
+    #[default]
+    Loading,
+    /// Live: the initial load finished and new events are being received.
+    Ready,
+    /// The event log cannot be read (privileges, service stopped).
+    Unavailable,
+}
+
+/// An address that completed an RDP logon recently.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-export", derive(ts_rs::TS), ts(export))]
+pub struct TrustedAddress {
+    pub addr: String,
+    /// Unix ms of its most recent successful RDP logon.
+    #[cfg_attr(feature = "ts-export", ts(type = "number"))]
+    pub last_logon_unix_ms: u64,
+}
+
+/// Addresses with a **successful RDP logon** (Security 4624 type 10, or TerminalServices 1149) in the
+/// trust window. This is the source of the Guardian's "never block the legitimate RDP client" rule: a
+/// legitimate user who mistypes the password on reconnect must not lock themselves out, and a bot
+/// that merely holds a connection open (or fails logons) never enters the set.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-export", derive(ts_rs::TS), ts(export))]
+pub struct RdpTrust {
+    /// How far back logons count, in days (30 by default).
+    pub window_days: u32,
+    pub feed: TrustFeed,
+    pub audit: LogonAudit,
+    /// Most recent logon first.
+    pub addresses: Vec<TrustedAddress>,
+}
+
 /// Payload of the `live.stats` topic (one per second).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts-export", derive(ts_rs::TS), ts(export))]
@@ -203,6 +263,7 @@ pub struct LiveStats {
     pub rdp_peers: Vec<String>,
     /// The TCP port the RDP listener uses (3389 unless reconfigured).
     pub rdp_port: u16,
+    pub rdp_trust: RdpTrust,
 }
 
 #[cfg(test)]

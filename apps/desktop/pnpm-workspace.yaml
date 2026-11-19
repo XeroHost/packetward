@@ -1,0 +1,3 @@
+permissions:
+  '@tanstack/vue-table':
+    skills: true
