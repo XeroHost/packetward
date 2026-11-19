@@ -14,6 +14,7 @@ mod handshake;
 mod live;
 mod netstat;
 mod subscribe;
+mod support;
 mod system;
 
 pub use bridge::{AccessReason, AgentConnection, BridgeEvent, ElevatedAction, ElevationOutcome};
@@ -40,6 +41,10 @@ pub use netstat::{
     DEFAULT_CONNECTION_LIMIT,
 };
 pub use subscribe::{SubscribeRequest, SubscribeResponse, UnsubscribeRequest};
+pub use support::{
+    SupportBundleInfo, SupportBundleRequest, SupportChunk, SupportDiscardRequest, SupportItem,
+    SupportPreview, SupportReadRequest,
+};
 pub use system::SystemInfo;
 
 /// Request method names.
@@ -63,6 +68,10 @@ pub mod method {
     pub const CAPTURE_RECORD_STOP: &str = "capture.record.stop";
     pub const CAPTURE_FILES: &str = "capture.files";
     pub const CAPTURE_FILES_DELETE: &str = "capture.files.delete";
+    pub const SUPPORT_PREVIEW: &str = "support.bundle.preview";
+    pub const SUPPORT_CREATE: &str = "support.bundle.create";
+    pub const SUPPORT_READ: &str = "support.bundle.read";
+    pub const SUPPORT_DISCARD: &str = "support.bundle.discard";
     pub const SUBSCRIBE: &str = "subscribe";
     pub const UNSUBSCRIBE: &str = "unsubscribe";
 }

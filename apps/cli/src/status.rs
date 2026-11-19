@@ -20,10 +20,11 @@ const EXIT_NOT_RUNNING: u8 = 2;
 const EXIT_DENIED: u8 = 3;
 const EXIT_VERSION: u8 = 4;
 
-pub async fn run() -> ExitCode {
+/// Opens the pipe and does the handshake; on failure prints why and returns the exit code to use.
+pub async fn connect_client() -> Result<Client, ExitCode> {
     let stream = match pipe::connect(PIPE_NAME).await {
         Ok(stream) => stream,
-        Err(err) => return connect_failed(&err),
+        Err(err) => return Err(connect_failed(&err)),
     };
     let client = match Client::connect(stream, ClientKind::Pwctl, env!("CARGO_PKG_VERSION")).await {
         Ok(client) => client,
@@ -32,19 +33,27 @@ pub async fn run() -> ExitCode {
                 "The agent ({}) is older than this pwctl and cannot talk to it. Update PacketWard.",
                 agent.agent_version
             );
-            return ExitCode::from(EXIT_VERSION);
+            return Err(ExitCode::from(EXIT_VERSION));
         }
         Err(ClientError::ClientOutdated(agent)) => {
             eprintln!(
                 "This pwctl is older than the agent ({}). Update PacketWard.",
                 agent.agent_version
             );
-            return ExitCode::from(EXIT_VERSION);
+            return Err(ExitCode::from(EXIT_VERSION));
         }
         Err(err) => {
             eprintln!("Could not talk to the agent: {err}");
-            return ExitCode::from(EXIT_OTHER);
+            return Err(ExitCode::from(EXIT_OTHER));
         }
+    };
+    Ok(client)
+}
+
+pub async fn run() -> ExitCode {
+    let client = match connect_client().await {
+        Ok(client) => client,
+        Err(code) => return code,
     };
     let info: SystemInfo = match client.request(method::SYSTEM_INFO, &()).await {
         Ok(info) => info,

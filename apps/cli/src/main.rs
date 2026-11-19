@@ -3,6 +3,8 @@
 
 #[cfg(windows)]
 mod status;
+#[cfg(windows)]
+mod support;
 
 #[cfg(windows)]
 fn main() -> std::process::ExitCode {
@@ -19,6 +21,25 @@ fn main() -> std::process::ExitCode {
     enum Command {
         /// Show whether the agent is reachable and what it reports.
         Status,
+        /// Build a support zip (traffic summary, adapters, logs, optional short capture) and save it
+        /// locally. Nothing is uploaded.
+        SupportBundle {
+            /// Replace this machine's own addresses and name with placeholders (the capture is left out).
+            #[arg(long)]
+            anonymize: bool,
+            /// Seconds of traffic to record into the bundle (0 = none, at most 120).
+            #[arg(long, default_value_t = 60)]
+            capture_secs: u32,
+            /// Leave the agent log out.
+            #[arg(long)]
+            no_logs: bool,
+            /// Folder to save into (default: Documents\PacketWard\support).
+            #[arg(long)]
+            out: Option<std::path::PathBuf>,
+            /// Only show what the bundle would contain.
+            #[arg(long)]
+            preview: bool,
+        },
     }
 
     let cli = Cli::parse();
@@ -34,6 +55,19 @@ fn main() -> std::process::ExitCode {
     };
     match cli.command {
         Command::Status => runtime.block_on(status::run()),
+        Command::SupportBundle {
+            anonymize,
+            capture_secs,
+            no_logs,
+            out,
+            preview,
+        } => runtime.block_on(support::run(support::Options {
+            anonymize,
+            capture_secs,
+            no_logs,
+            out,
+            preview_only: preview,
+        })),
     }
 }
 

@@ -9,6 +9,7 @@ mod capture;
 mod connections;
 mod diag;
 mod poller;
+mod support;
 mod sys;
 mod trust;
 
@@ -22,8 +23,8 @@ use pw_netstat::NetStat;
 use pw_proto::{
     method, topic, CaptureFileRequest, CaptureStartRequest, ConnectionsRequest, DiagJobRequest,
     DnsLookupRequest, ErrorCode, ErrorPayload, Heartbeat, HelloResponse, MtrStartRequest,
-    PingStartRequest, PortCheckRequest, RecordStartRequest, SystemInfo, PROTOCOL_MAJOR,
-    PROTOCOL_MINOR,
+    PingStartRequest, PortCheckRequest, RecordStartRequest, SupportBundleRequest,
+    SupportDiscardRequest, SupportReadRequest, SystemInfo, PROTOCOL_MAJOR, PROTOCOL_MINOR,
 };
 use serde_json::Value;
 use tokio::sync::{mpsc, watch};
@@ -53,6 +54,10 @@ pub struct EngineConfig {
     pub rdp_trust_days: u32,
     /// Where recordings are written (administrators only). Created on first use.
     pub capture_dir: PathBuf,
+    /// Where finished support bundles wait to be collected (administrators only).
+    pub support_dir: PathBuf,
+    /// The agent log folder, read for the support bundle.
+    pub logs_dir: PathBuf,
     /// Start the live capture when the engine starts. Off by default so tests and tools that build
     /// an engine never open a capture; the agent turns it on.
     pub capture_autostart: bool,
@@ -67,7 +72,9 @@ impl EngineConfig {
             poll_interval: Duration::from_secs(1),
             rdp_refresh_every: 5,
             rdp_trust_days: DEFAULT_WINDOW_DAYS,
-            capture_dir: default_capture_dir(),
+            capture_dir: data_dir().join("captures"),
+            support_dir: data_dir().join("support"),
+            logs_dir: data_dir().join("logs"),
             capture_autostart: false,
         }
     }
@@ -88,6 +95,7 @@ pub struct Engine {
     latest: watch::Receiver<Option<Arc<Snapshot>>>,
     diag: Diag<SystemPinger>,
     capture: Arc<CaptureManager>,
+    support: support::SupportService,
     _poller: AbortOnDrop,
 }
 
@@ -140,13 +148,28 @@ impl Engine {
                 }
             });
         }
+        let support =
+            support::SupportService::new(config.support_dir.clone(), config.logs_dir.clone());
         Self {
             config,
             started: Instant::now(),
             latest,
             diag: Diag::new(Arc::new(SystemPinger)),
+            support,
             capture,
             _poller: AbortOnDrop(task),
+        }
+    }
+
+    fn support_inputs(&self) -> support::Inputs {
+        support::Inputs {
+            info: self.system_info(),
+            stats: self
+                .latest
+                .borrow()
+                .as_ref()
+                .map(|snapshot| snapshot.stats.clone()),
+            capture: self.capture.status(),
         }
     }
 
@@ -289,6 +312,27 @@ impl Handler for Engine {
                 self.capture.delete_file(&request.name)?;
                 to_value(&self.capture.files())
             }
+            method::SUPPORT_PREVIEW => {
+                let request: SupportBundleRequest = parse(payload)?;
+                to_value(&self.support.preview(&self.support_inputs(), &request))
+            }
+            method::SUPPORT_CREATE => {
+                let request: SupportBundleRequest = parse(payload)?;
+                let info = self
+                    .support
+                    .create(self.support_inputs(), request, &self.capture)
+                    .await?;
+                to_value(&info)
+            }
+            method::SUPPORT_READ => {
+                let request: SupportReadRequest = parse(payload)?;
+                to_value(&self.support.read(&request)?)
+            }
+            method::SUPPORT_DISCARD => {
+                let request: SupportDiscardRequest = parse(payload)?;
+                self.support.discard(&request.id);
+                Ok(Value::Null)
+            }
             other => Err(ErrorPayload::new(
                 ErrorCode::UnknownMethod,
                 format!("unknown method `{other}`"),
@@ -388,12 +432,11 @@ fn parse_or_default<T: serde::de::DeserializeOwned + Default>(
     }
 }
 
-/// `%ProgramData%\PacketWard\captures`, falling back to the Windows default location.
-fn default_capture_dir() -> PathBuf {
+/// The agent data folder under `%ProgramData%`, falling back to the Windows default location.
+fn data_dir() -> PathBuf {
     std::env::var_os("ProgramData")
-        .map_or_else(|| PathBuf::from(r"C:\ProgramData"), PathBuf::from)
+        .map_or_else(|| PathBuf::from(r"C:ProgramData"), PathBuf::from)
         .join("PacketWard")
-        .join("captures")
 }
 
 fn parse<T: serde::de::DeserializeOwned>(payload: Value) -> Result<T, ErrorPayload> {

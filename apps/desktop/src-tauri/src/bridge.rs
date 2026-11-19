@@ -10,9 +10,9 @@ use pw_ipc::pipe::{self, PIPE_NAME};
 use pw_ipc::scm::{self, AgentService};
 use pw_ipc::{Client, ClientError};
 use pw_proto::{
-    method, topic, AccessReason, AgentConnection, BridgeEvent, ClientKind, ConnectionsRequest,
-    ConnectionsResponse, DiagEvent, ElevatedAction, ElevationOutcome, ErrorCode, Heartbeat,
-    LiveStats,
+    method, topic, AccessReason, AgentConnection, BridgeEvent, CaptureLive, ClientKind,
+    ConnectionsRequest, ConnectionsResponse, DiagEvent, ElevatedAction, ElevationOutcome,
+    ErrorCode, Heartbeat, LiveStats,
 };
 use tauri::ipc::Channel;
 use tauri::{AppHandle, State};
@@ -68,6 +68,10 @@ impl Emitter {
 
     fn diag(&self, event: DiagEvent) -> bool {
         self.channel.send(BridgeEvent::Diag(event)).is_ok()
+    }
+
+    fn capture(&self, stats: CaptureLive) -> bool {
+        self.channel.send(BridgeEvent::Capture(stats)).is_ok()
     }
 }
 
@@ -143,6 +147,14 @@ async fn run_connected(client: Client, out: &mut Emitter, slot: &ClientSlot) -> 
             None
         }
     };
+    // Live capture statistics; older agents do not have them and the Traffic page then stays empty.
+    let mut capture = match client.subscribe(topic::CAPTURE_STATS).await {
+        Ok(subscription) => Some(subscription),
+        Err(err) => {
+            tracing::info!(%err, "the agent does not publish capture.stats");
+            None
+        }
+    };
     *slot.lock().unwrap_or_else(|e| e.into_inner()) = Some(client.clone());
     let _clear_on_exit = SlotGuard(slot);
 
@@ -172,6 +184,14 @@ async fn run_connected(client: Client, out: &mut Emitter, slot: &ClientSlot) -> 
                 }
                 None => return true,
             },
+            stats = next_capture(&mut capture) => match stats {
+                Some(stats) => {
+                    if !out.capture(stats) {
+                        return false;
+                    }
+                }
+                None => return true,
+            },
             event = next_diag(&mut diag) => match event {
                 Some(event) => {
                     if !out.diag(event) {
@@ -189,6 +209,14 @@ async fn run_connected(client: Client, out: &mut Emitter, slot: &ClientSlot) -> 
 async fn next_stats(subscription: &mut Option<pw_ipc::Subscription>) -> Option<LiveStats> {
     match subscription {
         Some(subscription) => subscription.recv_as::<LiveStats>().await,
+        None => std::future::pending().await,
+    }
+}
+
+/// The next `capture.stats` event; never completes when the agent offers none.
+async fn next_capture(subscription: &mut Option<pw_ipc::Subscription>) -> Option<CaptureLive> {
+    match subscription {
+        Some(subscription) => subscription.recv_as::<CaptureLive>().await,
         None => std::future::pending().await,
     }
 }
@@ -211,6 +239,13 @@ const CALLABLE_METHODS: &[&str] = &[
     method::DIAG_DNS_LOOKUP,
     method::DIAG_PORT_CHECK,
     method::DIAG_PORTS_LOCAL,
+    method::CAPTURE_STATUS,
+    method::CAPTURE_START,
+    method::CAPTURE_STOP,
+    method::CAPTURE_RECORD_START,
+    method::CAPTURE_RECORD_STOP,
+    method::CAPTURE_FILES,
+    method::CAPTURE_FILES_DELETE,
 ];
 
 fn is_callable(method_name: &str) -> bool {
@@ -371,9 +406,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn only_diagnostics_methods_are_callable_from_the_webview() {
+    fn only_diagnostics_and_capture_methods_are_callable_from_the_webview() {
         for allowed in CALLABLE_METHODS {
-            assert!(allowed.starts_with("diag."), "{allowed}");
+            assert!(
+                allowed.starts_with("diag.") || allowed.starts_with("capture."),
+                "{allowed}"
+            );
             assert!(is_callable(allowed));
         }
         for blocked in [

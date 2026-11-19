@@ -803,7 +803,7 @@ mod tests {
         }
     }
 
-    fn selection(selected: Option<BackendKind>) -> BackendSelection {
+    pub(super) fn selection(selected: Option<BackendKind>) -> BackendSelection {
         let status = |kind, ok: bool| BackendStatus {
             kind,
             availability: if ok {
@@ -834,7 +834,7 @@ mod tests {
         }
     }
 
-    fn adapter(name: &str, addr: &str, up: bool, loopback: bool) -> InterfaceInfo {
+    pub(super) fn adapter(name: &str, addr: &str, up: bool, loopback: bool) -> InterfaceInfo {
         InterfaceInfo {
             id: InterfaceId(format!("{{{name}}}")),
             name: name.into(),
@@ -845,12 +845,12 @@ mod tests {
         }
     }
 
-    type SourceFactory = dyn Fn() -> Box<dyn PacketSource> + Send + Sync;
+    pub(super) type SourceFactory = dyn Fn() -> Box<dyn PacketSource> + Send + Sync;
 
-    struct FakeHost {
-        selection: BackendSelection,
-        interfaces: Vec<InterfaceInfo>,
-        source: Box<SourceFactory>,
+    pub(super) struct FakeHost {
+        pub(super) selection: BackendSelection,
+        pub(super) interfaces: Vec<InterfaceInfo>,
+        pub(super) source: Box<SourceFactory>,
     }
 
     impl CaptureHost for FakeHost {
@@ -869,7 +869,7 @@ mod tests {
         }
     }
 
-    fn host(source: Box<SourceFactory>) -> Arc<FakeHost> {
+    pub(super) fn host(source: Box<SourceFactory>) -> Arc<FakeHost> {
         Arc::new(FakeHost {
             selection: selection(Some(BackendKind::RawSocket)),
             interfaces: vec![
@@ -892,7 +892,7 @@ mod tests {
         })
     }
 
-    fn idle() -> Box<SourceFactory> {
+    pub(super) fn idle() -> Box<SourceFactory> {
         Box::new(|| {
             Box::new(
                 FakeSource::new(LinkType::RawIp)
@@ -902,7 +902,7 @@ mod tests {
         })
     }
 
-    fn manager(host: Arc<FakeHost>) -> (CaptureManager, tempfile::TempDir) {
+    pub(super) fn manager(host: Arc<FakeHost>) -> (CaptureManager, tempfile::TempDir) {
         let dir = tempfile::tempdir().unwrap();
         (
             CaptureManager::new(host, dir.path().join("captures"), None),
@@ -1218,5 +1218,35 @@ mod tests {
         assert_eq!(cleanup_old(dir.path(), Duration::ZERO), 3);
         assert!(dir.path().join("notes.txt").exists());
         assert_eq!(cleanup_old(&dir.path().join("missing"), Duration::ZERO), 0);
+    }
+}
+
+/// Helpers other modules' tests use to get a capture manager without a machine behind it.
+#[cfg(test)]
+pub(crate) mod tests_support {
+    use std::sync::Arc;
+
+    use pw_proto::CaptureStatus;
+
+    use super::tests::{adapter, host, idle, manager, selection, FakeHost};
+    use super::{BackendKind, CaptureManager};
+
+    /// A status whose adapters have exactly these addresses.
+    pub fn status_with(addrs: &[&str]) -> CaptureStatus {
+        let fake = Arc::new(FakeHost {
+            selection: selection(Some(BackendKind::RawSocket)),
+            interfaces: addrs
+                .iter()
+                .enumerate()
+                .map(|(i, a)| adapter(&format!("eth{i}"), a, true, false))
+                .collect(),
+            source: idle(),
+        });
+        CaptureManager::new(fake, std::path::PathBuf::from("unused"), None).status()
+    }
+
+    /// A manager over a silent fake source; keep the returned directory alive.
+    pub fn quiet_manager() -> (CaptureManager, tempfile::TempDir) {
+        manager(host(idle()))
     }
 }
