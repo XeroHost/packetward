@@ -20,7 +20,7 @@ Read this first when resuming after a stop or a context compaction.
 | M0 Scaffold | done (main) |
 | M1 Proto/IPC/agent | done (main) |
 | M2 Netstat & dashboard | done (main) + RDP trust set |
-| M3 Basic diagnostics | integrated on dev (see below) |
+| M3 Basic diagnostics | done on dev (CI run 44496262640 green). Live smoke on this VPS: ping/MTR/DNS ALL/port check verified, MTR path identical to tracert. Pending on a test VPS: comparison with WinMTR against a XeroHost node (no node exists yet) |
 | M4 Capture & support bundle | not started |
 | M5 Detection & alerts | not started |
 | M6 Firewall manager | not started |
@@ -33,7 +33,7 @@ Read this first when resuming after a stop or a context compaction.
 | M12 Hardening & 1.0 | not started |
 
 ## Now / next
-Now: M3 integrated and checked locally (fmt, clippy Windows + Linux, tests, deny, lint, typecheck, build). Next: commit + push dev, verify CI, advisor; then merge the pw-capture (`worktree-agent-a2611a6e633529557`) and pw-detect (`worktree-agent-a2991347640d9fe8e`) branches and integrate M4/M5; launch wave 2 subagents (pw-firewall, pw-intel, speed-server).
+Now: wave 2 subagents running (pw-firewall, pw-intel, speed-server). Meanwhile integrating M4 (capture manager in engine, capture proto/IPC/UI, support bundle) and M5. Design rule: detection must NOT depend on capture (raw socket is inbound-blind here): feed pw-detect from netstat connection counts, adapter bps and the 4625 feed; capture only adds SYN/UDP/ICMP flood detection; warn when capture is blind.
 Note: pw-core (PacketMeta, CIDR sets) was written first on dev so capture/detect share it. Subagent worktrees live in .claude/worktrees (ignored by git).
 
 ## Blockers

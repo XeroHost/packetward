@@ -803,6 +803,79 @@ mod tests {
         assert!(local_ports(None).ports.is_empty());
     }
 
+    /// Real ICMP/DNS/TCP through the OS. Needs internet: `cargo test -p pw-engine live_ -- --ignored --nocapture`.
+    #[tokio::test]
+    #[ignore = "needs internet access"]
+    async fn live_ping_mtr_dns_and_port_check_against_the_real_network() {
+        use pw_diag::SystemPinger;
+        let diag = Diag::new(Arc::new(SystemPinger));
+        let mut rx = diag.subscribe();
+        let ping = diag
+            .start_ping(PingStartRequest {
+                target: "1.1.1.1".into(),
+                count: Some(3),
+                ..Default::default()
+            })
+            .await
+            .unwrap();
+        let mtr = diag
+            .start_mtr(MtrStartRequest {
+                target: "1.1.1.1".into(),
+                cycles: Some(3),
+                ..Default::default()
+            })
+            .await
+            .unwrap();
+        let (mut ping_summary, mut last_mtr, mut mtr_done) = (None, None, false);
+        while ping_summary.is_none() || !mtr_done {
+            match next(&mut rx).await {
+                DiagEvent::PingDone { job_id, summary } if job_id == ping.job_id => {
+                    ping_summary = Some(summary)
+                }
+                DiagEvent::MtrSnapshot { job_id, snapshot } if job_id == mtr.job_id => {
+                    last_mtr = Some(snapshot)
+                }
+                DiagEvent::MtrDone { job_id, .. } if job_id == mtr.job_id => mtr_done = true,
+                DiagEvent::Failed { message, .. } => panic!("{message}"),
+                _ => {}
+            }
+        }
+        let summary = ping_summary.unwrap();
+        println!("ping: {summary:?}");
+        assert!(
+            summary.received > 0,
+            "1.1.1.1 must answer at least one echo"
+        );
+        let last = last_mtr.unwrap();
+        for hop in &last.hops {
+            println!("hop {} {:?} loss {}%", hop.ttl, hop.addr, hop.loss_percent);
+        }
+        println!("{}", diag.mtr_report(mtr.job_id, None).unwrap().text);
+        assert!(!last.hops.is_empty());
+        let dns = diag
+            .dns_lookup(DnsLookupRequest {
+                name: "example.com".into(),
+                record_type: "ALL".into(),
+                resolver: "system".into(),
+                custom_servers: vec![],
+            })
+            .await
+            .unwrap();
+        println!("dns: {} records", dns.records.len());
+        assert!(dns.records.iter().any(|r| r.record_type == "A"));
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let open = diag
+            .port_check(PortCheckRequest {
+                host: "127.0.0.1".into(),
+                port: listener.local_addr().unwrap().port(),
+                protocol: "tcp".into(),
+                timeout_ms: Some(3000),
+            })
+            .await
+            .unwrap();
+        assert_eq!(open.state, PortStateView::Open);
+    }
+
     #[tokio::test]
     async fn hostnames_resolve_and_ip_literals_pass_through() {
         assert_eq!(

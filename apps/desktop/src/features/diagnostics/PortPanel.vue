@@ -27,7 +27,7 @@ function run(): void {
     host: host.value.trim(),
     port: port.value,
     protocol: protocol.value,
-    timeout_ms: 3000,
+    timeout_ms: 5000,
   })
 }
 </script>

@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup lang="ts">
 import { useIntervalFn } from '@vueuse/core'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import IpCell from '@/components/pw/IpCell.vue'
 import { useAppVisible } from '@/lib/visibility'
@@ -37,6 +37,13 @@ onMounted(() => {
   void diag.loadLocalPorts()
   if (visible.value) resume()
   else pause()
+})
+// Stop polling while the window is hidden in the tray.
+watch(visible, (shown) => {
+  if (shown) {
+    void diag.loadLocalPorts()
+    resume()
+  } else pause()
 })
 </script>
 
