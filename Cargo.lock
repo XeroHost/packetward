@@ -3791,7 +3791,14 @@ dependencies = [
 name = "pw-diag"
 version = "0.1.0"
 dependencies = [
+ "bytes",
+ "futures-util",
  "hickory-resolver",
+ "pw-speed-server",
+ "reqwest",
+ "rustls",
+ "serde",
+ "serde_json",
  "thiserror 2.0.21",
  "tokio",
  "tracing",
