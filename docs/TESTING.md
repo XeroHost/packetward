@@ -262,6 +262,29 @@ Every step below can cut Remote Desktop. Keep the provider's console open and a 
    The 50 GB test stays disabled until its checkbox is ticked. On the dev VPS never run more than 1 GB per test.
 3. Exceed the server's per-address budget: the page shows the *budget exceeded* message with no retry loop.
 
+## F10. Advanced MTR (M10) — TEST VPS
+
+Needs a Windows VPS with the agent running elevated, plus WinMTR (or `mtr`/`tracert`) for comparison. Nothing here changes firewall rules.
+
+1. **ICMP baseline.** Diagnostics → MTR → ICMP to a public host (e.g. `1.1.1.1`), 20 rounds. Hops, loss and latency should match WinMTR
+   run at the same time (±10 % on latency). The *Network (ASN)* and *Country* columns are filled for public hops (needs the GeoIP
+   database from Threat Intel → Update) and show `—` for private addresses. Install nothing yet.
+2. **UDP.** Mode UDP (default port 33434): the trace ends when the destination answers port-unreachable ("destination answered (port
+   unreachable)" in the header). Compare the path with `tracert`/WinMTR in UDP mode. If the agent cannot read replies, the red note
+   shows the agent's message and the Npcap hint; ICMP must keep working.
+3. **TCP SYN.** Mode TCP SYN, port 443 against a host that **drops ICMP** (a cloud host with ICMP blocked, or block ICMP echo in that
+   host's firewall for the test). ICMP shows the last hops as "no reply"; TCP must reach the destination ("destination answered (port open)",
+   or "port closed" for a closed port). Try a closed port too.
+4. **Npcap acceptance (roadmap M10).** Repeat step 3 first **without** Npcap (the built-in raw-socket capture, agent elevated), then install
+   Npcap yourself from npcap.com and repeat **without restarting the agent**: the backend is chosen per trace. Record which of the
+   two reached the destination. Stop the agent's elevation or use a non-admin context to check the *mode unavailable* message too.
+5. **Options.** Packet size 1400 (UDP/ICMP) and TCP (field disabled), interval 500 ms, max hops 8 (the trace stops at 8), IPv6 target
+   (`2606:4700:4700::1111`) and *Prefer IPv6* with a dual-stack name. A port of 0 is refused.
+6. **Export.** After a run: Export → Save as CSV / JSON / support report; open each file (names look like
+   `packetward-mtr-1.1.1.1-20261119-120000.csv`, no `:` for IPv6). *Copy as CSV/JSON* pastes the same text. After running a speed test
+   the support report shows *Source public IP*. Check that the browser-style download prompt of the webview appears and writes the file.
+7. **Old agent.** With an agent older than protocol 1.10 the mode/interval/IPv6 fields and Export are hidden and a note explains why.
+
 ## G. Leave-no-trace check
 
 After testing, all of these must be empty / `False`:
