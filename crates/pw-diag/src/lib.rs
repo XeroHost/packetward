@@ -71,6 +71,7 @@ pub mod ping;
 pub mod port;
 pub mod report;
 pub mod sink;
+pub mod speed;
 pub mod stats;
 mod sys;
 
