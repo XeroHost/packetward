@@ -47,3 +47,8 @@ See docs/TESTING.md (sections are added per milestone).
 cargo fmt --all --check; cargo clippy --workspace --all-targets -- -D warnings; cargo test --workspace; cargo deny check
 cd apps\desktop; pnpm lint; pnpm typecheck; pnpm test; pnpm build
 ```
+
+## Findings to act on
+- **RawSocket backend saw 0 inbound packets on the dev VPS** (pw-capture live test, elevated; outbound is seen). Hypothesis (unverified): Windows Firewall drops inbound delivery to raw sockets of an app without an allow rule. Not tested further because firewall changes are prohibited here. Actions: (1) the engine must warn when outbound flows but inbound stays at 0 for N seconds ("capture is blind"), (2) test on a test VPS with an inbound allow rule for `packetward-agent.exe` in the `PacketWard` group (TESTING.md), (3) fall back to netstat-based counters (ConnFlood/Aggregate/RDP detectors do not need capture), (4) later alternative: NDIS ETW provider.
+- `pw-capture` Npcap FFI was never executed (Npcap must not be installed here): test on a test VPS with Npcap.
+- Subagent wave 2 (pw-firewall, pw-intel, speed-server) launched after M3 was pushed.

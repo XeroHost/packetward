@@ -44,3 +44,8 @@ here with its reason. Review them when you are back.
 |---|---|---|---|
 | 2026-11-19 | setup | Work on branch `dev`; CI runs on pushes to `main` and `dev` | `main` must stay untouched during the run |
 | Guardian: which RDP clients are protected (2026-11-19) | **Addresses with a successful RDP logon in the last 30 days** (configurable, 1–365): Security 4624 type 10 or 7 (remote address only) and TerminalServices 1149. Not "connected now", not `WTSClientAddress`, not every peer of the RDP port. Learned with `EvtSubscribe` plus one bounded initial load, never by searching the log. If the "Audit Logon" policy (success/failure) is off, the UI and `pwctl status` warn, because without those events neither the protection nor RdpBruteForce work. See ARCHITECTURE §6.3. |
+| 2026-11-19 | M3 | Port checks and diagnostics are plain agent methods reachable from the webview only through `agent_call` with a method allowlist; MTR report omits the source public IP until a XeroHost node reports it (M9) | Smallest surface for a compromised webview; never invent data |
+| 2026-11-19 | M4 | `pw-capture` talks to Npcap through a hand-written `libloading` FFI instead of the `pcap` crate | Nothing links Npcap, no SDK needed, absolute-path DLL load (no PATH/cwd search) |
+| 2026-11-19 | M4 | RawSocket backend uses `RCVALL_IPLEVEL` (no promiscuous mode) | Least intrusive on the NIC |
+| 2026-11-19 | M5 | `pw-detect` takes time as u64 ns since the Unix epoch (same clock as `PacketMeta`), not `Instant` | Deterministic tests and one clock for capture and detection; ARCHITECTURE §6.2 to be updated at M5 integration |
+| 2026-11-19 | M5 | SynFlood is suppressed for a source that is also port-scanning unless its SYN rate is ≥ 10× threshold | One scan = one alert |
