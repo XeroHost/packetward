@@ -104,6 +104,8 @@ service-state and group checks live in `pw-ipc`.
 | Errors / logs | `thiserror`, `anyhow` (bins), `tracing`, `tracing-subscriber`, `tracing-appender` |
 | Secrets | `keyring` (Windows Credential Manager) |
 | Desktop | `tauri` 2 (tray-icon), `tauri-plugin-updater`, `-notification`, `-autostart`, `-single-instance`, `-dialog`, `-opener`; `sys-locale` |
+| Charts (UI) | `echarts` + `vue-echarts` (tree-shaken imports) |
+| Tables (UI) | `@tanstack/vue-table` + `@tanstack/vue-virtual` |
 | Blocklist signature | `minisign-verify` |
 | CLI | `clap` |
 | Speed server | `axum` |

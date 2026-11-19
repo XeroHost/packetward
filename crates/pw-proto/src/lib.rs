@@ -10,6 +10,7 @@ mod envelope;
 mod error;
 mod handshake;
 mod live;
+mod netstat;
 mod subscribe;
 mod system;
 
@@ -18,6 +19,11 @@ pub use envelope::{Envelope, Kind, ShapeError, ENVELOPE_VERSION, MAX_FRAME_BYTES
 pub use error::{ErrorCode, ErrorPayload};
 pub use handshake::{ClientKind, HelloRequest, HelloResponse, PROTOCOL_MAJOR, PROTOCOL_MINOR};
 pub use live::Heartbeat;
+pub use netstat::{
+    Connection, ConnectionCounts, ConnectionsRequest, ConnectionsResponse, InterfaceKind,
+    InterfaceStats, LiveStats, Proto, RdpSession, RdpSessionState, RemoteTalker, TcpState,
+    TrafficTotals, DEFAULT_CONNECTION_LIMIT,
+};
 pub use subscribe::{SubscribeRequest, SubscribeResponse, UnsubscribeRequest};
 pub use system::SystemInfo;
 
@@ -26,6 +32,8 @@ pub mod method {
     /// Must be the first request on every connection.
     pub const HELLO: &str = "session.hello";
     pub const SYSTEM_INFO: &str = "system.info";
+    /// Full connection table (capped), see [`crate::ConnectionsResponse`].
+    pub const NETSTAT_CONNECTIONS: &str = "netstat.connections";
     pub const SUBSCRIBE: &str = "subscribe";
     pub const UNSUBSCRIBE: &str = "unsubscribe";
 }
@@ -34,4 +42,6 @@ pub mod method {
 pub mod topic {
     /// One event per second while subscribed; proves the agent is alive.
     pub const LIVE_HEARTBEAT: &str = "live.heartbeat";
+    /// Aggregated traffic, connection counts and RDP sessions, once per second.
+    pub const LIVE_STATS: &str = "live.stats";
 }

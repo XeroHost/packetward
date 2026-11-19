@@ -3091,6 +3091,12 @@ dependencies = [
 [[package]]
 name = "pw-netstat"
 version = "0.1.0"
+dependencies = [
+ "pw-proto",
+ "thiserror 2.0.21",
+ "tracing",
+ "windows",
+]
 
 [[package]]
 name = "pw-proto"

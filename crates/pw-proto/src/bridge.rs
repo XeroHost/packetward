@@ -6,7 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::Heartbeat;
+use crate::{Heartbeat, LiveStats};
 
 /// Why the agent pipe refused this Windows user.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -58,12 +58,13 @@ pub enum AgentConnection {
 }
 
 /// One message on the `agent_watch` channel.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts-export", derive(ts_rs::TS), ts(export))]
 #[serde(tag = "type", content = "data", rename_all = "snake_case")]
 pub enum BridgeEvent {
     Status(AgentConnection),
     Heartbeat(Heartbeat),
+    Stats(LiveStats),
 }
 
 /// What the UI may ask the agent executable to do with administrator rights.
