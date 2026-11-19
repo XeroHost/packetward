@@ -89,7 +89,9 @@ pub struct DesiredBlock {
 pub fn split_expired(desired: &[DesiredBlock], now: u64) -> (Vec<Cidr>, Vec<Cidr>) {
     let mut latest: BTreeMap<(bool, u128, u8), (Cidr, Option<u64>)> = BTreeMap::new();
     for d in desired {
-        let entry = latest.entry(cidr_key(&d.block)).or_insert((d.block, d.expires_at));
+        let entry = latest
+            .entry(cidr_key(&d.block))
+            .or_insert((d.block, d.expires_at));
         // `None` = never expires, which beats any deadline.
         entry.1 = match (entry.1, d.expires_at) {
             (None, _) | (_, None) => None,
@@ -315,7 +317,10 @@ mod tests {
     }
 
     fn state_set(existing: &[ExistingBatchRule]) -> HashSet<Cidr> {
-        existing.iter().flat_map(|r| r.addresses.iter().copied()).collect()
+        existing
+            .iter()
+            .flat_map(|r| r.addresses.iter().copied())
+            .collect()
     }
 
     #[test]
@@ -323,7 +328,10 @@ mod tests {
         let batch = BatchId::auto_block();
         let plan = plan_reconcile(&batch, BatchConfig::default(), &[], &hosts(0..5000));
         assert_eq!(plan.changes.len(), 5);
-        assert!(plan.changes.iter().all(|c| matches!(c, RuleChange::Create { addresses, .. } if addresses.len() == 1000)));
+        assert!(plan
+            .changes
+            .iter()
+            .all(|c| matches!(c, RuleChange::Create { addresses, .. } if addresses.len() == 1000)));
         let names: Vec<_> = plan.changes.iter().map(|c| c.name().to_owned()).collect();
         assert_eq!(names[0], "PW-AutoBlock-001");
         assert_eq!(names[4], "PW-AutoBlock-005");
@@ -404,7 +412,10 @@ mod tests {
         apply(&mut state, &plan, &batch);
         // Everything gone: both rules removed, none updated to empty.
         let plan = plan_reconcile(&batch, BatchConfig::new(2), &state, &[]);
-        assert!(plan.changes.iter().all(|c| matches!(c, RuleChange::Delete { .. })));
+        assert!(plan
+            .changes
+            .iter()
+            .all(|c| matches!(c, RuleChange::Delete { .. })));
         apply(&mut state, &plan, &batch);
         assert!(state.is_empty());
         // Idempotent.
@@ -482,7 +493,15 @@ mod tests {
             expires_at: e,
         };
         let (active, expired) = split_expired(
-            &[d(1, Some(100)), d(2, Some(50)), d(3, None), d(4, Some(100)), d(4, Some(10)), d(5, Some(60)), d(5, None)],
+            &[
+                d(1, Some(100)),
+                d(2, Some(50)),
+                d(3, None),
+                d(4, Some(100)),
+                d(4, Some(10)),
+                d(5, Some(60)),
+                d(5, None),
+            ],
             60,
         );
         assert_eq!(active, vec![host(1), host(3), host(4), host(5)]);
@@ -521,9 +540,14 @@ mod tests {
                 // Exactly the desired set, no duplicates across rules.
                 let total: usize = state.iter().map(|r| r.addresses.len()).sum();
                 assert_eq!(total, want.len(), "seed {seed}");
-                assert_eq!(state_set(&state), want.iter().copied().collect::<HashSet<_>>());
+                assert_eq!(
+                    state_set(&state),
+                    want.iter().copied().collect::<HashSet<_>>()
+                );
                 // Capacity and non-empty.
-                assert!(state.iter().all(|r| !r.addresses.is_empty() && r.addresses.len() <= cap));
+                assert!(state
+                    .iter()
+                    .all(|r| !r.addresses.is_empty() && r.addresses.len() <= cap));
                 // Compact: any two rules together exceed the cap.
                 for (i, a) in state.iter().enumerate() {
                     for b in &state[i + 1..] {

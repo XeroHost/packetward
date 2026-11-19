@@ -290,8 +290,18 @@ impl<B: FirewallBackend> FirewallManager<B> {
         removed.sort_by_key(cidr_key);
         let rules_after = existing
             .len()
-            .saturating_add(plan.changes.iter().filter(|c| matches!(c, RuleChange::Create { .. })).count())
-            .saturating_sub(plan.changes.iter().filter(|c| matches!(c, RuleChange::Delete { .. })).count());
+            .saturating_add(
+                plan.changes
+                    .iter()
+                    .filter(|c| matches!(c, RuleChange::Create { .. }))
+                    .count(),
+            )
+            .saturating_sub(
+                plan.changes
+                    .iter()
+                    .filter(|c| matches!(c, RuleChange::Delete { .. }))
+                    .count(),
+            );
         Ok(BatchOutcome {
             total_blocked: want.len(),
             rules: rules_after,
@@ -377,9 +387,13 @@ pub(crate) fn looks_like_batch_name(name: &str) -> bool {
         .rsplit_once('-')
         .is_some_and(|(_, n)| n.len() >= 3 && n.bytes().all(|b| b.is_ascii_digit()));
     numbered
-        && [names::AUTOBLOCK_PREFIX, names::MANUAL_PREFIX, names::LIST_PREFIX]
-            .iter()
-            .any(|p| lower.starts_with(&format!("{}-", p.to_ascii_lowercase())))
+        && [
+            names::AUTOBLOCK_PREFIX,
+            names::MANUAL_PREFIX,
+            names::LIST_PREFIX,
+        ]
+        .iter()
+        .any(|p| lower.starts_with(&format!("{}-", p.to_ascii_lowercase())))
 }
 
 /// The one shape a batch rule may have. Anything else is rewritten by the next reconcile.
@@ -653,7 +667,10 @@ impl<B: FirewallBackend> Firewall for FirewallManager<B> {
                 Err(e) => return Err(e),
             }
         }
-        info!(removed = report.removed.len(), "PacketWard firewall rules purged");
+        info!(
+            removed = report.removed.len(),
+            "PacketWard firewall rules purged"
+        );
         Ok(report)
     }
 
@@ -694,7 +711,10 @@ impl<B: FirewallBackend> Firewall for FirewallManager<B> {
         opts: &RuleOptions<'_>,
     ) -> Result<Vec<RuleState>> {
         let rules = self.backend.list_rules(None)?;
-        let targets: Vec<&Rule> = rules.iter().filter(|r| guard::is_builtin_rdp_rule(r)).collect();
+        let targets: Vec<&Rule> = rules
+            .iter()
+            .filter(|r| guard::is_builtin_rdp_rule(r))
+            .collect();
         if !enabled && targets.iter().any(|r| r.enabled) {
             self.need_confirmation(opts, LockoutReason::BuiltinRdpRule, "Remote Desktop")?;
         }
@@ -779,7 +799,12 @@ impl<B: FirewallBackend> Firewall for FirewallManager<B> {
                 }
             }
         }
-        info!(port = request.port, allowed = request.allowed.len(), disabled = disabled.len(), "RDP restricted");
+        info!(
+            port = request.port,
+            allowed = request.allowed.len(),
+            disabled = disabled.len(),
+            "RDP restricted"
+        );
         Ok(RdpRestrictOutcome {
             snapshot,
             created_or_updated: touched,

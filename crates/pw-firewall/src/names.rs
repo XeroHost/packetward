@@ -131,7 +131,8 @@ impl BatchId {
 
     /// A public/shared blocklist named `name` (sanitized to `[a-z0-9_.-]`).
     pub fn list(name: &str) -> Result<Self> {
-        let component = sanitize_component(name).ok_or_else(|| bad(name, "no usable characters"))?;
+        let component =
+            sanitize_component(name).ok_or_else(|| bad(name, "no usable characters"))?;
         Ok(Self(Kind::List(component)))
     }
 
@@ -258,7 +259,10 @@ mod tests {
         assert!(d.contains(MARKER));
         assert!(!d.contains('\n') && !d.contains('\0'));
         assert_eq!(marked_description(""), MARKER);
-        assert_eq!(marked_description(&format!("x {MARKER}")), format!("x {MARKER}"));
+        assert_eq!(
+            marked_description(&format!("x {MARKER}")),
+            format!("x {MARKER}")
+        );
         assert!(marked_description(&"y".repeat(5000)).chars().count() < 600);
     }
 }

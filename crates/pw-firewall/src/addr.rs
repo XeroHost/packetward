@@ -110,7 +110,11 @@ fn mask_to_prefix(mask: Ipv4Addr) -> Option<u8> {
     let m = u32::from(mask);
     let ones = m.leading_ones();
     // A contiguous mask is ones followed by zeros.
-    let rebuilt = if ones == 0 { 0 } else { u32::MAX << (32 - ones) };
+    let rebuilt = if ones == 0 {
+        0
+    } else {
+        u32::MAX << (32 - ones)
+    };
     (rebuilt == m).then_some(ones as u8)
 }
 
@@ -300,20 +304,33 @@ mod tests {
         assert!(cidrs_overlap(&cidr("203.0.113.0/24"), &cidr("203.0.113.7")));
         assert!(cidrs_overlap(&cidr("203.0.113.7"), &cidr("203.0.113.0/24")));
         assert!(cidrs_overlap(&cidr("0.0.0.0/0"), &cidr("8.8.8.8")));
-        assert!(!cidrs_overlap(&cidr("203.0.113.0/24"), &cidr("203.0.114.0/24")));
+        assert!(!cidrs_overlap(
+            &cidr("203.0.113.0/24"),
+            &cidr("203.0.114.0/24")
+        ));
         assert!(!cidrs_overlap(&cidr("::/0"), &cidr("8.8.8.8")));
         assert!(cidrs_overlap(&cidr("::/0"), &cidr("2001:db8::1")));
     }
 
     #[test]
     fn spans_round_trip_to_blocks() {
-        for text in ["0.0.0.0/0", "10.0.0.0/8", "1.2.3.4", "::/0", "2001:db8::/32", "::1"] {
+        for text in [
+            "0.0.0.0/0",
+            "10.0.0.0/8",
+            "1.2.3.4",
+            "::/0",
+            "2001:db8::/32",
+            "::1",
+        ] {
             let c = cidr(text);
             assert_eq!(cidr_span(&c).to_cidr(), Some(c), "{text}");
         }
         // 10.0.0.1-10.0.0.2 is not a block.
         assert_eq!(parse_cidrs("10.0.0.1-10.0.0.2"), (vec![], 1));
-        assert_eq!(parse_cidrs("10.0.0.0-10.0.0.255").0, vec![cidr("10.0.0.0/24")]);
+        assert_eq!(
+            parse_cidrs("10.0.0.0-10.0.0.255").0,
+            vec![cidr("10.0.0.0/24")]
+        );
     }
 
     #[test]
@@ -326,7 +343,10 @@ mod tests {
         );
         assert!(matches!(parse_token("1.2.3.4/33"), AddrToken::Invalid(_)));
         assert!(matches!(parse_token("evil;rm"), AddrToken::Invalid(_)));
-        assert!(matches!(parse_token("1.2.3.9-1.2.3.1"), AddrToken::Invalid(_)));
+        assert!(matches!(
+            parse_token("1.2.3.9-1.2.3.1"),
+            AddrToken::Invalid(_)
+        ));
         assert_eq!(parse_list(""), vec![AddrToken::Any]);
     }
 
@@ -339,7 +359,9 @@ mod tests {
         assert!(!ports_include("3390", 3389));
         assert!(!ports_include("RPC", 3389));
         assert!(ports_valid("*") && ports_valid("80,443") && ports_valid("1-65535"));
-        assert!(!ports_valid("0") && !ports_valid("70000") && !ports_valid("80;") && !ports_valid(""));
+        assert!(
+            !ports_valid("0") && !ports_valid("70000") && !ports_valid("80;") && !ports_valid("")
+        );
         assert!(!ports_valid("RPC"));
     }
 }

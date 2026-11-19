@@ -57,7 +57,11 @@ fn five_thousand_blocked_ips_use_fewer_than_ten_rules() {
     let m = manager();
     let none = CidrSet::new();
     let out = m
-        .apply_blocklist(&BatchId::auto_block(), &hosts(0..5000), &BlockOptions::new(&none))
+        .apply_blocklist(
+            &BatchId::auto_block(),
+            &hosts(0..5000),
+            &BlockOptions::new(&none),
+        )
         .unwrap();
     assert_eq!(out.total_blocked, 5000);
     assert_eq!(out.rules, 5);
@@ -115,13 +119,29 @@ fn manual_and_list_batches_are_independent_of_auto_blocks() {
     let m = manager();
     let none = CidrSet::new();
     let opts = BlockOptions::new(&none);
-    m.block_ips(&BatchId::manual(), &[cidr("198.51.100.0/24")], &opts).unwrap();
-    m.apply_blocklist(&BatchId::list("XeroHost shared").unwrap(), &hosts(0..10), &opts).unwrap();
-    m.apply_blocklist(&BatchId::auto_block(), &hosts(100..110), &opts).unwrap();
+    m.block_ips(&BatchId::manual(), &[cidr("198.51.100.0/24")], &opts)
+        .unwrap();
+    m.apply_blocklist(
+        &BatchId::list("XeroHost shared").unwrap(),
+        &hosts(0..10),
+        &opts,
+    )
+    .unwrap();
+    m.apply_blocklist(&BatchId::auto_block(), &hosts(100..110), &opts)
+        .unwrap();
     // The Guardian expires everything it had: the others stay.
-    m.apply_blocklist(&BatchId::auto_block(), &[], &opts).unwrap();
-    assert_eq!(m.list_blocks(&BatchId::manual()).unwrap(), vec![cidr("198.51.100.0/24")]);
-    assert_eq!(m.list_blocks(&BatchId::list("xerohost shared").unwrap()).unwrap().len(), 10);
+    m.apply_blocklist(&BatchId::auto_block(), &[], &opts)
+        .unwrap();
+    assert_eq!(
+        m.list_blocks(&BatchId::manual()).unwrap(),
+        vec![cidr("198.51.100.0/24")]
+    );
+    assert_eq!(
+        m.list_blocks(&BatchId::list("xerohost shared").unwrap())
+            .unwrap()
+            .len(),
+        10
+    );
     assert!(m.list_blocks(&BatchId::auto_block()).unwrap().is_empty());
     let names: Vec<String> = pw_rules(&m).into_iter().map(|r| r.name).collect();
     assert!(names.contains(&"PW-Manual-001".to_owned()));
@@ -140,11 +160,21 @@ fn expiry_is_applied_by_reconcile_blocks() {
         expires_at: e,
     };
     let out = m
-        .reconcile_blocks(&batch, &[d(1, Some(100)), d(2, Some(200)), d(3, None)], 50, &opts)
+        .reconcile_blocks(
+            &batch,
+            &[d(1, Some(100)), d(2, Some(200)), d(3, None)],
+            50,
+            &opts,
+        )
         .unwrap();
     assert_eq!(out.total_blocked, 3);
     let out = m
-        .reconcile_blocks(&batch, &[d(1, Some(100)), d(2, Some(200)), d(3, None)], 150, &opts)
+        .reconcile_blocks(
+            &batch,
+            &[d(1, Some(100)), d(2, Some(200)), d(3, None)],
+            150,
+            &opts,
+        )
         .unwrap();
     assert_eq!(out.expired, vec![host(1)]);
     assert_eq!(out.removed, vec![host(1)]);
@@ -197,15 +227,20 @@ fn a_wrong_rule_in_the_batch_is_repaired_not_trusted() {
     });
     m.backend().clear_log();
     m.apply_blocklist(&batch, &hosts(0..3), &opts).unwrap();
-    assert_eq!(m.backend().writes(), vec![FakeOp::Update("PW-AutoBlock-001".into())]);
+    assert_eq!(
+        m.backend().writes(),
+        vec![FakeOp::Update("PW-AutoBlock-001".into())]
+    );
     let r = m.backend().rule("PW-AutoBlock-001").unwrap();
     assert!(r.enabled && r.action == Action::Block);
 
     // A hand-edited wildcard ("block everyone") is rewritten, or deleted when nothing is wanted.
-    m.backend().tamper("PW-AutoBlock-001", |r| r.remote_addresses = "*".into());
+    m.backend()
+        .tamper("PW-AutoBlock-001", |r| r.remote_addresses = "*".into());
     m.apply_blocklist(&batch, &hosts(0..3), &opts).unwrap();
     assert_eq!(m.list_blocks(&batch).unwrap(), hosts(0..3));
-    m.backend().tamper("PW-AutoBlock-001", |r| r.remote_addresses = "*".into());
+    m.backend()
+        .tamper("PW-AutoBlock-001", |r| r.remote_addresses = "*".into());
     m.apply_blocklist(&batch, &[], &opts).unwrap();
     assert!(pw_rules(&m).is_empty());
 }
@@ -219,7 +254,11 @@ fn a_batch_with_a_protected_address_is_refused_with_nothing_applied() {
     let opts = BlockOptions::new(&guard_set);
     let batch = BatchId::auto_block();
     let err = m
-        .block_ips(&batch, &[host(1), cidr("203.0.113.9"), cidr("192.0.2.5"), host(2)], &opts)
+        .block_ips(
+            &batch,
+            &[host(1), cidr("203.0.113.9"), cidr("192.0.2.5"), host(2)],
+            &opts,
+        )
         .unwrap_err();
     match err {
         FirewallError::Refused(r) => {
@@ -230,7 +269,9 @@ fn a_batch_with_a_protected_address_is_refused_with_nothing_applied() {
     assert!(m.backend().writes().is_empty());
     assert!(pw_rules(&m).is_empty());
     // Same for a whole blocklist.
-    assert!(m.apply_blocklist(&batch, &[host(1), cidr("203.0.113.0/24")], &opts).is_err());
+    assert!(m
+        .apply_blocklist(&batch, &[host(1), cidr("203.0.113.0/24")], &opts)
+        .is_err());
     assert!(m.backend().writes().is_empty());
 }
 
@@ -240,7 +281,11 @@ fn skip_protected_applies_the_rest_and_reports() {
     let guard_set = protected(&["203.0.113.9"]);
     let opts = BlockOptions::new(&guard_set).skip_protected();
     let out = m
-        .block_ips(&BatchId::auto_block(), &[host(1), cidr("203.0.113.9"), host(2)], &opts)
+        .block_ips(
+            &BatchId::auto_block(),
+            &[host(1), cidr("203.0.113.9"), host(2)],
+            &opts,
+        )
         .unwrap();
     assert_eq!(out.skipped_protected, vec![cidr("203.0.113.9")]);
     assert_eq!(out.added, vec![host(1), host(2)]);
@@ -251,9 +296,17 @@ fn loopback_gateway_style_floor_cannot_be_blocked_even_with_no_protected_set() {
     let m = manager();
     let none = CidrSet::new();
     let opts = BlockOptions::new(&none).allow_broad();
-    for bad in ["127.0.0.1", "0.0.0.0/0", "::/0", "::1", "169.254.0.0/16", "fe80::/10"] {
+    for bad in [
+        "127.0.0.1",
+        "0.0.0.0/0",
+        "::/0",
+        "::1",
+        "169.254.0.0/16",
+        "fe80::/10",
+    ] {
         assert!(
-            m.block_ips(&BatchId::auto_block(), &[cidr(bad)], &opts).is_err(),
+            m.block_ips(&BatchId::auto_block(), &[cidr(bad)], &opts)
+                .is_err(),
             "{bad}"
         );
     }
@@ -269,9 +322,15 @@ fn absurdly_broad_prefixes_need_the_override() {
         m.block_ips(&batch, &[cidr("8.0.0.0/6")], &BlockOptions::new(&none)),
         Err(FirewallError::Refused(r)) if r.too_broad == vec![cidr("8.0.0.0/6")]
     ));
-    assert!(m.block_ips(&batch, &[cidr("10.0.0.0/8")], &BlockOptions::new(&none)).is_ok());
     assert!(m
-        .block_ips(&batch, &[cidr("8.0.0.0/6")], &BlockOptions::new(&none).allow_broad())
+        .block_ips(&batch, &[cidr("10.0.0.0/8")], &BlockOptions::new(&none))
+        .is_ok());
+    assert!(m
+        .block_ips(
+            &batch,
+            &[cidr("8.0.0.0/6")],
+            &BlockOptions::new(&none).allow_broad()
+        )
         .is_ok());
 }
 
@@ -280,7 +339,8 @@ fn existing_blocks_that_became_protected_are_evicted() {
     let m = manager();
     let none = CidrSet::new();
     let batch = BatchId::auto_block();
-    m.block_ips(&batch, &[host(1), host(2)], &BlockOptions::new(&none)).unwrap();
+    m.block_ips(&batch, &[host(1), host(2)], &BlockOptions::new(&none))
+        .unwrap();
     // host(2) turns out to be the RDP client now.
     let guard_set = protected(&["10.0.0.2"]);
     let out = m
@@ -305,11 +365,20 @@ fn foreign_rules_are_read_only_unless_the_flag_is_given() {
     let m = manager();
     let name = "File and Printer Sharing (SMB-In)";
     let opts = RuleOptions::default();
-    assert_eq!(m.set_enabled(name, true, &opts), Err(FirewallError::ForeignRule(name.into())));
-    assert_eq!(m.remove_rule(name, &opts), Err(FirewallError::ForeignRule(name.into())));
+    assert_eq!(
+        m.set_enabled(name, true, &opts),
+        Err(FirewallError::ForeignRule(name.into()))
+    );
+    assert_eq!(
+        m.remove_rule(name, &opts),
+        Err(FirewallError::ForeignRule(name.into()))
+    );
     let mut changed = m.get_rule(name).unwrap().unwrap();
     changed.local_ports = "446".into();
-    assert!(matches!(m.update_rule(name, &changed, &opts), Err(FirewallError::ForeignRule(_))));
+    assert!(matches!(
+        m.update_rule(name, &changed, &opts),
+        Err(FirewallError::ForeignRule(_))
+    ));
     assert!(!m.backend().rule(name).unwrap().enabled);
 
     m.set_enabled(name, true, &opts.foreign_edit()).unwrap();
@@ -331,38 +400,66 @@ fn user_rules_get_the_group_and_marker_and_can_be_edited_freely() {
     let r = m.backend().rule("My web").unwrap();
     assert_eq!(r.grouping, GROUP);
     assert!(r.description.contains(MARKER) && r.description.contains("my web"));
-    assert_eq!(m.add_rule(&user_rule("my WEB"), &opts), Err(FirewallError::AlreadyExists("my WEB".into())));
+    assert_eq!(
+        m.add_rule(&user_rule("my WEB"), &opts),
+        Err(FirewallError::AlreadyExists("my WEB".into()))
+    );
     let mut edited = user_rule("My web");
     edited.local_ports = "9090".into();
     edited.grouping = "Hacker".into(); // ignored
     m.update_rule("My web", &edited, &opts).unwrap();
     let r = m.backend().rule("My web").unwrap();
-    assert_eq!((r.local_ports.as_str(), r.grouping.as_str()), ("9090", GROUP));
+    assert_eq!(
+        (r.local_ports.as_str(), r.grouping.as_str()),
+        ("9090", GROUP)
+    );
     m.set_enabled("My web", false, &opts).unwrap();
     m.remove_rule("My web", &opts).unwrap();
     assert!(m.backend().rule("My web").is_none());
-    assert_eq!(m.remove_rule("My web", &opts), Err(FirewallError::NotFound("My web".into())));
+    assert_eq!(
+        m.remove_rule("My web", &opts),
+        Err(FirewallError::NotFound("My web".into()))
+    );
 }
 
 #[test]
 fn reserved_and_hostile_names_and_bad_fields_are_rejected() {
     let m = manager();
     let opts = RuleOptions::default();
-    for bad in ["PW-AutoBlock-001", "pw-x", "a|b", "x\"y", "", "@FirewallAPI.dll,-1"] {
+    for bad in [
+        "PW-AutoBlock-001",
+        "pw-x",
+        "a|b",
+        "x\"y",
+        "",
+        "@FirewallAPI.dll,-1",
+    ] {
         assert!(
-            matches!(m.add_rule(&user_rule(bad), &opts), Err(FirewallError::InvalidName { .. })),
+            matches!(
+                m.add_rule(&user_rule(bad), &opts),
+                Err(FirewallError::InvalidName { .. })
+            ),
             "{bad:?}"
         );
     }
     let mut r = user_rule("ok");
     r.local_ports = "80;rm".into();
-    assert!(matches!(m.add_rule(&r, &opts), Err(FirewallError::InvalidRule(_))));
+    assert!(matches!(
+        m.add_rule(&r, &opts),
+        Err(FirewallError::InvalidRule(_))
+    ));
     let mut r = user_rule("ok");
     r.protocol = Protocol::Any; // ports need TCP/UDP
-    assert!(matches!(m.add_rule(&r, &opts), Err(FirewallError::InvalidRule(_))));
+    assert!(matches!(
+        m.add_rule(&r, &opts),
+        Err(FirewallError::InvalidRule(_))
+    ));
     let mut r = user_rule("ok");
     r.remote_addresses = "1.2.3.4,not-an-ip".into();
-    assert!(matches!(m.add_rule(&r, &opts), Err(FirewallError::InvalidRule(_))));
+    assert!(matches!(
+        m.add_rule(&r, &opts),
+        Err(FirewallError::InvalidRule(_))
+    ));
     assert!(m.backend().writes().is_empty());
 }
 
@@ -370,7 +467,12 @@ fn reserved_and_hostile_names_and_bad_fields_are_rejected() {
 fn batch_rules_cannot_be_hand_edited_through_the_generic_api() {
     let m = manager();
     let none = CidrSet::new();
-    m.block_ips(&BatchId::auto_block(), &[host(1)], &BlockOptions::new(&none)).unwrap();
+    m.block_ips(
+        &BatchId::auto_block(),
+        &[host(1)],
+        &BlockOptions::new(&none),
+    )
+    .unwrap();
     let r = m.get_rule("PW-AutoBlock-001").unwrap().unwrap();
     assert!(matches!(
         m.update_rule("PW-AutoBlock-001", &r, &RuleOptions::default()),
@@ -393,7 +495,8 @@ fn generic_block_rules_need_the_protected_set_and_are_screened() {
         Err(FirewallError::Refused(_))
     ));
     let other = protected(&["203.0.113.1"]);
-    m.add_rule(&r, &RuleOptions::default().protecting(&other)).unwrap();
+    m.add_rule(&r, &RuleOptions::default().protecting(&other))
+        .unwrap();
 }
 
 // ---- purge ---------------------------------------------------------------------------------
@@ -404,9 +507,12 @@ fn purge_removes_the_packetward_group_and_nothing_else() {
     let before_foreign: Vec<Rule> = m.backend().rules();
     let none = CidrSet::new();
     let opts = BlockOptions::new(&none);
-    m.apply_blocklist(&BatchId::auto_block(), &hosts(0..2500), &opts).unwrap();
-    m.block_ips(&BatchId::manual(), &[host(9000)], &opts).unwrap();
-    m.add_rule(&user_rule("My web"), &RuleOptions::default()).unwrap();
+    m.apply_blocklist(&BatchId::auto_block(), &hosts(0..2500), &opts)
+        .unwrap();
+    m.block_ips(&BatchId::manual(), &[host(9000)], &opts)
+        .unwrap();
+    m.add_rule(&user_rule("My web"), &RuleOptions::default())
+        .unwrap();
     // A foreign rule that merely *looks* like ours (name prefix, other group) must survive.
     let mut lookalike = Rule::new("PW-Impostor-001", Direction::Inbound, Action::Allow);
     lookalike.grouping = "Somebody Else".into();
@@ -463,7 +569,10 @@ fn builtin_rdp_rules_need_the_typed_confirmation_to_delete_or_disable() {
     let plain = RuleOptions::default().foreign_edit();
     assert!(matches!(
         m.remove_rule(name, &plain),
-        Err(FirewallError::ConfirmationRequired { reason: LockoutReason::BuiltinRdpRule, .. })
+        Err(FirewallError::ConfirmationRequired {
+            reason: LockoutReason::BuiltinRdpRule,
+            ..
+        })
     ));
     assert!(matches!(
         m.set_enabled(name, false, &plain),
@@ -494,12 +603,17 @@ fn an_inbound_allow_rule_for_the_rdp_port_is_guarded_like_the_builtin_ones() {
     mine.local_ports = "3390".into();
     m.add_rule(&mine, &RuleOptions::default()).unwrap();
     // Port 3390 is not the RDP port yet: free to remove.
-    m.set_enabled("Corp RDP", false, &RuleOptions::default()).unwrap();
-    m.set_enabled("Corp RDP", true, &RuleOptions::default()).unwrap();
+    m.set_enabled("Corp RDP", false, &RuleOptions::default())
+        .unwrap();
+    m.set_enabled("Corp RDP", true, &RuleOptions::default())
+        .unwrap();
     m.set_rdp_port(3390);
     assert!(matches!(
         m.remove_rule("Corp RDP", &RuleOptions::default()),
-        Err(FirewallError::ConfirmationRequired { reason: LockoutReason::RdpPortAllow { port: 3390 }, .. })
+        Err(FirewallError::ConfirmationRequired {
+            reason: LockoutReason::RdpPortAllow { port: 3390 },
+            ..
+        })
     ));
 }
 
@@ -513,7 +627,10 @@ fn a_block_rule_that_cuts_rdp_off_for_everyone_needs_the_confirmation() {
     r.local_ports = "3389".into();
     assert!(matches!(
         m.add_rule(&r, &opts),
-        Err(FirewallError::ConfirmationRequired { reason: LockoutReason::BlocksRdp { .. }, .. })
+        Err(FirewallError::ConfirmationRequired {
+            reason: LockoutReason::BlocksRdp { .. },
+            ..
+        })
     ));
     // Blocking RDP from one network is an ordinary rule.
     r.remote_addresses = "198.51.100.0/24".into();
@@ -557,18 +674,32 @@ fn restrict_and_restore_round_trip_through_a_serialized_snapshot() {
     // Disabling the built-in rules needs the typed confirmation; nothing changes without it.
     assert!(matches!(
         m.rdp_restrict(&req, 1_000, &RuleOptions::default()),
-        Err(FirewallError::ConfirmationRequired { reason: LockoutReason::RestrictRdp, .. })
+        Err(FirewallError::ConfirmationRequired {
+            reason: LockoutReason::RestrictRdp,
+            ..
+        })
     ));
     assert!(m.backend().writes().is_empty());
 
     let c = confirmation();
-    let out = m.rdp_restrict(&req, 1_000, &RuleOptions::default().confirmed(&c)).unwrap();
-    assert_eq!(out.created_or_updated, vec![RDP_ALLOW_TCP_NAME, RDP_ALLOW_UDP_NAME]);
+    let out = m
+        .rdp_restrict(&req, 1_000, &RuleOptions::default().confirmed(&c))
+        .unwrap();
+    assert_eq!(
+        out.created_or_updated,
+        vec![RDP_ALLOW_TCP_NAME, RDP_ALLOW_UDP_NAME]
+    );
     assert_eq!(out.disabled.len(), 2);
     // The allow rule exists before any built-in rule was switched off.
     let log = m.backend().writes();
-    let first_disable = log.iter().position(|op| matches!(op, FakeOp::SetEnabled(..))).unwrap();
-    let last_add = log.iter().rposition(|op| matches!(op, FakeOp::Add(_))).unwrap();
+    let first_disable = log
+        .iter()
+        .position(|op| matches!(op, FakeOp::SetEnabled(..)))
+        .unwrap();
+    let last_add = log
+        .iter()
+        .rposition(|op| matches!(op, FakeOp::Add(_)))
+        .unwrap();
     assert!(last_add < first_disable, "{log:?}");
 
     let tcp = m.backend().rule("PW-RDP-Allow").unwrap();
@@ -576,11 +707,19 @@ fn restrict_and_restore_round_trip_through_a_serialized_snapshot() {
     assert_eq!(tcp.local_ports, "3389");
     assert_eq!(tcp.action, Action::Allow);
     assert!(tcp.remote_includes(ip("203.0.113.9")) && !tcp.remote_includes(ip("8.8.8.8")));
-    assert!(!m.backend().rule("Remote Desktop - User Mode (TCP-In)").unwrap().enabled);
+    assert!(
+        !m.backend()
+            .rule("Remote Desktop - User Mode (TCP-In)")
+            .unwrap()
+            .enabled
+    );
     // The shadow rule and unrelated rules are untouched.
     assert_eq!(
         m.backend().rule("Remote Desktop - Shadow (TCP-In)"),
-        original.iter().find(|r| r.name == "Remote Desktop - Shadow (TCP-In)").cloned()
+        original
+            .iter()
+            .find(|r| r.name == "Remote Desktop - Shadow (TCP-In)")
+            .cloned()
     );
 
     // The snapshot is plain data: store it, reload it, restore from the copy.
@@ -590,11 +729,23 @@ fn restrict_and_restore_round_trip_through_a_serialized_snapshot() {
     m.backend().clear_log();
     let report = m.restore_snapshot(&snapshot).unwrap();
     assert_eq!(report.reenabled.len(), 2);
-    assert_eq!(report.shield_removed, vec!["PW-RDP-Allow", "PW-RDP-Allow-UDP"]);
+    assert_eq!(
+        report.shield_removed,
+        vec!["PW-RDP-Allow", "PW-RDP-Allow-UDP"]
+    );
     let log = m.backend().writes();
-    let last_enable = log.iter().rposition(|op| matches!(op, FakeOp::SetEnabled(_, true))).unwrap();
-    let first_remove = log.iter().position(|op| matches!(op, FakeOp::Remove(_))).unwrap();
-    assert!(last_enable < first_remove, "re-enable before removing the allow rules: {log:?}");
+    let last_enable = log
+        .iter()
+        .rposition(|op| matches!(op, FakeOp::SetEnabled(_, true)))
+        .unwrap();
+    let first_remove = log
+        .iter()
+        .position(|op| matches!(op, FakeOp::Remove(_)))
+        .unwrap();
+    assert!(
+        last_enable < first_remove,
+        "re-enable before removing the allow rules: {log:?}"
+    );
     assert_eq!(sorted(m.backend().rules()), original);
 
     // Restoring again changes nothing.
@@ -625,7 +776,10 @@ fn the_current_rdp_client_can_never_be_excluded() {
             &RuleOptions::default().confirmed(&c),
         )
         .unwrap_err();
-    assert_eq!(err, FirewallError::RdpClientExcluded(vec![ip("198.51.100.9")]));
+    assert_eq!(
+        err,
+        FirewallError::RdpClientExcluded(vec![ip("198.51.100.9")])
+    );
     assert!(m.backend().writes().is_empty());
     let err = m
         .rdp_restrict(
@@ -657,16 +811,38 @@ fn builtin_rule_states_are_recorded_and_restorable() {
     let before = m.rdp_snapshot(5).unwrap();
     assert_eq!(before.rdp.builtin.iter().filter(|s| s.enabled).count(), 1);
 
-    let prev = m.set_builtin_rdp_enabled(false, &RuleOptions::default().confirmed(&c)).unwrap();
+    let prev = m
+        .set_builtin_rdp_enabled(false, &RuleOptions::default().confirmed(&c))
+        .unwrap();
     assert_eq!(prev, before.rdp.builtin);
-    assert!(m.set_builtin_rdp_enabled(false, &RuleOptions::default()).is_ok(), "nothing left to disable");
+    assert!(
+        m.set_builtin_rdp_enabled(false, &RuleOptions::default())
+            .is_ok(),
+        "nothing left to disable"
+    );
     // Restoring the snapshot puts the already-off rule back OFF and the other one ON.
     m.restore_snapshot(&before).unwrap();
-    assert!(m.backend().rule("Remote Desktop - User Mode (TCP-In)").unwrap().enabled);
-    assert!(!m.backend().rule("Remote Desktop - User Mode (UDP-In)").unwrap().enabled);
+    assert!(
+        m.backend()
+            .rule("Remote Desktop - User Mode (TCP-In)")
+            .unwrap()
+            .enabled
+    );
+    assert!(
+        !m.backend()
+            .rule("Remote Desktop - User Mode (UDP-In)")
+            .unwrap()
+            .enabled
+    );
     // Enabling all never needs a confirmation.
-    m.set_builtin_rdp_enabled(true, &RuleOptions::default()).unwrap();
-    assert!(m.backend().rule("Remote Desktop - User Mode (UDP-In)").unwrap().enabled);
+    m.set_builtin_rdp_enabled(true, &RuleOptions::default())
+        .unwrap();
+    assert!(
+        m.backend()
+            .rule("Remote Desktop - User Mode (UDP-In)")
+            .unwrap()
+            .enabled
+    );
 }
 
 #[test]
@@ -680,7 +856,10 @@ fn restore_with_a_vanished_builtin_rule_reports_it() {
     let report = m.restore_snapshot(&snap).unwrap();
     assert_eq!(report.missing, vec!["Remote Desktop - Gone"]);
     snap.version = 99;
-    assert!(matches!(m.restore_snapshot(&snap), Err(FirewallError::InvalidRule(_))));
+    assert!(matches!(
+        m.restore_snapshot(&snap),
+        Err(FirewallError::InvalidRule(_))
+    ));
 }
 
 // ---- listing -------------------------------------------------------------------------------
@@ -708,7 +887,12 @@ fn listing_applies_filters() {
         .unwrap();
     assert_eq!(by_text.len(), 1);
     let none = CidrSet::new();
-    m.block_ips(&BatchId::auto_block(), &[cidr("198.51.100.0/24")], &BlockOptions::new(&none)).unwrap();
+    m.block_ips(
+        &BatchId::auto_block(),
+        &[cidr("198.51.100.0/24")],
+        &BlockOptions::new(&none),
+    )
+    .unwrap();
     let hit = m
         .list_rules(&RuleFilter {
             group: Some(GROUP.into()),
@@ -752,9 +936,11 @@ fn random_block_unblock_sequences_keep_the_firewall_consistent() {
                 0 => {
                     let opts = BlockOptions::new(&guard_set).skip_protected();
                     m.block_ips(&batch, &list, &opts).unwrap();
-                    model.extend(list.iter().copied().filter(|c| {
-                        !guard_set.iter().any(|p| crate::addr::cidrs_overlap(p, c))
-                    }));
+                    model.extend(
+                        list.iter().copied().filter(|c| {
+                            !guard_set.iter().any(|p| crate::addr::cidrs_overlap(p, c))
+                        }),
+                    );
                 }
                 1 => {
                     m.unblock_ips(&batch, &list).unwrap();

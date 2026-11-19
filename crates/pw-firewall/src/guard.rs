@@ -173,7 +173,12 @@ pub struct Confirmation(());
 
 impl Confirmation {
     pub fn from_phrase(typed: &str) -> Result<Self> {
-        let norm = |s: &str| s.split_whitespace().collect::<Vec<_>>().join(" ").to_lowercase();
+        let norm = |s: &str| {
+            s.split_whitespace()
+                .collect::<Vec<_>>()
+                .join(" ")
+                .to_lowercase()
+        };
         if norm(typed) == norm(CONFIRMATION_PHRASE) {
             Ok(Self(()))
         } else {
@@ -186,6 +191,10 @@ fn contains_ci(haystack: &str, needle: &str) -> bool {
     haystack.to_lowercase().contains(&needle.to_lowercase())
 }
 
+/// Group resource strings of the built-in Remote Desktop rules as COM reports them (observed on
+/// Windows Server 2025: `Name` comes back resolved, `Grouping` as the resource string).
+const RDP_GROUP_TOKENS: [&str; 2] = ["@FirewallAPI.dll,-28752", "@FirewallAPI.dll,-28782"];
+
 /// The built-in "Remote Desktop - User Mode (TCP-In/UDP-In)" family (inbound allow rules of the
 /// Remote Desktop group). Matches on the group, whether Windows reports it resolved ("Remote
 /// Desktop") or as a resource string (`@FirewallAPI.dll,-28752`), and on the name.
@@ -197,7 +206,9 @@ pub fn is_builtin_rdp_rule(rule: &Rule) -> bool {
         return false;
     }
     contains_ci(&rule.grouping, "remote desktop")
-        || rule.grouping.eq_ignore_ascii_case("@FirewallAPI.dll,-28752")
+        || RDP_GROUP_TOKENS
+            .iter()
+            .any(|t| rule.grouping.eq_ignore_ascii_case(t))
         || contains_ci(&rule.name, "remote desktop")
 }
 
@@ -290,7 +301,8 @@ pub fn check_block_rule(
     if !refused.is_empty() {
         return Err(FirewallError::Refused(refused));
     }
-    Ok(blocks_rdp_for_everyone(rule, rdp_port).then_some(LockoutReason::BlocksRdp { port: rdp_port }))
+    Ok(blocks_rdp_for_everyone(rule, rdp_port)
+        .then_some(LockoutReason::BlocksRdp { port: rdp_port }))
 }
 
 fn single_host(span: &Span) -> Option<Cidr> {
@@ -328,7 +340,11 @@ mod tests {
         let protected = set(&["203.0.113.9", "192.0.2.0/24"]);
         let opts = BlockOptions::new(&protected);
         let err = screen_blocks(
-            &[cidr("198.51.100.1"), cidr("203.0.113.9"), cidr("192.0.2.77")],
+            &[
+                cidr("198.51.100.1"),
+                cidr("203.0.113.9"),
+                cidr("192.0.2.77"),
+            ],
             &opts,
         )
         .unwrap_err();
@@ -355,7 +371,11 @@ mod tests {
         let protected = set(&["203.0.113.9"]);
         let opts = BlockOptions::new(&protected).skip_protected();
         let out = screen_blocks(
-            &[cidr("198.51.100.1"), cidr("203.0.113.9"), cidr("198.51.100.1")],
+            &[
+                cidr("198.51.100.1"),
+                cidr("203.0.113.9"),
+                cidr("198.51.100.1"),
+            ],
             &opts,
         )
         .unwrap();
@@ -367,7 +387,14 @@ mod tests {
     fn the_floor_applies_even_with_an_empty_protected_set() {
         let none = CidrSet::new();
         let opts = BlockOptions::new(&none);
-        for bad in ["127.0.0.1", "127.0.0.0/8", "::1", "169.254.1.1", "fe80::1", "224.0.0.1"] {
+        for bad in [
+            "127.0.0.1",
+            "127.0.0.0/8",
+            "::1",
+            "169.254.1.1",
+            "fe80::1",
+            "224.0.0.1",
+        ] {
             assert!(screen_blocks(&[cidr(bad)], &opts).is_err(), "{bad}");
         }
         // Even the override cannot block everything: the whole space includes loopback.
@@ -423,8 +450,23 @@ mod tests {
             "@FirewallAPI.dll,-28775",
             "@FirewallAPI.dll,-28752"
         )));
-        assert!(!is_builtin_rdp_rule(&rdp_rule("Remote Desktop - Shadow (TCP-In)", "Remote Desktop")));
-        assert!(!is_builtin_rdp_rule(&rdp_rule("Web", "World Wide Web Services")));
+        // What Windows Server 2025 reports (names resolved, groups as resource strings).
+        assert!(is_builtin_rdp_rule(&rdp_rule(
+            "Remote Desktop - (TCP-WSS-In)",
+            "@FirewallAPI.dll,-28782"
+        )));
+        assert!(is_builtin_rdp_rule(&rdp_rule(
+            "Ein lokalisierter Name",
+            "@FirewallAPI.dll,-28752"
+        )));
+        assert!(!is_builtin_rdp_rule(&rdp_rule(
+            "Remote Desktop - Shadow (TCP-In)",
+            "Remote Desktop"
+        )));
+        assert!(!is_builtin_rdp_rule(&rdp_rule(
+            "Web",
+            "World Wide Web Services"
+        )));
         let mut out = rdp_rule("Remote Desktop - User Mode (TCP-In)", "Remote Desktop");
         out.direction = Direction::Outbound;
         assert!(!is_builtin_rdp_rule(&out));

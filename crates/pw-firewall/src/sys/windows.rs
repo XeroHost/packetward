@@ -58,7 +58,10 @@ impl ComApartment {
             // The thread already has an STA; use it and leave it alone.
             Ok(Self { initialized: false })
         } else {
-            Err(backend_err("CoInitializeEx", &windows::core::Error::from(hr)))
+            Err(backend_err(
+                "CoInitializeEx",
+                &windows::core::Error::from(hr),
+            ))
         }
     }
 }
@@ -79,7 +82,11 @@ fn with_rules<T>(op: &'static str, f: impl FnOnce(&INetFwRules) -> Result<T>) ->
     let _apartment = ComApartment::enter()?;
     // SAFETY: plain COM activation of a registered in-process class with no aggregation.
     let policy: INetFwPolicy2 = unsafe {
-        CoCreateInstance(&NetFwPolicy2, None::<&windows::core::IUnknown>, CLSCTX_INPROC_SERVER)
+        CoCreateInstance(
+            &NetFwPolicy2,
+            None::<&windows::core::IUnknown>,
+            CLSCTX_INPROC_SERVER,
+        )
     }
     .map_err(|e| backend_err(op, &e))?;
     // SAFETY: `policy` is a live INetFwPolicy2.
@@ -215,29 +222,33 @@ fn apply_fields(com: &INetFwRule, current: Option<&Rule>, new: &Rule) -> Result<
             com.SetName(&BSTR::from(new.name.as_str())).map_err(fail)?;
         }
         if current.is_none_or(|c| c.description != new.description) {
-            com.SetDescription(&BSTR::from(new.description.as_str())).map_err(fail)?;
+            com.SetDescription(&BSTR::from(new.description.as_str()))
+                .map_err(fail)?;
         }
         if current.is_none_or(|c| c.grouping != new.grouping) {
-            com.SetGrouping(&BSTR::from(new.grouping.as_str())).map_err(fail)?;
+            com.SetGrouping(&BSTR::from(new.grouping.as_str()))
+                .map_err(fail)?;
         }
         if current.is_none_or(|c| c.direction != new.direction) {
-            com.SetDirection(direction_value(new.direction)).map_err(fail)?;
+            com.SetDirection(direction_value(new.direction))
+                .map_err(fail)?;
         }
         if current.is_none_or(|c| c.action != new.action) {
             com.SetAction(action_value(new.action)).map_err(fail)?;
         }
         // Ports are only valid with TCP/UDP: widen them before dropping the protocol, narrow them
         // after setting it.
-        let ports_changed = current.is_none_or(|c| {
-            c.local_ports != new.local_ports || c.remote_ports != new.remote_ports
-        });
+        let ports_changed = current
+            .is_none_or(|c| c.local_ports != new.local_ports || c.remote_ports != new.remote_ports);
         let protocol_changed = current.is_none_or(|c| c.protocol != new.protocol);
         let set_ports = |com: &INetFwRule| -> Result<()> {
             if ports_changed && (current.is_some() || !addr::ports_any(&new.local_ports)) {
-                com.SetLocalPorts(&BSTR::from(new.local_ports.as_str())).map_err(fail)?;
+                com.SetLocalPorts(&BSTR::from(new.local_ports.as_str()))
+                    .map_err(fail)?;
             }
             if ports_changed && (current.is_some() || !addr::ports_any(&new.remote_ports)) {
-                com.SetRemotePorts(&BSTR::from(new.remote_ports.as_str())).map_err(fail)?;
+                com.SetRemotePorts(&BSTR::from(new.remote_ports.as_str()))
+                    .map_err(fail)?;
             }
             Ok(())
         };
@@ -253,10 +264,12 @@ fn apply_fields(com: &INetFwRule, current: Option<&Rule>, new: &Rule) -> Result<
             }
         }
         if current.is_none_or(|c| !same_addr(&c.local_addresses, &new.local_addresses)) {
-            com.SetLocalAddresses(&BSTR::from(new.local_addresses.as_str())).map_err(fail)?;
+            com.SetLocalAddresses(&BSTR::from(new.local_addresses.as_str()))
+                .map_err(fail)?;
         }
         if current.is_none_or(|c| !same_addr(&c.remote_addresses, &new.remote_addresses)) {
-            com.SetRemoteAddresses(&BSTR::from(new.remote_addresses.as_str())).map_err(fail)?;
+            com.SetRemoteAddresses(&BSTR::from(new.remote_addresses.as_str()))
+                .map_err(fail)?;
         }
         if current.is_none_or(|c| c.application != new.application) {
             com.SetApplicationName(&BSTR::from(new.application.as_deref().unwrap_or("")))
@@ -270,7 +283,8 @@ fn apply_fields(com: &INetFwRule, current: Option<&Rule>, new: &Rule) -> Result<
             com.SetProfiles(new.profiles as i32).map_err(fail)?;
         }
         if current.is_none_or(|c| c.enabled != new.enabled) {
-            com.SetEnabled(VARIANT_BOOL::from(new.enabled)).map_err(fail)?;
+            com.SetEnabled(VARIANT_BOOL::from(new.enabled))
+                .map_err(fail)?;
         }
     }
     Ok(())
@@ -319,7 +333,11 @@ impl FirewallBackend for WindowsFirewall {
             }
             // SAFETY: plain COM activation of the registered NetFwRule class.
             let com: INetFwRule = unsafe {
-                CoCreateInstance(&NetFwRule, None::<&windows::core::IUnknown>, CLSCTX_INPROC_SERVER)
+                CoCreateInstance(
+                    &NetFwRule,
+                    None::<&windows::core::IUnknown>,
+                    CLSCTX_INPROC_SERVER,
+                )
             }
             .map_err(|e| backend_err("add rule", &e))?;
             apply_fields(&com, None, rule)?;
@@ -330,8 +348,8 @@ impl FirewallBackend for WindowsFirewall {
 
     fn update_rule(&self, name: &str, rule: &Rule) -> Result<()> {
         with_rules("update rule", |rules| {
-            let com = find_rule(rules, name)?
-                .ok_or_else(|| FirewallError::NotFound(name.to_owned()))?;
+            let com =
+                find_rule(rules, name)?.ok_or_else(|| FirewallError::NotFound(name.to_owned()))?;
             let current = read_rule(&com)?;
             apply_fields(&com, Some(&current), rule)
         })
@@ -349,8 +367,8 @@ impl FirewallBackend for WindowsFirewall {
 
     fn set_enabled(&self, name: &str, enabled: bool) -> Result<()> {
         with_rules("set enabled", |rules| {
-            let com = find_rule(rules, name)?
-                .ok_or_else(|| FirewallError::NotFound(name.to_owned()))?;
+            let com =
+                find_rule(rules, name)?.ok_or_else(|| FirewallError::NotFound(name.to_owned()))?;
             // SAFETY: `com` is a live INetFwRule.
             unsafe { com.SetEnabled(VARIANT_BOOL::from(enabled)) }
                 .map_err(|e| backend_err("set enabled", &e))

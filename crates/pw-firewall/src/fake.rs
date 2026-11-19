@@ -124,7 +124,10 @@ impl FakeFirewall {
     }
 
     pub fn rule(&self, name: &str) -> Option<Rule> {
-        lock(&self.rules).iter().find(|r| same(&r.name, name)).cloned()
+        lock(&self.rules)
+            .iter()
+            .find(|r| same(&r.name, name))
+            .cloned()
     }
 
     /// Writes performed so far.
