@@ -3,7 +3,8 @@
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri } from './uiPrefs'
 
-export type CallErrorKind = 'not_connected' | 'unsupported' | 'busy' | 'bad_request' | 'failed'
+export type CallErrorKind =
+  'not_connected' | 'unsupported' | 'busy' | 'bad_request' | 'mode_unavailable' | 'failed'
 
 /** An agent request that failed; `message` is the agent's own explanation when it gave one. */
 export class AgentCallError extends Error {
@@ -23,6 +24,9 @@ export function parseCallError(raw: unknown): AgentCallError {
   const match = /^(\w+): ([\s\S]*)$/.exec(text)
   if (match?.[1] === 'Busy') return new AgentCallError('busy', match[2] ?? text)
   if (match?.[1] === 'BadRequest') return new AgentCallError('bad_request', match[2] ?? text)
+  if (match?.[1] === 'ModeUnavailable') {
+    return new AgentCallError('mode_unavailable', match[2] ?? text)
+  }
   return new AgentCallError('failed', match?.[2] ?? text)
 }
 

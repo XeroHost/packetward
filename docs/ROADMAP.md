@@ -128,8 +128,10 @@ is rejected; works offline except AbuseIPDB and list refresh.
 **Accept:** results within ~10% of a reference tool on the same link (**not measured**: needs a test VPS and a XeroHost node, see TESTING §F9); cancel stops traffic immediately (fake-tested).
 
 ## M10 — MTR advanced
-- [ ] ICMP/UDP/TCP modes, packet size, interval, hop limit, ASN/country per hop, IPv6, export.
-**Accept:** TCP mode reaches hosts that drop ICMP (with Npcap).
+- [x] `pw-diag::mtr_adv`: ICMP/UDP/TCP-SYN probe modes, packet size, interval, hop limit, ASN/country per hop, IPv6, CSV/JSON/support-text export.
+- [x] Engine + IPC: `diag.mtr.start` options (`mode`, `port`, `interval_ms`, `prefer_ipv6`), `diag.mtr.export`, typed `ModeUnavailable` error, local-only hop enrichment (protocol 1.10).
+- [x] UI: mode selector, port/size/interval/hop fields, ASN/org and country columns, Export menu, Npcap hint when UDP/TCP cannot run (en/es/pt-BR).
+**Accept:** TCP mode reaches hosts that drop ICMP (with Npcap) — **not measured**: needs a test VPS and Npcap installed by hand, see TESTING §F10. Everything else is fake-tested.
 
 ## M11 — Settings, logs, proxy, updates, installer
 - [x] Settings UI: language/appearance/notifications/autostart (earlier), proxy applied to all outbound HTTP (speed test, GeoIP and blocklist

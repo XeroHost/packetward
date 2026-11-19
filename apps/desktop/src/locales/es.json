@@ -301,7 +301,8 @@
     "errors": {
       "notConnected": "El agente no está conectado. Inícielo e inténtelo de nuevo.",
       "unsupported": "El agente instalado es más antiguo que esta aplicación y no ofrece diagnósticos. Actualice el agente.",
-      "busy": "Hay demasiados diagnósticos en curso. Detenga uno e inténtelo de nuevo."
+      "busy": "Hay demasiados diagnósticos en curso. Detenga uno e inténtelo de nuevo.",
+      "modeUnavailableHint": "Las trazas UDP y TCP leen las respuestas mediante una captura de paquetes. La captura integrada funciona si el agente se ejecuta como administrador, e instalar Npcap (npcap.com) la mejora. PacketWard no incluye Npcap. Las trazas ICMP siempre funcionan."
     },
     "ping": {
       "hint": "Envía solicitudes de eco ICMP para medir la accesibilidad, la latencia y el jitter.",
@@ -339,7 +340,41 @@
       "noReply": "sin respuesta",
       "otherRouters": "+{count} más",
       "rateLimitedTip": "Los saltos siguientes están limpios: este router probablemente solo limita sus respuestas ICMP.",
-      "rateLimitedNote": "La pérdida aquí no continúa en los saltos siguientes, así que este router probablemente solo limita sus respuestas, no descarta tráfico."
+      "rateLimitedNote": "La pérdida aquí no continúa en los saltos siguientes, así que este router probablemente solo limita sus respuestas, no descarta tráfico.",
+      "options": "Opciones de la traza",
+      "mode": "Tipo de sonda",
+      "port": "Puerto",
+      "packetSize": "Tamaño del paquete (bytes)",
+      "packetSizeTcp": "Un TCP SYN no lleva datos, así que el tamaño no se aplica.",
+      "interval": "Intervalo entre rondas (ms)",
+      "maxHops": "Saltos máx.",
+      "preferIpv6": "Preferir IPv6",
+      "agentTooOld": "El agente instalado es más antiguo que esta aplicación: las trazas UDP y TCP, el intervalo, IPv6 y la exportación requieren actualizar el agente.",
+      "asn": "Red (ASN)",
+      "country": "País",
+      "modeWithPort": "{mode}, puerto {port}",
+      "modes": {
+        "icmp": "ICMP",
+        "udp": "UDP",
+        "tcp": "TCP SYN"
+      },
+      "reach": {
+        "echo_reply": "el destino respondió al ping",
+        "port_unreachable": "el destino respondió (puerto inalcanzable)",
+        "syn_ack": "el destino respondió (puerto abierto)",
+        "rst": "el destino respondió (puerto cerrado)"
+      },
+      "export": {
+        "button": "Exportar",
+        "saveCsv": "Guardar como CSV",
+        "saveJson": "Guardar como JSON",
+        "saveText": "Guardar informe para soporte (.txt)",
+        "copyCsv": "Copiar como CSV",
+        "copyJson": "Copiar como JSON",
+        "saved": "Guardado {name}",
+        "copied": "Copiado al portapapeles.",
+        "failed": "No se pudo guardar ni copiar la exportación."
+      }
     },
     "dns": {
       "hint": "Consulta registros DNS con el resolvedor del sistema o uno público, para distinguir un problema de DNS de uno de red.",

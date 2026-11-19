@@ -298,6 +298,21 @@ done, failed) on the `speed.progress` topic. The node list comes from `nodes.jso
 server's `/info`. Only `Engine::with_system_firewall` (the agent, feature `net-http`) gets the real HTTP transport; `Engine::new`
 and the tests use `UnavailableSpeed`/fakes. Protocol minor 8.
 
+**Integration (M10).** `pw-engine::Diag` runs a `diag.mtr.start` through `pw_diag::mtr_adv::mtr_with` when the request has a
+probe `mode` other than `icmp` or any of `port`, `interval_ms`, `prefer_ipv6`; the default request keeps the simple ICMP path
+(packet size and hop limit work on both). `mode` is `icmp | udp | tcp` (`tcp` defaults to port 443, `udp` to 33434; port 0 is
+`BadRequest`). Hop ASN / organisation / country come only from the intel service's **local** GeoIP database
+(`IntelApi::lookup_one`, adapted by `IntelEnricher`, public addresses only, one `EnrichCache` per job); both paths fill them, and
+`MtrView` also carries `mode`, `port` and `reach` (how the destination answered). The probe transport is type-erased
+(`SharedProbe`): `Engine::new` and the tests use ICMP only (`PingerTransport`), so UDP/TCP there answer the new
+`ErrorCode::ModeUnavailable`; only `Engine::with_system_firewall` (the agent, Windows) uses `SystemProbeTransport` with a lazy
+capture backend (Npcap if installed, else the raw-socket backend when elevated; chosen when a trace starts, nothing is bundled).
+Availability is checked in `start_mtr` before a job is registered, so the UI gets a typed error with the agent's explanation.
+The latest table of each job is kept in the advanced shape (16 finished jobs); `diag.mtr.report` still renders the simple report
+for default jobs and the advanced one (mode, ASN, country) otherwise, and the new `diag.mtr.export` (`job_id`, `format`
+`csv|json|text`, optional `source_ip`) returns `{ format, filename, content }` with a Windows-safe file name. The desktop saves
+it with a browser download (no new Tauri command) or copies it. All new fields are optional/serde-defaulted. Protocol minor is 10.
+
 ### 6.7 Speed server (`tools/speed-server`)
 axum service deployable on XeroHost nodes (Miami, Brazil, …):
 `GET /ping`, `GET /download?bytes=N` (streams generated data, no files on disk), `POST /upload` (discards, returns

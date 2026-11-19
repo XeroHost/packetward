@@ -3,25 +3,34 @@
 //! and short requests (DNS lookup, port check, local ports). Wraps `pw-diag`.
 
 use std::collections::{HashMap, VecDeque};
+use std::future::Future;
 use std::net::IpAddr;
+use std::pin::Pin;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, SystemTime};
 
+use pw_diag::mtr_adv::{
+    export, is_public_ip, mtr_with, AdvHop, AdvMtrOptions, AdvMtrSnapshot, EnrichCache,
+    HopEnricher, HopInfo, ModeUnavailable, MtrError, NoEnrich, PingerTransport, ProbeMode,
+    ProbeReply, ProbeRequest, ProbeTransport, ReachKind, DEFAULT_TCP_PORT, DEFAULT_UDP_PORT,
+};
 use pw_diag::{
-    format_report, mtr, ping, CancelToken, DnsClient, DnsLookup, DnsOptions, DnsRecordType,
-    EchoStatus, FnSink, HickoryBackend, HopSnapshot, MtrOptions, MtrSnapshot, NameCache, NoReverse,
-    PingOptions, PingReply, PingSummary, Pinger, PortCheck, PortCheckLimiter, PortProtocol,
-    PortState, ReportContext, ResolverChoice, RttSummary,
+    format_report, mtr, ping, CancelToken, DiagError, DnsClient, DnsLookup, DnsOptions,
+    DnsRecordType, EchoStatus, FnSink, HickoryBackend, HopSnapshot, MtrOptions, MtrSnapshot,
+    NameCache, NoReverse, PingOptions, PingReply, PingSummary, Pinger, PortCheck, PortCheckLimiter,
+    PortProtocol, PortState, ReportContext, ResolverChoice, RttSummary,
 };
 use pw_proto::{
     DiagEvent, DiagStartResponse, DnsErrorView, DnsLookupRequest, DnsLookupView, DnsRecordView,
-    EchoOutcome, ErrorCode, ErrorPayload, LocalPort, LocalPorts, MtrHopView, MtrReport,
-    MtrStartRequest, MtrView, PingReplyView, PingStartRequest, PingSummaryView, PortCheckRequest,
-    PortCheckView, PortStateView, Proto, RttView, TcpState,
+    EchoOutcome, ErrorCode, ErrorPayload, LocalPort, LocalPorts, MtrExport, MtrExportFormat,
+    MtrExportRequest, MtrHopView, MtrModeView, MtrReport, MtrStartRequest, MtrView, PingReplyView,
+    PingStartRequest, PingSummaryView, PortCheckRequest, PortCheckView, PortStateView, Proto,
+    RttView, TcpState,
 };
 use tokio::sync::{broadcast, mpsc};
 
+use crate::intel::IntelApi;
 use crate::poller::Snapshot;
 
 /// Jobs that may run at the same time. A diagnostics tool must not become a traffic generator.
@@ -39,11 +48,174 @@ fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     mutex.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
+type BoxProbe<'a> = Pin<Box<dyn Future<Output = Result<ProbeReply, MtrError>> + Send + 'a>>;
+
+/// Object-safe twin of [`ProbeTransport`] (whose `probe` returns `impl Future`), so the engine can
+/// hold whichever transport it was built with without making `Diag` generic over it.
+trait ErasedProbe: Send + Sync {
+    fn erased_prepare(&self, mode: ProbeMode, target: IpAddr) -> Result<(), ModeUnavailable>;
+    fn erased_probe<'a>(&'a self, request: &'a ProbeRequest) -> BoxProbe<'a>;
+}
+
+impl<T: ProbeTransport> ErasedProbe for T {
+    fn erased_prepare(&self, mode: ProbeMode, target: IpAddr) -> Result<(), ModeUnavailable> {
+        ProbeTransport::prepare(self, mode, target)
+    }
+
+    fn erased_probe<'a>(&'a self, request: &'a ProbeRequest) -> BoxProbe<'a> {
+        Box::pin(ProbeTransport::probe(self, request))
+    }
+}
+
+/// The probe transport of the engine, type-erased. Probes are a few per second, so the boxed
+/// future per probe is irrelevant next to the network round trip.
+pub struct SharedProbe(Arc<dyn ErasedProbe>);
+
+impl SharedProbe {
+    pub fn new<T: ProbeTransport + 'static>(transport: T) -> Self {
+        Self(Arc::new(transport))
+    }
+
+    /// A transport the caller keeps a handle to (tests read the probes a fake received).
+    pub fn shared<T: ProbeTransport + 'static>(transport: Arc<T>) -> Self {
+        Self(transport)
+    }
+
+    /// ICMP only, through any [`Pinger`]: UDP and TCP report [`ModeUnavailable`].
+    pub fn icmp<P: Pinger + 'static>(pinger: Arc<P>) -> Self {
+        Self::new(PingerTransport::new(pinger))
+    }
+}
+
+impl ProbeTransport for SharedProbe {
+    fn prepare(&self, mode: ProbeMode, target: IpAddr) -> Result<(), ModeUnavailable> {
+        self.0.erased_prepare(mode, target)
+    }
+
+    async fn probe(&self, request: &ProbeRequest) -> Result<ProbeReply, MtrError> {
+        self.0.erased_probe(request).await
+    }
+}
+
+/// [`HopEnricher`] over the engine's intel service: the local GeoIP database only, public
+/// addresses only. Nothing here can reach the network.
+pub struct IntelEnricher(pub Arc<dyn IntelApi>);
+
+impl HopEnricher for IntelEnricher {
+    fn lookup(&self, ip: IpAddr) -> Option<HopInfo> {
+        if !is_public_ip(ip) {
+            return None;
+        }
+        self.0
+            .lookup_one(ip)
+            .map(|(asn, as_org, country_code)| HopInfo {
+                asn,
+                as_org,
+                country_code,
+            })
+    }
+}
+
+/// Why a probe mode cannot run when `selection` has no capture backend, with what to do about it.
+#[cfg(any(windows, test))]
+fn capture_missing_reason(selection: &pw_capture::BackendSelection) -> Option<String> {
+    selection.selected.is_none().then(|| {
+        format!(
+            "{}. Install Npcap from https://npcap.com or run the agent as administrator so the \
+             built-in raw-socket backend can be used",
+            selection.summary.trim_end_matches('.')
+        )
+    })
+}
+
+/// The transport of the real agent: ICMP through the Win32 helper API, UDP and TCP SYN through
+/// sockets plus the capture backend chosen *when a trace starts* (so installing Npcap takes effect
+/// without restarting the agent).
+#[cfg(windows)]
+pub struct SystemProbe {
+    inner: pw_diag::mtr_adv::SystemProbeTransport,
+}
+
+#[cfg(windows)]
+impl SystemProbe {
+    pub fn new() -> Self {
+        Self {
+            inner: pw_diag::mtr_adv::SystemProbeTransport::new(Some(Arc::new(LazyBackend))),
+        }
+    }
+}
+
+#[cfg(windows)]
+impl Default for SystemProbe {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(windows)]
+impl ProbeTransport for SystemProbe {
+    fn prepare(&self, mode: ProbeMode, target: IpAddr) -> Result<(), ModeUnavailable> {
+        if mode.needs_capture() {
+            if let Some(reason) = capture_missing_reason(&pw_capture::select_system_backend()) {
+                return Err(ModeUnavailable::new(mode, reason));
+            }
+        }
+        self.inner.prepare(mode, target)
+    }
+
+    async fn probe(&self, request: &ProbeRequest) -> Result<ProbeReply, MtrError> {
+        self.inner.probe(request).await
+    }
+}
+
+/// A capture backend that picks Npcap or the raw-socket backend on every use.
+#[cfg(windows)]
+struct LazyBackend;
+
+#[cfg(windows)]
+impl pw_capture::CaptureBackend for LazyBackend {
+    fn caps(&self) -> pw_capture::BackendCaps {
+        match pw_capture::create_selected_backend(
+            &pw_capture::select_system_backend(),
+            &pw_capture::SystemEnv,
+        ) {
+            Ok(backend) => backend.caps(),
+            Err(_) => pw_capture::BackendCaps {
+                kind: pw_capture::BackendKind::RawSocket,
+                link_layer: false,
+                bpf: false,
+                sees_outbound: false,
+                ipv6: false,
+                needs_admin: true,
+            },
+        }
+    }
+
+    fn open(
+        &self,
+        interface: &pw_capture::InterfaceId,
+        opts: &pw_capture::CaptureOpts,
+    ) -> Result<Box<dyn pw_capture::PacketSource>, pw_capture::CaptureError> {
+        pw_capture::create_selected_backend(
+            &pw_capture::select_system_backend(),
+            &pw_capture::SystemEnv,
+        )?
+        .open(interface, opts)
+    }
+}
+
+/// The latest table of an MTR job, in the advanced shape (which also holds simple-path jobs).
+struct LastMtr {
+    snapshot: AdvMtrSnapshot,
+    /// Started with advanced options: `diag.mtr.report` then renders the advanced report.
+    advanced: bool,
+}
+
 struct Job {
     cancel: CancelToken,
     running: bool,
     target_text: String,
-    last_mtr: Option<MtrSnapshot>,
+    last_mtr: Option<LastMtr>,
 }
 
 #[derive(Default)]
@@ -54,6 +226,8 @@ struct Jobs {
 
 pub struct Diag<P> {
     pinger: Arc<P>,
+    probe: Arc<SharedProbe>,
+    enricher: Arc<dyn HopEnricher>,
     jobs: Arc<Mutex<Jobs>>,
     next_id: AtomicU64,
     events: broadcast::Sender<DiagEvent>,
@@ -61,14 +235,104 @@ pub struct Diag<P> {
     names: Option<Arc<NameCache<DnsClient<HickoryBackend>>>>,
 }
 
+/// An MTR request after validation: which engine runs it.
+enum MtrPlan {
+    /// Plain ICMP through the pinger (the default case).
+    Simple(MtrOptions),
+    /// Another mode, port, interval or address family: through `mtr_adv::mtr_with`.
+    Advanced(AdvMtrOptions),
+}
+
+/// `true` when the request needs the advanced engine: a probe mode other than ICMP, or any of the
+/// options only that engine honours (port, interval, address family). Packet size and hop limit
+/// are honoured by both.
+fn is_advanced(request: &MtrStartRequest) -> bool {
+    request.mode.is_some_and(|mode| mode != MtrModeView::Icmp)
+        || request.port.is_some()
+        || request.interval_ms.is_some()
+        || request.prefer_ipv6 == Some(true)
+}
+
+fn probe_mode(request: &MtrStartRequest) -> ProbeMode {
+    match request.mode.unwrap_or_default() {
+        MtrModeView::Icmp => ProbeMode::Icmp,
+        MtrModeView::Udp => ProbeMode::Udp,
+        MtrModeView::Tcp => ProbeMode::TcpSyn {
+            port: request.port.unwrap_or(DEFAULT_TCP_PORT),
+        },
+    }
+}
+
+fn plan(request: &MtrStartRequest) -> Result<MtrPlan, ErrorPayload> {
+    if !is_advanced(request) {
+        let mut options = MtrOptions::default();
+        if let Some(cycles) = request.cycles {
+            options.cycles = cycles;
+        }
+        if let Some(hops) = request.max_hops {
+            options.max_hops = hops;
+        }
+        if let Some(ms) = request.timeout_ms {
+            options.timeout = Duration::from_millis(u64::from(ms));
+        }
+        if let Some(size) = request.packet_size {
+            options.packet_size = size;
+        }
+        return Ok(MtrPlan::Simple(options));
+    }
+    let mut options = AdvMtrOptions {
+        mode: probe_mode(request),
+        udp_port: request.port.unwrap_or(DEFAULT_UDP_PORT),
+        resolve_names: request.resolve_names.unwrap_or(true),
+        ..AdvMtrOptions::default()
+    };
+    if let Some(cycles) = request.cycles {
+        options.cycles = cycles;
+    }
+    if let Some(hops) = request.max_hops {
+        options.max_hops = hops;
+    }
+    if let Some(ms) = request.timeout_ms {
+        options.timeout = Duration::from_millis(u64::from(ms));
+    }
+    if let Some(size) = request.packet_size {
+        options.packet_size = size;
+    }
+    if let Some(ms) = request.interval_ms {
+        options.interval = Duration::from_millis(u64::from(ms));
+    }
+    options.validate().map_err(|err| mtr_error_payload(&err))?;
+    Ok(MtrPlan::Advanced(options))
+}
+
+fn mtr_error_payload(err: &MtrError) -> ErrorPayload {
+    match err {
+        MtrError::ModeUnavailable(unavailable) => {
+            ErrorPayload::new(ErrorCode::ModeUnavailable, unavailable.to_string())
+        }
+        MtrError::Diag(DiagError::InvalidInput(message)) => bad_request(message.clone()),
+        MtrError::Diag(other) => ErrorPayload::new(ErrorCode::Internal, other.to_string()),
+    }
+}
+
 impl<P: Pinger + 'static> Diag<P> {
+    /// ICMP only (UDP and TCP MTR report `ModeUnavailable`) and no ASN / country lookups.
     pub fn new(pinger: Arc<P>) -> Self {
+        let probe = SharedProbe::icmp(Arc::clone(&pinger));
+        Self::with_parts(pinger, probe, Arc::new(NoEnrich))
+    }
+
+    /// `probe` sends the advanced MTR's probes; `enricher` adds ASN / country to hops (it must be a
+    /// local lookup, see [`HopEnricher`]).
+    pub fn with_parts(pinger: Arc<P>, probe: SharedProbe, enricher: Arc<dyn HopEnricher>) -> Self {
         // Reverse lookups of hop addresses go to the system resolver only (never a third party).
         let names = DnsClient::with_options(&DnsOptions::default())
             .ok()
             .map(|client| Arc::new(NameCache::new(Arc::new(client), Duration::from_secs(2))));
         Self {
             pinger,
+            probe: Arc::new(probe),
+            enricher,
             jobs: Arc::new(Mutex::new(Jobs::default())),
             next_id: AtomicU64::new(1),
             events: broadcast::channel(EVENT_BACKLOG).0,
@@ -180,57 +444,87 @@ impl<P: Pinger + 'static> Diag<P> {
         &self,
         request: MtrStartRequest,
     ) -> Result<DiagStartResponse, ErrorPayload> {
-        let target = resolve_target(&request.target).await?;
-        let mut options = MtrOptions::default();
-        if let Some(cycles) = request.cycles {
-            options.cycles = cycles;
-        }
-        if let Some(hops) = request.max_hops {
-            options.max_hops = hops;
-        }
-        if let Some(ms) = request.timeout_ms {
-            options.timeout = Duration::from_millis(u64::from(ms));
-        }
-        if let Some(size) = request.packet_size {
-            options.packet_size = size;
+        let plan = plan(&request)?;
+        let target =
+            resolve_target_pref(&request.target, request.prefer_ipv6 == Some(true)).await?;
+        // A mode that cannot run here is refused now, as a typed error, instead of failing the job
+        // later. Preparing may open the capture interface, which blocks.
+        if let MtrPlan::Advanced(options) = &plan {
+            let probe = Arc::clone(&self.probe);
+            let mode = options.mode;
+            tokio::task::spawn_blocking(move || ProbeTransport::prepare(&*probe, mode, target))
+                .await
+                .map_err(|err| ErrorPayload::new(ErrorCode::Internal, err.to_string()))?
+                .map_err(|unavailable| mtr_error_payload(&MtrError::from(unavailable)))?;
         }
         let resolve_names = request.resolve_names.unwrap_or(true);
         let (id, cancel) = self.register(&request.target)?;
         let pinger = Arc::clone(&self.pinger);
+        let probe = Arc::clone(&self.probe);
         let events = self.events.clone();
         let jobs = Arc::clone(&self.jobs);
         let names = self.names.clone().filter(|_| resolve_names);
+        // One cache per job: "no data" answers are remembered, so a GeoIP database downloaded later
+        // must not be hidden behind an older job's misses.
+        let enrich = Arc::new(EnrichCache::new(Arc::clone(&self.enricher)));
         tokio::spawn(async move {
-            let snapshots = events.clone();
-            let store = Arc::clone(&jobs);
-            let mut sink = FnSink(move |snapshot: MtrSnapshot| {
-                if let Some(job) = lock(&store).map.get_mut(&id) {
-                    job.last_mtr = Some(snapshot.clone());
+            let outcome: Result<bool, MtrError> = match plan {
+                MtrPlan::Simple(options) => {
+                    let (store, snapshots, cache) =
+                        (Arc::clone(&jobs), events.clone(), Arc::clone(&enrich));
+                    let mut sink = FnSink(move |snapshot: MtrSnapshot| {
+                        let adv = adv_from_simple(&snapshot, &cache);
+                        record_snapshot(&store, &snapshots, id, adv, false);
+                    });
+                    let run = match &names {
+                        Some(names) => {
+                            mtr(pinger, target, &options, names, &cancel, &mut sink).await
+                        }
+                        None => {
+                            mtr(
+                                pinger,
+                                target,
+                                &options,
+                                &NameCache::<NoReverse>::disabled(),
+                                &cancel,
+                                &mut sink,
+                            )
+                            .await
+                        }
+                    };
+                    run.map(|last| last.cancelled).map_err(MtrError::from)
                 }
-                let _ = snapshots.send(DiagEvent::MtrSnapshot {
-                    job_id: id,
-                    snapshot: mtr_view(&snapshot),
-                });
-            });
-            let outcome = match &names {
-                Some(cache) => mtr(pinger, target, &options, cache, &cancel, &mut sink).await,
-                None => {
-                    mtr(
-                        pinger,
-                        target,
-                        &options,
-                        &NameCache::<NoReverse>::disabled(),
-                        &cancel,
-                        &mut sink,
-                    )
-                    .await
+                MtrPlan::Advanced(options) => {
+                    let (store, snapshots) = (Arc::clone(&jobs), events.clone());
+                    let mut sink = FnSink(move |snapshot: AdvMtrSnapshot| {
+                        record_snapshot(&store, &snapshots, id, snapshot, true);
+                    });
+                    let run = match &names {
+                        Some(names) => {
+                            mtr_with(probe, target, &options, names, &enrich, &cancel, &mut sink)
+                                .await
+                        }
+                        None => {
+                            mtr_with(
+                                probe,
+                                target,
+                                &options,
+                                &NameCache::<NoReverse>::disabled(),
+                                &enrich,
+                                &cancel,
+                                &mut sink,
+                            )
+                            .await
+                        }
+                    };
+                    run.map(|last| last.cancelled)
                 }
             };
             match outcome {
-                Ok(last) => {
+                Ok(cancelled) => {
                     let _ = events.send(DiagEvent::MtrDone {
                         job_id: id,
-                        cancelled: last.cancelled,
+                        cancelled,
                     });
                 }
                 Err(err) => {
@@ -256,7 +550,8 @@ impl<P: Pinger + 'static> Diag<P> {
     }
 
     /// The plain-text report of the latest snapshot of an MTR job. `source_public_ip` is the machine's
-    /// public address when a XeroHost node told us; the line is omitted otherwise.
+    /// public address when a XeroHost node told us; the line is omitted otherwise. Jobs started with
+    /// the default options keep the simple report; the others get the advanced one (mode, ASN, country).
     pub fn mtr_report(
         &self,
         job_id: u64,
@@ -267,7 +562,7 @@ impl<P: Pinger + 'static> Diag<P> {
             .map
             .get(&job_id)
             .ok_or_else(|| bad_request("unknown diagnostics job"))?;
-        let snapshot = job
+        let last = job
             .last_mtr
             .as_ref()
             .ok_or_else(|| bad_request("this job has no MTR data yet"))?;
@@ -276,8 +571,48 @@ impl<P: Pinger + 'static> Diag<P> {
             generated_at: SystemTime::now(),
             target: job.target_text.clone(),
         };
-        Ok(MtrReport {
-            text: format_report(snapshot, &context),
+        let text = if last.advanced {
+            export::support_report(&last.snapshot, &context)
+        } else {
+            format_report(&last.snapshot.to_trace(), &context)
+        };
+        Ok(MtrReport { text })
+    }
+
+    /// The latest snapshot of an MTR job rendered as CSV, JSON or the support text, with a file name
+    /// that is safe on Windows. `request.source_ip` fills the "source public IP" line when given.
+    pub fn mtr_export(&self, request: &MtrExportRequest) -> Result<MtrExport, ErrorPayload> {
+        let source_public_ip = match request.source_ip.as_deref().map(str::trim) {
+            None | Some("") => None,
+            Some(text) => Some(
+                text.parse::<IpAddr>()
+                    .map_err(|_| bad_request("the source IP is not a valid address"))?,
+            ),
+        };
+        let jobs = lock(&self.jobs);
+        let job = jobs
+            .map
+            .get(&request.job_id)
+            .ok_or_else(|| bad_request("unknown diagnostics job"))?;
+        let last = job
+            .last_mtr
+            .as_ref()
+            .ok_or_else(|| bad_request("this job has no MTR data yet"))?;
+        let now = SystemTime::now();
+        let context = ReportContext {
+            source_public_ip,
+            generated_at: now,
+            target: job.target_text.clone(),
+        };
+        let (content, extension) = match request.format {
+            MtrExportFormat::Csv => (export::to_csv(&last.snapshot), "csv"),
+            MtrExportFormat::Json => (export::to_json(&last.snapshot, &context), "json"),
+            MtrExportFormat::Text => (export::support_report(&last.snapshot, &context), "txt"),
+        };
+        Ok(MtrExport {
+            format: request.format,
+            filename: export_filename(&job.target_text, now, extension),
+            content,
         })
     }
 
@@ -368,6 +703,12 @@ pub fn local_ports(snapshot: Option<&Snapshot>) -> LocalPorts {
 
 /// A target typed by the user: an address, or a host name resolved here (IPv4 preferred).
 pub async fn resolve_target(text: &str) -> Result<IpAddr, ErrorPayload> {
+    resolve_target_pref(text, false).await
+}
+
+/// [`resolve_target`] with the address family preference: `prefer_ipv6` picks an IPv6 address of a
+/// host name when it has one (and falls back to IPv4 otherwise).
+pub async fn resolve_target_pref(text: &str, prefer_ipv6: bool) -> Result<IpAddr, ErrorPayload> {
     let text = text.trim();
     if text.is_empty() {
         return Err(bad_request("enter a host name or an IP address"));
@@ -390,7 +731,7 @@ pub async fn resolve_target(text: &str) -> Result<IpAddr, ErrorPayload> {
     };
     addrs
         .iter()
-        .find(|ip| ip.is_ipv4())
+        .find(|ip| ip.is_ipv6() == prefer_ipv6)
         .or_else(|| addrs.first())
         .copied()
         .ok_or_else(|| bad_request(format!("{text} has no address")))
@@ -443,6 +784,73 @@ pub fn ping_summary_view(summary: &PingSummary) -> PingSummaryView {
     }
 }
 
+/// The advanced table of a simple-path snapshot (ICMP, no port), with ASN / country per hop.
+fn adv_from_simple<E: HopEnricher>(
+    snapshot: &MtrSnapshot,
+    enrich: &EnrichCache<E>,
+) -> AdvMtrSnapshot {
+    AdvMtrSnapshot {
+        mode: ProbeMode::Icmp,
+        port: 0,
+        target: snapshot.target,
+        cycle: snapshot.cycle,
+        total_cycles: snapshot.total_cycles,
+        hops: snapshot
+            .hops
+            .iter()
+            .map(|hop| AdvHop {
+                info: hop.addr.and_then(|addr| enrich.info(addr)),
+                hop: hop.clone(),
+            })
+            .collect(),
+        destination_reached: snapshot.destination_reached,
+        reached_via: snapshot.destination_reached.then_some(ReachKind::EchoReply),
+        cancelled: snapshot.cancelled,
+    }
+}
+
+/// Keeps `snapshot` as the job's latest table and publishes it on the progress topic.
+fn record_snapshot(
+    jobs: &Mutex<Jobs>,
+    events: &broadcast::Sender<DiagEvent>,
+    job_id: u64,
+    snapshot: AdvMtrSnapshot,
+    advanced: bool,
+) {
+    let view = adv_view(&snapshot);
+    if let Some(job) = lock(jobs).map.get_mut(&job_id) {
+        job.last_mtr = Some(LastMtr { snapshot, advanced });
+    }
+    let _ = events.send(DiagEvent::MtrSnapshot {
+        job_id,
+        snapshot: view,
+    });
+}
+
+/// `packetward-mtr-<target>-<UTC stamp>.<extension>`: the target keeps letters, digits, `.`, `-`
+/// and `_` (IPv6 colons and anything else a Windows file name refuses become `_`), at most 48 chars.
+fn export_filename(target: &str, at: SystemTime, extension: &str) -> String {
+    let safe: String = target
+        .trim()
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_') {
+                c
+            } else {
+                '_'
+            }
+        })
+        .take(48)
+        .collect();
+    let safe = safe.trim_matches(|c| c == '.' || c == '_');
+    let safe = if safe.is_empty() { "target" } else { safe };
+    let stamp = pw_diag::format_utc(at)
+        .trim_end_matches(" UTC")
+        .replace(['-', ':'], "")
+        .replace(' ', "-");
+    format!("packetward-mtr-{safe}-{stamp}.{extension}")
+}
+
 fn hop_view(hop: &HopSnapshot) -> MtrHopView {
     MtrHopView {
         ttl: hop.ttl,
@@ -454,7 +862,32 @@ fn hop_view(hop: &HopSnapshot) -> MtrHopView {
         loss_percent: hop.loss_percent,
         rtt: hop.rtt.as_ref().map(rtt_view),
         address_changes: hop.address_changes,
+        asn: None,
+        as_org: None,
+        country: None,
     }
+}
+
+/// The wire view of an advanced table: the simple one plus mode, port, how the destination
+/// answered and ASN / country per hop.
+pub fn adv_view(snapshot: &AdvMtrSnapshot) -> MtrView {
+    let trace = snapshot.to_trace();
+    let mut view = mtr_view(&trace);
+    for (view_hop, hop) in view.hops.iter_mut().zip(&snapshot.hops) {
+        if let Some(info) = &hop.info {
+            view_hop.asn = info.asn;
+            view_hop.as_org = info.as_org.clone();
+            view_hop.country = info.country_code.clone();
+        }
+    }
+    view.mode = Some(match snapshot.mode {
+        ProbeMode::Icmp => MtrModeView::Icmp,
+        ProbeMode::Udp => MtrModeView::Udp,
+        ProbeMode::TcpSyn { .. } => MtrModeView::Tcp,
+    });
+    view.port = (snapshot.port != 0).then_some(snapshot.port);
+    view.reach = snapshot.reached_via.map(|via| via.label().to_owned());
+    view
 }
 
 pub fn mtr_view(snapshot: &MtrSnapshot) -> MtrView {
@@ -465,6 +898,9 @@ pub fn mtr_view(snapshot: &MtrSnapshot) -> MtrView {
         hops: snapshot.hops.iter().map(hop_view).collect(),
         destination_reached: snapshot.destination_reached,
         cancelled: snapshot.cancelled,
+        mode: None,
+        port: None,
+        reach: None,
     }
 }
 
@@ -874,6 +1310,404 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(open.state, PortStateView::Open);
+    }
+
+    // ---- advanced MTR (M10) ----------------------------------------------------------------------
+
+    use pw_diag::mtr_adv::FakeProbeTransport;
+
+    /// Answers of a path `10.0.0.1 -> 8.8.8.8 -> 1.1.1.1` (the destination), for any probe mode.
+    fn path_script(request: &ProbeRequest) -> Result<ProbeReply, MtrError> {
+        let rtt = Duration::from_millis(3);
+        Ok(match request.ttl {
+            1 => ProbeReply::ttl_expired("10.0.0.1".parse().unwrap(), rtt),
+            2 => ProbeReply::ttl_expired("8.8.8.8".parse().unwrap(), rtt),
+            _ => ProbeReply::reached(ReachKind::PortUnreachable, request.target, rtt),
+        })
+    }
+
+    #[derive(Default)]
+    struct RecordingEnricher {
+        seen: Mutex<Vec<IpAddr>>,
+    }
+
+    impl HopEnricher for RecordingEnricher {
+        fn lookup(&self, ip: IpAddr) -> Option<HopInfo> {
+            lock(&self.seen).push(ip);
+            Some(HopInfo {
+                asn: Some(15169),
+                as_org: Some("Example Org".to_owned()),
+                country_code: Some("US".to_owned()),
+            })
+        }
+    }
+
+    struct Rig {
+        diag: Diag<FakePinger>,
+        fake: Arc<FakeProbeTransport>,
+        enricher: Arc<RecordingEnricher>,
+    }
+
+    fn rig(fake: FakeProbeTransport) -> Rig {
+        let fake = Arc::new(fake);
+        let enricher = Arc::new(RecordingEnricher::default());
+        let diag = Diag::with_parts(
+            Arc::new(FakePinger::new(|request, _| {
+                if request.ttl >= 3 {
+                    ok_reply("1.1.1.1", 4)
+                } else {
+                    Ok(EchoReply {
+                        status: EchoStatus::TtlExpired,
+                        from: Some(
+                            if request.ttl == 1 {
+                                "10.0.0.1"
+                            } else {
+                                "8.8.8.8"
+                            }
+                            .parse()
+                            .unwrap(),
+                        ),
+                        rtt: Some(Duration::from_millis(2)),
+                        ttl: None,
+                    })
+                }
+            })),
+            SharedProbe::shared(Arc::clone(&fake)),
+            Arc::clone(&enricher) as Arc<dyn HopEnricher>,
+        );
+        Rig {
+            diag,
+            fake,
+            enricher,
+        }
+    }
+
+    fn path_rig() -> Rig {
+        rig(FakeProbeTransport::new(|request, _| path_script(request)))
+    }
+
+    /// Runs `request` to the end and returns the last snapshot and the job id.
+    async fn run_mtr(rig: &Rig, request: MtrStartRequest) -> (u64, MtrView) {
+        let mut rx = rig.diag.subscribe();
+        let started = rig.diag.start_mtr(request).await.unwrap();
+        let mut last = None;
+        loop {
+            match next(&mut rx).await {
+                DiagEvent::MtrSnapshot { snapshot, .. } => last = Some(snapshot),
+                DiagEvent::MtrDone { .. } => break,
+                other => panic!("unexpected {other:?}"),
+            }
+        }
+        (started.job_id, last.expect("at least one snapshot"))
+    }
+
+    fn udp_request() -> MtrStartRequest {
+        MtrStartRequest {
+            target: "1.1.1.1".into(),
+            cycles: Some(2),
+            resolve_names: Some(false),
+            mode: Some(MtrModeView::Udp),
+            port: Some(5000),
+            packet_size: Some(64),
+            interval_ms: Some(200),
+            max_hops: Some(12),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn only_non_default_options_take_the_advanced_path() {
+        let plain = MtrStartRequest {
+            target: "x".into(),
+            cycles: Some(5),
+            max_hops: Some(10),
+            packet_size: Some(100),
+            ..Default::default()
+        };
+        assert!(
+            !is_advanced(&plain),
+            "hops and packet size work on both paths"
+        );
+        let with = |f: fn(&mut MtrStartRequest)| {
+            let mut request = plain.clone();
+            f(&mut request);
+            is_advanced(&request)
+        };
+        assert!(!with(|r| r.mode = Some(MtrModeView::Icmp)));
+        assert!(with(|r| r.mode = Some(MtrModeView::Udp)));
+        assert!(with(|r| r.mode = Some(MtrModeView::Tcp)));
+        assert!(with(|r| r.port = Some(80)));
+        assert!(with(|r| r.interval_ms = Some(500)));
+        assert!(with(|r| r.prefer_ipv6 = Some(true)));
+        assert!(!with(|r| r.prefer_ipv6 = Some(false)));
+    }
+
+    #[tokio::test]
+    async fn the_advanced_options_reach_the_probe_transport() {
+        let rig = path_rig();
+        let (_, last) = run_mtr(&rig, udp_request()).await;
+        let requests = rig.fake.requests();
+        assert!(!requests.is_empty());
+        for request in &requests {
+            assert_eq!(request.mode, ProbeMode::Udp);
+            assert_eq!(request.port, 5000);
+            assert_eq!(request.payload_size, 64);
+            assert!(request.ttl <= 12, "the hop limit is honoured");
+        }
+        assert_eq!(
+            rig.fake.prepared(),
+            [
+                (ProbeMode::Udp, "1.1.1.1".parse().unwrap()),
+                (ProbeMode::Udp, "1.1.1.1".parse().unwrap())
+            ],
+            "prepared once at start and once by the trace"
+        );
+        assert_eq!(last.mode, Some(MtrModeView::Udp));
+        assert_eq!(last.port, Some(5000));
+        assert_eq!(last.reach.as_deref(), Some("port-unreachable"));
+        assert!(last.destination_reached);
+
+        let rig = path_rig();
+        let tcp = MtrStartRequest {
+            mode: Some(MtrModeView::Tcp),
+            port: None,
+            ..udp_request()
+        };
+        let (_, last) = run_mtr(&rig, tcp).await;
+        let first = rig.fake.requests()[0].clone();
+        assert_eq!(
+            first.mode,
+            ProbeMode::TcpSyn { port: 443 },
+            "TCP defaults to 443"
+        );
+        assert_eq!(first.payload_size, 0, "a SYN carries no payload");
+        assert_eq!(last.mode, Some(MtrModeView::Tcp));
+        assert_eq!(last.port, Some(443));
+    }
+
+    #[tokio::test]
+    async fn hops_are_enriched_with_public_addresses_only() {
+        let rig = path_rig();
+        let (_, last) = run_mtr(&rig, udp_request()).await;
+        assert_eq!(last.hops[0].addr.as_deref(), Some("10.0.0.1"));
+        assert_eq!(last.hops[0].asn, None, "a private hop has no ASN");
+        assert_eq!(last.hops[0].country, None);
+        assert_eq!(last.hops[1].addr.as_deref(), Some("8.8.8.8"));
+        assert_eq!(last.hops[1].asn, Some(15169));
+        assert_eq!(last.hops[1].as_org.as_deref(), Some("Example Org"));
+        assert_eq!(last.hops[1].country.as_deref(), Some("US"));
+        let seen = lock(&rig.enricher.seen).clone();
+        assert!(!seen.is_empty());
+        assert!(
+            seen.iter().all(|ip| is_public_ip(*ip)),
+            "the enricher never saw a private address: {seen:?}"
+        );
+        assert!(
+            seen.len() <= 2,
+            "each public address is looked up once: {seen:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn the_default_path_stays_simple_and_is_enriched_too() {
+        let rig = path_rig();
+        let request = MtrStartRequest {
+            target: "1.1.1.1".into(),
+            cycles: Some(1),
+            resolve_names: Some(false),
+            ..Default::default()
+        };
+        let (job, last) = run_mtr(&rig, request).await;
+        assert!(
+            rig.fake.requests().is_empty(),
+            "the probe transport is not used"
+        );
+        assert!(rig.fake.prepared().is_empty());
+        assert_eq!(last.mode, Some(MtrModeView::Icmp));
+        assert_eq!(last.port, None);
+        assert_eq!(last.hops[0].asn, None);
+        assert_eq!(last.hops[1].asn, Some(15169));
+        let report = rig.diag.mtr_report(job, None).unwrap();
+        assert!(
+            !report.text.contains("Mode:"),
+            "the simple report is unchanged: {}",
+            report.text
+        );
+    }
+
+    #[tokio::test]
+    async fn the_report_of_an_advanced_job_names_mode_and_networks() {
+        let rig = path_rig();
+        let (job, _) = run_mtr(&rig, udp_request()).await;
+        let report = rig.diag.mtr_report(job, None).unwrap();
+        assert!(
+            report.text.contains("Mode: UDP (port 5000)"),
+            "{}",
+            report.text
+        );
+        assert!(report.text.contains("AS15169"), "{}", report.text);
+    }
+
+    #[tokio::test]
+    async fn exports_render_csv_json_and_text_with_safe_file_names() {
+        let rig = path_rig();
+        let (job, _) = run_mtr(&rig, udp_request()).await;
+        let export = |format, source_ip: Option<&str>| {
+            rig.diag.mtr_export(&MtrExportRequest {
+                job_id: job,
+                format,
+                source_ip: source_ip.map(str::to_owned),
+            })
+        };
+        let csv = export(MtrExportFormat::Csv, None).unwrap();
+        assert_eq!(csv.format, MtrExportFormat::Csv);
+        assert!(csv.content.starts_with("hop,address,"), "{}", csv.content);
+        assert!(csv.content.contains("8.8.8.8"));
+        assert!(csv.content.contains("15169"));
+        assert!(csv.filename.starts_with("packetward-mtr-1.1.1.1-"));
+        assert!(csv.filename.ends_with(".csv"));
+
+        let json = export(MtrExportFormat::Json, Some("203.0.113.9")).unwrap();
+        assert!(json.filename.ends_with(".json"));
+        assert!(
+            json.content.contains("\"mode\": \"udp\""),
+            "{}",
+            json.content
+        );
+        assert!(json.content.contains("203.0.113.9"));
+        let parsed: serde_json::Value = serde_json::from_str(&json.content).unwrap();
+        assert_eq!(parsed["port"], 5000);
+
+        let text = export(MtrExportFormat::Text, Some("203.0.113.9")).unwrap();
+        assert!(text.filename.ends_with(".txt"));
+        assert!(text.content.contains("PacketWard MTR report"));
+        assert!(text.content.contains("Source public IP: 203.0.113.9"));
+        assert!(!export(MtrExportFormat::Text, None)
+            .unwrap()
+            .content
+            .contains("Source public IP"));
+
+        let bad = export(MtrExportFormat::Csv, Some("not an ip")).unwrap_err();
+        assert_eq!(bad.code, ErrorCode::BadRequest);
+        let unknown = rig
+            .diag
+            .mtr_export(&MtrExportRequest {
+                job_id: 404,
+                format: MtrExportFormat::Csv,
+                source_ip: None,
+            })
+            .unwrap_err();
+        assert_eq!(unknown.code, ErrorCode::BadRequest);
+    }
+
+    #[test]
+    fn export_file_names_never_contain_path_or_windows_forbidden_characters() {
+        let at = SystemTime::UNIX_EPOCH + Duration::from_secs(1_700_000_000);
+        assert_eq!(
+            export_filename("1.1.1.1", at, "csv"),
+            "packetward-mtr-1.1.1.1-20231114-221320.csv"
+        );
+        let hostile = export_filename("..\\..\\evil:name/x*?\"<>|", at, "txt");
+        assert!(hostile.starts_with("packetward-mtr-"));
+        for forbidden in ['\\', '/', ':', '*', '?', '"', '<', '>', '|'] {
+            assert!(!hostile.contains(forbidden), "{hostile}");
+        }
+        assert!(!hostile.contains(".."), "{hostile}");
+        let v6 = export_filename("2606:4700::1111", at, "json");
+        assert!(!v6.contains(':'), "{v6}");
+        assert!(export_filename("", at, "csv").contains("-target-"));
+        assert!(export_filename(&"a".repeat(500), at, "csv").len() < 100);
+    }
+
+    #[tokio::test]
+    async fn a_mode_that_cannot_run_is_refused_with_a_typed_error_before_any_job_starts() {
+        // Engine::new's transport: ICMP only.
+        let diag = Diag::new(Arc::new(FakePinger::new(|_, _| ok_reply("1.1.1.1", 1))));
+        for mode in [MtrModeView::Udp, MtrModeView::Tcp] {
+            let err = diag
+                .start_mtr(MtrStartRequest {
+                    target: "1.1.1.1".into(),
+                    mode: Some(mode),
+                    ..Default::default()
+                })
+                .await
+                .unwrap_err();
+            assert_eq!(err.code, ErrorCode::ModeUnavailable, "{mode:?}");
+            assert!(err.message.contains("capture backend"), "{}", err.message);
+        }
+        assert!(lock(&diag.jobs).map.is_empty(), "no job was registered");
+
+        // A transport that refuses a mode in `prepare`, with its own reason.
+        let fake = FakeProbeTransport::new(|request, _| path_script(request)).with_unavailable(
+            ModeUnavailable::new(ProbeMode::TcpSyn { port: 0 }, "no Npcap here"),
+        );
+        let rig = rig(fake);
+        let err = rig
+            .diag
+            .start_mtr(MtrStartRequest {
+                target: "1.1.1.1".into(),
+                mode: Some(MtrModeView::Tcp),
+                port: Some(443),
+                ..Default::default()
+            })
+            .await
+            .unwrap_err();
+        assert_eq!(err.code, ErrorCode::ModeUnavailable);
+        assert!(err.message.contains("no Npcap here"), "{}", err.message);
+        assert!(rig.fake.requests().is_empty(), "nothing was sent");
+        // UDP still works on the same transport.
+        let (_, last) = run_mtr(&rig, udp_request()).await;
+        assert!(last.destination_reached);
+    }
+
+    #[tokio::test]
+    async fn port_zero_is_a_bad_request() {
+        let rig = path_rig();
+        let err = rig
+            .diag
+            .start_mtr(MtrStartRequest {
+                target: "1.1.1.1".into(),
+                mode: Some(MtrModeView::Tcp),
+                port: Some(0),
+                ..Default::default()
+            })
+            .await
+            .unwrap_err();
+        assert_eq!(err.code, ErrorCode::BadRequest);
+        assert!(rig.fake.requests().is_empty());
+    }
+
+    #[test]
+    fn a_missing_capture_backend_is_explained_with_the_npcap_link() {
+        struct NoBackend;
+        impl pw_capture::CaptureEnv for NoBackend {
+            fn is_windows(&self) -> bool {
+                true
+            }
+            fn npcap_dll(&self) -> Option<std::path::PathBuf> {
+                None
+            }
+            fn is_elevated(&self) -> bool {
+                false
+            }
+        }
+        let selection = pw_capture::select_backend(&NoBackend);
+        let reason = capture_missing_reason(&selection).expect("nothing is selected");
+        assert!(reason.contains("https://npcap.com"), "{reason}");
+        assert!(reason.contains("administrator"), "{reason}");
+        struct Elevated;
+        impl pw_capture::CaptureEnv for Elevated {
+            fn is_windows(&self) -> bool {
+                true
+            }
+            fn npcap_dll(&self) -> Option<std::path::PathBuf> {
+                None
+            }
+            fn is_elevated(&self) -> bool {
+                true
+            }
+        }
+        assert!(capture_missing_reason(&pw_capture::select_backend(&Elevated)).is_none());
     }
 
     #[tokio::test]

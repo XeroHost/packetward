@@ -33,8 +33,8 @@ use pw_proto::{
     AuditView, BlockRequest, CaptureFileRequest, CaptureStartRequest, ConnectionsRequest,
     DiagJobRequest as SpeedJobRequest, DiagJobRequest, DnsLookupRequest, ErrorCode, ErrorPayload,
     FirewallRuleAction, FirewallRuleEdit, FirewallRulesRequest, GeoLookupRequest, Heartbeat,
-    HelloResponse, ListEnableRequest, ListRefreshRequest, MtrStartRequest, PingStartRequest,
-    PortCheckRequest, ProxyRequest, PurgeRequest, RdpAttempts, RdpConfirmRequest,
+    HelloResponse, ListEnableRequest, ListRefreshRequest, MtrExportRequest, MtrStartRequest,
+    PingStartRequest, PortCheckRequest, ProxyRequest, PurgeRequest, RdpAttempts, RdpConfirmRequest,
     RdpEndSessionRequest, RdpLockoutRequest, RdpNlaRequest, RdpPortRequest, RdpRestrictRequest,
     RecordStartRequest, SetGuardianPolicy, SpeedRequest, SupportBundleRequest,
     SupportDiscardRequest, SupportReadRequest, SystemInfo, UnblockRequest, PROTOCOL_MAJOR,
@@ -49,7 +49,7 @@ pub use capture::ensure_private_dir;
 pub use capture::{CaptureHost, CaptureManager, PacketSink, SystemCaptureHost};
 pub use defense::{Defense, JsonPersistence, MemoryPersistence, Persistence};
 pub use detect::{AlertStore, DetectionService, KEEP_INCIDENTS};
-pub use diag::{Diag, MAX_RUNNING_JOBS};
+pub use diag::{Diag, IntelEnricher, SharedProbe, MAX_RUNNING_JOBS};
 pub use intel::{IntelApi, IntelService, OfflineFetcher};
 pub use poller::{Poller, Snapshot};
 pub use rdp_shield::RdpShield;
@@ -167,6 +167,7 @@ impl Engine {
             None,
             Arc::new(pw_firewall::system_firewall()),
             Arc::new(pw_netstat::WindowsRdpControl),
+            SharedProbe::new(diag::SystemProbe::new()),
             system_speed(proxy.clone()),
             system_intel_parts(proxy),
         )
@@ -192,6 +193,9 @@ impl Engine {
             sink,
             firewall,
             control,
+            // No capture: ICMP only. UDP and TCP MTR answer `ModeUnavailable`, so nothing but the
+            // agent ever opens a capture or a raw socket for a trace.
+            SharedProbe::icmp(Arc::new(SystemPinger)),
             Arc::new(UnavailableSpeed),
             IntelParts::Offline,
         )
@@ -205,6 +209,7 @@ impl Engine {
         sink: Option<PacketSink>,
         firewall: Arc<dyn pw_firewall::Firewall>,
         control: Arc<dyn pw_netstat::rdp_control::RdpControl>,
+        probe: SharedProbe,
         speed: Arc<dyn SpeedApi>,
         intel_parts: IntelParts,
     ) -> Self {
@@ -366,7 +371,12 @@ impl Engine {
             config,
             started: Instant::now(),
             latest,
-            diag: Diag::new(Arc::new(SystemPinger)),
+            // ASN / country of hops come from the local GeoIP database of the intel service.
+            diag: Diag::with_parts(
+                Arc::new(SystemPinger),
+                probe,
+                Arc::new(IntelEnricher(Arc::clone(&intel))),
+            ),
             support,
             capture,
             alerts,
@@ -678,6 +688,10 @@ impl Handler for Engine {
                 // The public IP of this machine is learned from a XeroHost node (M9); until then the
                 // report simply omits that line.
                 to_value(&self.diag.mtr_report(request.job_id, None)?)
+            }
+            method::DIAG_MTR_EXPORT => {
+                let request: MtrExportRequest = parse(payload)?;
+                to_value(&self.diag.mtr_export(&request)?)
             }
             method::DIAG_DNS_LOOKUP => {
                 let request: DnsLookupRequest = parse(payload)?;
@@ -1420,6 +1434,39 @@ mod tests {
         let response: ConnectionsResponse = serde_json::from_value(reply).unwrap();
         assert_eq!(response.total, 0);
         assert!(response.connections.is_empty());
+    }
+
+    #[tokio::test]
+    async fn the_engine_routes_mtr_export_and_refuses_udp_and_tcp_without_capture() {
+        let engine = Engine::new(
+            fast(EngineConfig::new("1", true)),
+            Arc::new(FakeNetStat::new()),
+        );
+        let unknown = engine
+            .handle(
+                method::DIAG_MTR_EXPORT,
+                serde_json::json!({"job_id": 77, "format": "csv"}),
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(
+            unknown.code,
+            ErrorCode::BadRequest,
+            "the method exists: only the job is unknown"
+        );
+        let refused = engine
+            .handle(
+                method::DIAG_MTR_START,
+                serde_json::json!({"target": "127.0.0.1", "mode": "tcp", "port": 443}),
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(refused.code, ErrorCode::ModeUnavailable);
+        assert!(
+            refused.message.contains("capture backend"),
+            "{}",
+            refused.message
+        );
     }
 
     async fn stats_until(

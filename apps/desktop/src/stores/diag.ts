@@ -17,6 +17,43 @@ const PENDING_LIMIT = 64
 
 export type DiagFailure = { kind: api.DiagErrorKind; message: string }
 
+/** The MTR options beyond target, rounds and name lookup. Anything left out keeps the agent's default. */
+export interface MtrAdvanced {
+  mode?: api.MtrModeView
+  /** Destination port of UDP and TCP probes. */
+  port?: number
+  packetSize?: number
+  intervalMs?: number
+  maxHops?: number
+  preferIpv6?: boolean
+}
+
+/** Default destination ports the agent uses when none is given (shown as placeholders). */
+export const MTR_DEFAULT_PORT = { udp: 33434, tcp: 443 } as const
+
+/**
+ * The `diag.mtr.start` payload. Only options that differ from the defaults are sent, so a plain ICMP
+ * trace is byte-for-byte the request older agents already understand.
+ */
+export function buildMtrRequest(
+  target: string,
+  cycles: number,
+  resolveNames: boolean,
+  advanced: MtrAdvanced = {},
+): api.MtrStartRequest {
+  const request: api.MtrStartRequest = { target, cycles, resolve_names: resolveNames }
+  const mode = advanced.mode ?? 'icmp'
+  if (mode !== 'icmp') {
+    request.mode = mode
+    if (advanced.port !== undefined) request.port = advanced.port
+  }
+  if (advanced.packetSize !== undefined) request.packet_size = advanced.packetSize
+  if (advanced.intervalMs !== undefined) request.interval_ms = advanced.intervalMs
+  if (advanced.maxHops !== undefined) request.max_hops = advanced.maxHops
+  if (advanced.preferIpv6) request.prefer_ipv6 = true
+  return request
+}
+
 function failure(err: unknown): DiagFailure {
   if (err instanceof DiagError) return { kind: err.kind, message: err.message }
   return { kind: 'failed', message: String(err) }
@@ -135,7 +172,12 @@ export const useDiagStore = defineStore('diag', () => {
     }
   }
 
-  async function runMtr(target: string, cycles: number, resolveNames: boolean): Promise<void> {
+  async function runMtr(
+    target: string,
+    cycles: number,
+    resolveNames: boolean,
+    advanced: MtrAdvanced = {},
+  ): Promise<void> {
     if (mtrRunning.value) return
     mtrError.value = null
     mtrSnapshot.value = null
@@ -145,7 +187,7 @@ export const useDiagStore = defineStore('diag', () => {
     mtrJob.value = null
     mtrRunning.value = true
     try {
-      const started = await api.startMtr({ target, cycles, resolve_names: resolveNames })
+      const started = await api.startMtr(buildMtrRequest(target, cycles, resolveNames, advanced))
       mtrJob.value = started.job_id
       mtrResolved.value = started.target_ip
       replayPending()
@@ -168,6 +210,27 @@ export const useDiagStore = defineStore('diag', () => {
     if (mtrJob.value === null || mtrSnapshot.value === null) return null
     try {
       return (await api.fetchMtrReport(mtrJob.value)).text
+    } catch (err) {
+      mtrError.value = failure(err)
+      return null
+    }
+  }
+
+  /**
+   * The latest table of the current MTR job as a file (CSV, JSON or the support text), or null when
+   * there is nothing to export yet. `sourceIp` is this machine's public address when known.
+   */
+  async function mtrExport(
+    format: api.MtrExportFormat,
+    sourceIp?: string,
+  ): Promise<api.MtrExport | null> {
+    if (mtrJob.value === null || mtrSnapshot.value === null) return null
+    try {
+      return await api.exportMtr({
+        job_id: mtrJob.value,
+        format,
+        ...(sourceIp ? { source_ip: sourceIp } : {}),
+      })
     } catch (err) {
       mtrError.value = failure(err)
       return null
@@ -254,6 +317,7 @@ export const useDiagStore = defineStore('diag', () => {
     runMtr,
     stopMtr,
     mtrReportText,
+    mtrExport,
     runDns,
     runPortCheck,
     loadLocalPorts,

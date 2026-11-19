@@ -22,6 +22,12 @@ const { t } = useI18n()
         t('diagnostics.errors.unsupported')
       }}</template>
       <template v-else-if="failure.kind === 'busy'">{{ t('diagnostics.errors.busy') }}</template>
+      <template v-else-if="failure.kind === 'mode_unavailable'">
+        {{ failure.message }}
+        <span class="text-text-muted mt-1 block" data-test="npcap-hint">{{
+          t('diagnostics.errors.modeUnavailableHint')
+        }}</span>
+      </template>
       <template v-else>{{ failure.message }}</template>
     </span>
   </p>

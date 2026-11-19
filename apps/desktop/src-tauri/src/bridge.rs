@@ -293,6 +293,7 @@ const CALLABLE_METHODS: &[&str] = &[
     method::DIAG_MTR_START,
     method::DIAG_CANCEL,
     method::DIAG_MTR_REPORT,
+    method::DIAG_MTR_EXPORT,
     method::DIAG_DNS_LOOKUP,
     method::DIAG_PORT_CHECK,
     method::DIAG_PORTS_LOCAL,
