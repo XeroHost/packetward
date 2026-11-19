@@ -8,5 +8,25 @@ license.workspace = true
 repository.workspace = true
 publish = false
 
+[dependencies]
+pw-core = { path = "../pw-core" }
+serde.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+# The COM backend only exists on Windows; the trait, guards, batching, reconcile, snapshot and the
+# in-memory fake are platform-agnostic and tested on Linux.
+[target.'cfg(windows)'.dependencies]
+windows = { workspace = true, features = [
+  "Win32_Foundation",
+  "Win32_NetworkManagement_WindowsFirewall",
+  "Win32_System_Com",
+  "Win32_System_Ole",
+  "Win32_System_Variant",
+] }
+
+[dev-dependencies]
+serde_json.workspace = true
+
 [lints]
 workspace = true
