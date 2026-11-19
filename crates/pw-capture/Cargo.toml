@@ -8,5 +8,36 @@ license.workspace = true
 repository.workspace = true
 publish = false
 
+[dependencies]
+pw-core = { path = "../pw-core" }
+etherparse = "0.21"
+pcap-file = "3"
+serde.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["sync"] }
+tracing.workspace = true
+
+# The Npcap and raw-socket backends and the adapter listing only exist on Windows; everything else
+# (decode, filter, stats, pipeline, pcapng writer, ring buffer, fake source) is platform-agnostic and
+# tested on Linux. wpcap.dll is loaded at runtime with `libloading`: nothing links against Npcap, so the
+# build needs no Npcap SDK and the executable starts when Npcap is absent.
+[target.'cfg(windows)'.dependencies]
+libloading = "0.9"
+socket2 = { version = "0.6", features = ["all"] }
+windows = { workspace = true, features = [
+  "Win32_Foundation",
+  "Win32_NetworkManagement_IpHelper",
+  "Win32_NetworkManagement_Ndis",
+  "Win32_Networking_WinSock",
+  "Win32_Security",
+  "Win32_System_IO",
+  "Win32_System_SystemInformation",
+  "Win32_System_Threading",
+] }
+
+[dev-dependencies]
+tempfile = "3"
+tokio = { workspace = true, features = ["macros", "rt", "time"] }
+
 [lints]
 workspace = true
