@@ -11,6 +11,8 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
+use crate::updater::UpdateChannel;
+
 pub const PREFS_VERSION: u32 = 1;
 const ALLOWED_TEXT_SIZES: [u16; 4] = [90, 100, 110, 125];
 
@@ -114,6 +116,24 @@ impl Default for Notifications {
     }
 }
 
+/// Update preferences. Nothing is requested from the network unless the user asks (button) or
+/// switched `check_on_start` on, so the default is off: no connection without consent.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct Updates {
+    pub channel: UpdateChannel,
+    pub check_on_start: bool,
+}
+
+impl Default for Updates {
+    fn default() -> Self {
+        Self {
+            channel: UpdateChannel::Stable,
+            check_on_start: false,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct UiPrefs {
@@ -121,6 +141,7 @@ pub struct UiPrefs {
     pub language: Language,
     pub appearance: Appearance,
     pub notifications: Notifications,
+    pub updates: Updates,
 }
 
 impl Default for UiPrefs {
@@ -130,6 +151,7 @@ impl Default for UiPrefs {
             language: Language::Auto,
             appearance: Appearance::default(),
             notifications: Notifications::default(),
+            updates: Updates::default(),
         }
     }
 }
@@ -223,6 +245,10 @@ mod tests {
                 medium: true,
                 low: false,
             },
+            updates: Updates {
+                channel: UpdateChannel::Beta,
+                check_on_start: true,
+            },
         };
         save_to(&path, &prefs).unwrap();
         assert_eq!(load_from(&path), prefs);
@@ -238,6 +264,25 @@ mod tests {
         assert_eq!(json["appearance"]["reduceMotion"], false);
         assert_eq!(json["notifications"]["critical"], true);
         assert_eq!(json["notifications"]["medium"], false);
+        assert_eq!(json["updates"]["channel"], "stable");
+        assert_eq!(json["updates"]["checkOnStart"], false);
+    }
+
+    #[test]
+    fn an_older_file_without_updates_keeps_its_settings_and_gets_the_safe_defaults() {
+        let path = temp_file("noupdates");
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(
+            &path,
+            r#"{"version":1,"language":"es","appearance":{"textSize":110}}"#,
+        )
+        .unwrap();
+        let prefs = load_from(&path);
+        assert_eq!(prefs.language, Language::Es);
+        assert_eq!(prefs.appearance.text_size, 110);
+        assert_eq!(prefs.updates, Updates::default());
+        assert!(!prefs.updates.check_on_start);
+        let _ = fs::remove_dir_all(path.parent().unwrap());
     }
 
     #[test]

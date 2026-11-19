@@ -4,11 +4,14 @@ import { ref } from 'vue'
 import { setTrayLocale } from '@/api/shell'
 import {
   DEFAULT_NOTIFICATIONS,
+  DEFAULT_UPDATES,
   loadUiPrefs,
   saveUiPrefs,
   systemLocale,
   type LanguageSetting,
   type NotificationPrefs,
+  type UpdateChannel,
+  type UpdatePrefs,
 } from '@/api/uiPrefs'
 import { setI18nLocale } from '@/app/i18n'
 import { resolveLocale, type Locale } from '@/app/locale'
@@ -20,6 +23,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const activeLocale = ref<Locale>('en')
   const systemTag = ref<string | null>(null)
   const notifications = ref<NotificationPrefs>({ ...DEFAULT_NOTIFICATIONS })
+  const updates = ref<UpdatePrefs>({ ...DEFAULT_UPDATES })
   const ready = ref(false)
   const appearance = useAppearanceStore()
 
@@ -34,6 +38,7 @@ export const useSettingsStore = defineStore('settings', () => {
     systemTag.value = tag
     language.value = prefs.language
     notifications.value = { ...DEFAULT_NOTIFICATIONS, ...prefs.notifications }
+    updates.value = { ...DEFAULT_UPDATES, ...prefs.updates }
     appearance.hydrate(prefs.appearance)
     applyLanguage()
     ready.value = true
@@ -46,6 +51,7 @@ export const useSettingsStore = defineStore('settings', () => {
         language: language.value,
         appearance: appearance.prefs,
         notifications: notifications.value,
+        updates: updates.value,
       })
     } catch (err) {
       console.error('Could not save UI preferences', err)
@@ -66,14 +72,27 @@ export const useSettingsStore = defineStore('settings', () => {
     await persist()
   }
 
+  async function setUpdateChannel(channel: UpdateChannel): Promise<void> {
+    updates.value = { ...updates.value, channel }
+    await persist()
+  }
+
+  async function setCheckOnStart(enabled: boolean): Promise<void> {
+    updates.value = { ...updates.value, checkOnStart: enabled }
+    await persist()
+  }
+
   return {
     language,
     activeLocale,
     notifications,
+    updates,
     ready,
     init,
     persist,
     setLanguage,
     setNotification,
+    setUpdateChannel,
+    setCheckOnStart,
   }
 })

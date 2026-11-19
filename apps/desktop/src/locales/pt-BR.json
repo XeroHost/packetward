@@ -82,6 +82,27 @@
       "title": "Notificações",
       "description": "Quais alertas mostram uma notificação do Windows. Todos os alertas aparecem sempre na caixa de Alertas.",
       "hint": "As notificações são mostradas por este aplicativo, então aparecem enquanto ele estiver em execução (minimizado na bandeja conta). O agente protege o servidor de qualquer forma."
+    },
+    "updates": {
+      "title": "Atualizações",
+      "description": "O PacketWard nunca se atualiza sozinho. Você decide quando procurar uma versão nova e quando instalá-la.",
+      "currentVersion": "Versão instalada",
+      "channel": "Canal",
+      "stable": "Estável",
+      "beta": "Beta",
+      "stableHint": "Somente versões testadas.",
+      "betaHint": "Pré-lançamentos para testes; você também recebe as versões estáveis que as substituem.",
+      "checkOnStart": "Procurar ao iniciar o PacketWard",
+      "checkOnStartHint": "Desativado por padrão. Quando ativado, uma consulta ao GitHub é feita alguns segundos depois de abrir o aplicativo.",
+      "check": "Procurar atualizações",
+      "checking": "Procurando…",
+      "install": "Baixar e instalar {version}",
+      "installing": "Iniciando o instalador…",
+      "downloading": "Baixando… {percent}%",
+      "upToDate": "Você está com a versão mais recente deste canal.",
+      "notConfigured": "As atualizações não estão configuradas nesta compilação: ela não tem chave de assinatura de atualizações, então não pode verificar nem instalar atualizações. Baixe as versões novas na página de lançamentos do PacketWard.",
+      "error": "Não foi possível concluir a atualização: {reason}",
+      "privacy": "Uma verificação apenas baixa um pequeno arquivo de versão do GitHub. Os instaladores são verificados com a chave de assinatura embutida neste aplicativo antes de serem executados. O instalador para o serviço do PacketWard, substitui os arquivos e o inicia novamente; suas configurações e regras são mantidas."
     }
   },
   "about": {

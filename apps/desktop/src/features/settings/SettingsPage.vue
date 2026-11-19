@@ -16,6 +16,7 @@ import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useAppearanceStore } from '@/stores/appearance'
 import { useSettingsStore } from '@/stores/settings'
+import UpdatesSettings from './UpdatesSettings.vue'
 
 const { t } = useI18n()
 const appearance = useAppearanceStore()
@@ -221,6 +222,8 @@ function onLanguage(v: unknown): void {
         {{ t('settings.startup.error', { reason: autostartError }) }}
       </p>
     </section>
+
+    <UpdatesSettings />
 
     <!-- Language -->
     <section

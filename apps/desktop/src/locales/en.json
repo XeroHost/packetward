@@ -82,6 +82,27 @@
       "title": "Notifications",
       "description": "Which alerts pop up a Windows notification. Every alert always appears in the Alerts inbox.",
       "hint": "Notifications are shown by this app, so they appear while it is running (minimized to the tray counts). The agent keeps protecting the server either way."
+    },
+    "updates": {
+      "title": "Updates",
+      "description": "PacketWard never updates by itself. You choose when to look for a new version and when to install it.",
+      "currentVersion": "Installed version",
+      "channel": "Channel",
+      "stable": "Stable",
+      "beta": "Beta",
+      "stableHint": "Tested releases only.",
+      "betaHint": "Pre-releases for testing; you also receive stable releases that supersede them.",
+      "checkOnStart": "Check when PacketWard starts",
+      "checkOnStartHint": "Off by default. When on, one request is made to GitHub a few seconds after the app opens.",
+      "check": "Check for updates",
+      "checking": "Checking…",
+      "install": "Download and install {version}",
+      "installing": "Starting the installer…",
+      "downloading": "Downloading… {percent}%",
+      "upToDate": "You are running the latest version of this channel.",
+      "notConfigured": "Updates are not configured in this build: it has no update signing key, so it cannot verify or install updates. Download new versions from the PacketWard releases page instead.",
+      "error": "Could not complete the update: {reason}",
+      "privacy": "A check only downloads a small version file from GitHub. Installers are verified against the signing key built into this app before they run. The installer stops the PacketWard service, replaces the files and starts it again; your settings and rules are kept."
     }
   },
   "about": {
