@@ -35,7 +35,15 @@ export function workspaceVersion(cargoToml) {
  * exists. Signed updater artifacts need the secret AND a real public key in tauri.conf.json: an app
  * built with the placeholder could not verify them.
  */
-export function plan({ tag, tauriConf, cargoVersion, hasUpdaterKey, signtool, thumbprint }) {
+export function plan({
+  tag,
+  tauriConf,
+  cargoVersion,
+  packageVersion,
+  hasUpdaterKey,
+  signtool,
+  thumbprint,
+}) {
   const parsed = parseTag(tag)
   if (tauriConf.version !== parsed.base) {
     throw new Error(
@@ -45,6 +53,11 @@ export function plan({ tag, tauriConf, cargoVersion, hasUpdaterKey, signtool, th
   }
   if (cargoVersion !== parsed.base) {
     throw new Error(`Tag ${tag} does not match the workspace version ${cargoVersion} in Cargo.toml.`)
+  }
+  if (packageVersion !== undefined && packageVersion !== parsed.base) {
+    throw new Error(
+      `Tag ${tag} does not match the version ${packageVersion} in apps/desktop/package.json.`,
+    )
   }
   const pubkey = tauriConf.plugins?.updater?.pubkey ?? ''
   const placeholder = pubkey === '' || pubkey === PUBKEY_PLACEHOLDER
@@ -117,8 +130,11 @@ function main(command) {
   if (command === 'prepare') {
     const tauriConfPath = 'apps/desktop/src-tauri/tauri.conf.json'
     const releasePath = 'apps/desktop/src-tauri/tauri.release.conf.json'
+    const packagePath = 'apps/desktop/package.json'
+    const pkg = JSON.parse(readFileSync(packagePath, 'utf8'))
     const p = plan({
       tag: env.TAG,
+      packageVersion: pkg.version,
       tauriConf: JSON.parse(readFileSync(tauriConfPath, 'utf8')),
       cargoVersion: workspaceVersion(readFileSync('Cargo.toml', 'utf8')),
       hasUpdaterKey: env.HAS_UPDATER_KEY === 'true',

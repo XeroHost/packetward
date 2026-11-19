@@ -520,6 +520,8 @@ Discreet XeroHost presence: "by XeroHost" in the sidebar footer and About, a "Co
     every stable release, because the updater takes the first endpoint that answers (not the highest version): a beta
     user is therefore also offered a stable release that supersedes the beta they run. Published by tags
     `vX.Y.Z-beta.N` (a GitHub pre-release with the installer).
+    Known gap: a stable hotfix lower than the newest beta (0.1.1 after 0.2.0-beta.1) replaces the beta manifest with
+    the lower version until the next beta is tagged; a beta user already on the newer beta is simply not offered it.
   - The channel is selected per call (`.endpoints(...)`), not in `tauri.conf.json`. Versions are compared by semver
     (`0.2.0-beta.1 < 0.2.0`); downgrades are never offered (`allowDowngrades` stays off).
 - **Fail closed**: `plugins.updater.pubkey` in `tauri.conf.json` is a placeholder (`REPLACE_WITH_UPDATER_PUBLIC_KEY`)
@@ -536,7 +538,7 @@ Discreet XeroHost presence: "by XeroHost" in the sidebar footer and About, a "Co
   start-up check runs only when `updates.checkOnStart` is on, five seconds after the UI opened. The updater uses the
   system proxy of Windows (reqwest `system-proxy`); the agent-config proxy of ARCHITECTURE §10 is not applied to it yet.
 - Release workflow `.github/workflows/release.yml` (tag `v*`): validates the tag against the app and workspace
-  versions, builds the agent and `pwctl` in release mode, imports the Authenticode certificate when
+  versions, stamps the full version (beta suffix included) into the CI copy of the release config and `package.json` (About page), builds the agent and `pwctl` in release mode, imports the Authenticode certificate when
   `WINDOWS_CERTIFICATE` exists (signs the exes and, through `bundle.windows.signCommand`, the installer — before the
   updater `.sig` is made), builds the installer, writes `SHA256SUMS.txt`, creates the release (pre-release for beta
   tags) with the installer and, **only when `TAURI_SIGNING_PRIVATE_KEY` exists and the public key is real**, the `.sig`

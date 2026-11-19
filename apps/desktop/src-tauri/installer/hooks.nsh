@@ -139,7 +139,8 @@ Var PwPurge
     ${If} $PwRdpOk = 1
       ; 2. Every rule of the PacketWard group (blocks, lists, RDP allow rules, the agent rule), through the
       ;    agent. If the agent is not reachable, remove what PowerShell finds in the group but never the
-      ;    RDP shield rules (they are only safe to remove after a successful RDP reset).
+      ;    RDP shield rules, matched by internal Name AND DisplayName (a rule made through the COM API may
+      ;    carry the PW-RDP name in either; they are only safe to remove after a successful RDP reset).
       ${If} ${FileExists} "$INSTDIR\pwctl.exe"
         !insertmacro PW_Run "firewall purge" '"$INSTDIR\pwctl.exe" firewall purge'
       ${Else}
@@ -147,7 +148,7 @@ Var PwPurge
       ${EndIf}
       ${If} $PwExit != 0
         ${DisableX64FSRedirection}
-        !insertmacro PW_Run "firewall purge (fallback)" '"$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$$ErrorActionPreference = $\'SilentlyContinue$\'; Get-NetFirewallRule -Group $\'PacketWard$\' | Where-Object { $$_.Name -notlike $\'PW-RDP-*$\' } | Remove-NetFirewallRule"'
+        !insertmacro PW_Run "firewall purge (fallback)" '"$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$$ErrorActionPreference = $\'SilentlyContinue$\'; Get-NetFirewallRule -Group $\'PacketWard$\' | Where-Object { $$_.Name -notlike $\'PW-RDP-*$\' -and $$_.DisplayName -notlike $\'PW-RDP-*$\' } | Remove-NetFirewallRule"'
         ${EnableX64FSRedirection}
       ${EndIf}
       ; 3. The agent rule by name (exit 1 just means it was already gone).

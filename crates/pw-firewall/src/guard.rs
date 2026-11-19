@@ -474,6 +474,22 @@ mod tests {
     }
 
     #[test]
+    fn the_installers_agent_rule_is_not_a_lockout_class_rule() {
+        // Created by the installer hook (installer/hooks.nsh): inbound allow for the agent exe, any
+        // protocol and port. It must not need the typed confirmation to purge or look like RDP exposure.
+        let mut rule = Rule::new(
+            "PacketWard agent (raw capture)",
+            Direction::Inbound,
+            Action::Allow,
+        );
+        rule.grouping = crate::names::GROUP.to_owned();
+        rule.application = Some(r"C:\Program Files\PacketWard\packetward-agent.exe".into());
+        assert!(!is_builtin_rdp_rule(&rule));
+        assert!(!is_rdp_port_allow(&rule, 3389));
+        assert_eq!(lockout_class(&rule, 3389), None);
+    }
+
+    #[test]
     fn rdp_port_allow_and_block_classification() {
         let mut allow = rdp_rule("my rdp", "");
         assert_eq!(

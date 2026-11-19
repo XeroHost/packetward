@@ -38,6 +38,11 @@ test('the tag must match the app and workspace versions', () => {
   assert.equal(plan({ ...base, tag: 'v1.2.3-beta.2', hasUpdaterKey: false }).prerelease, true)
 })
 
+test('package.json must carry the same base version', () => {
+  assert.throws(() => plan({ ...base, packageVersion: '1.0.0', hasUpdaterKey: false }), /package\.json/)
+  assert.equal(plan({ ...base, packageVersion: '1.2.3', hasUpdaterKey: false }).version, '1.2.3')
+})
+
 test('without the signing secret the build is unsigned and has no updater artifacts', () => {
   const p = plan({ ...base, hasUpdaterKey: false })
   assert.equal(p.signed, false)
