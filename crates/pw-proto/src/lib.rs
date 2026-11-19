@@ -32,9 +32,9 @@ pub use capture::{
 };
 pub use diag::{
     DiagEvent, DiagJobRequest, DiagStartResponse, DnsErrorView, DnsLookupRequest, DnsLookupView,
-    DnsRecordView, EchoOutcome, LocalPort, LocalPorts, MtrHopView, MtrReport, MtrStartRequest,
-    MtrView, PingReplyView, PingStartRequest, PingSummaryView, PortCheckRequest, PortCheckView,
-    PortStateView, RttView,
+    DnsRecordView, EchoOutcome, LocalPort, LocalPorts, MtrExport, MtrExportFormat,
+    MtrExportRequest, MtrHopView, MtrModeView, MtrReport, MtrStartRequest, MtrView, PingReplyView,
+    PingStartRequest, PingSummaryView, PortCheckRequest, PortCheckView, PortStateView, RttView,
 };
 pub use envelope::{Envelope, Kind, ShapeError, ENVELOPE_VERSION, MAX_FRAME_BYTES};
 pub use error::{ErrorCode, ErrorPayload};
@@ -83,6 +83,8 @@ pub mod method {
     pub const DIAG_MTR_START: &str = "diag.mtr.start";
     pub const DIAG_CANCEL: &str = "diag.cancel";
     pub const DIAG_MTR_REPORT: &str = "diag.mtr.report";
+    /// Renders the latest snapshot of an MTR job as CSV, JSON or the support text.
+    pub const DIAG_MTR_EXPORT: &str = "diag.mtr.export";
     pub const DIAG_DNS_LOOKUP: &str = "diag.dns.lookup";
     pub const DIAG_PORT_CHECK: &str = "diag.port.check";
     pub const DIAG_PORTS_LOCAL: &str = "diag.ports.local";

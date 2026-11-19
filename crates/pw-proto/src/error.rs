@@ -17,6 +17,8 @@ pub enum ErrorCode {
     FrameTooLarge,
     /// Too many jobs of this kind are running.
     Busy,
+    /// The requested probe mode cannot run on this machine (UDP/TCP MTR without a capture backend).
+    ModeUnavailable,
     Internal,
 }
 

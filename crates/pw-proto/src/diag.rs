@@ -41,6 +41,36 @@ pub struct MtrStartRequest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[cfg_attr(feature = "ts-export", ts(optional))]
     pub resolve_names: Option<bool>,
+    /// How the probes are sent (default `icmp`). `udp` and `tcp` need a capture backend on the agent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-export", ts(optional))]
+    pub mode: Option<MtrModeView>,
+    /// Destination port of `udp` (default 33434) and `tcp` (default 443) probes; ignored for `icmp`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-export", ts(optional))]
+    pub port: Option<u16>,
+    /// Time between the starts of two cycles in milliseconds (the agent keeps it at 200 ms or more).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-export", ts(optional))]
+    pub interval_ms: Option<u32>,
+    /// Prefer an IPv6 address when `target` is a host name with both families (default: IPv4 first).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-export", ts(optional))]
+    pub prefer_ipv6: Option<bool>,
+}
+
+/// How MTR probes are sent.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-export", derive(ts_rs::TS), ts(export))]
+#[serde(rename_all = "snake_case")]
+pub enum MtrModeView {
+    /// ICMP echo (works everywhere, no capture backend needed).
+    #[default]
+    Icmp,
+    /// UDP datagrams to a high port (classic traceroute).
+    Udp,
+    /// TCP SYN to a port: reaches hosts that drop ICMP and UDP.
+    Tcp,
 }
 
 /// Reply to a `diag.*.start`: the job whose events arrive on the \`diag.progress\` topic.
@@ -133,6 +163,41 @@ pub struct PingSummaryView {
     pub cancelled: bool,
 }
 
+/// Format of `diag.mtr.export`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-export", derive(ts_rs::TS), ts(export))]
+#[serde(rename_all = "snake_case")]
+pub enum MtrExportFormat {
+    Csv,
+    Json,
+    /// The plain-text report for support.
+    Text,
+}
+
+/// Payload of `diag.mtr.export`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-export", derive(ts_rs::TS), ts(export))]
+pub struct MtrExportRequest {
+    #[cfg_attr(feature = "ts-export", ts(type = "number"))]
+    pub job_id: u64,
+    pub format: MtrExportFormat,
+    /// This machine's public IP (for the report header), when the app knows it (speed test).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-export", ts(optional))]
+    pub source_ip: Option<String>,
+}
+
+/// Reply to `diag.mtr.export`: the rendered file, ready to copy or save.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-export", derive(ts_rs::TS), ts(export))]
+pub struct MtrExport {
+    pub format: MtrExportFormat,
+    /// A safe file name (no path, no characters Windows refuses), e.g.
+    /// `packetward-mtr-1.1.1.1-20260101-120000.csv`.
+    pub filename: String,
+    pub content: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts-export", derive(ts_rs::TS), ts(export))]
 pub struct MtrHopView {
@@ -156,6 +221,18 @@ pub struct MtrHopView {
     #[cfg_attr(feature = "ts-export", ts(optional))]
     pub rtt: Option<RttView>,
     pub address_changes: u32,
+    /// Autonomous system number of `addr` (local GeoIP database; absent for private addresses).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-export", ts(optional))]
+    pub asn: Option<u32>,
+    /// Organisation that owns the autonomous system.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-export", ts(optional))]
+    pub as_org: Option<String>,
+    /// ISO 3166-1 alpha-2 country code of `addr`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-export", ts(optional))]
+    pub country: Option<String>,
 }
 
 /// All hops after one MTR cycle.
@@ -168,6 +245,18 @@ pub struct MtrView {
     pub hops: Vec<MtrHopView>,
     pub destination_reached: bool,
     pub cancelled: bool,
+    /// How the probes were sent (absent from agents older than protocol 1.10: ICMP).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-export", ts(optional))]
+    pub mode: Option<MtrModeView>,
+    /// Destination port of the probes (UDP and TCP).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-export", ts(optional))]
+    pub port: Option<u16>,
+    /// How the destination answered: `echo-reply`, `port-unreachable`, `syn-ack` or `rst`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-export", ts(optional))]
+    pub reach: Option<String>,
 }
 
 /// One message of the `diag.progress` topic.
@@ -307,4 +396,45 @@ pub struct LocalPort {
 #[cfg_attr(feature = "ts-export", derive(ts_rs::TS), ts(export))]
 pub struct LocalPorts {
     pub ports: Vec<LocalPort>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn an_old_mtr_request_still_parses_and_new_fields_default_to_none() {
+        let request: MtrStartRequest =
+            serde_json::from_str(r#"{"target":"1.1.1.1","cycles":5}"#).unwrap();
+        assert_eq!(request.mode, None);
+        assert_eq!(request.port, None);
+        assert_eq!(request.interval_ms, None);
+        let json = serde_json::to_string(&request).unwrap();
+        assert!(
+            !json.contains("mode"),
+            "absent options are not sent: {json}"
+        );
+    }
+
+    #[test]
+    fn the_modes_and_formats_use_snake_case() {
+        let request: MtrStartRequest =
+            serde_json::from_str(r#"{"target":"x","mode":"tcp","port":443}"#).unwrap();
+        assert_eq!(request.mode, Some(MtrModeView::Tcp));
+        let export: MtrExportRequest =
+            serde_json::from_str(r#"{"job_id":3,"format":"csv"}"#).unwrap();
+        assert_eq!(export.format, MtrExportFormat::Csv);
+        assert_eq!(export.source_ip, None);
+    }
+
+    #[test]
+    fn an_old_mtr_snapshot_without_the_new_fields_parses() {
+        let hop = r#"{"ttl":1,"other_addrs":[],"sent":1,"received":1,"loss_percent":0.0,"address_changes":0}"#;
+        let json = format!(
+            r#"{{"target":"1.1.1.1","cycle":1,"total_cycles":1,"hops":[{hop}],"destination_reached":false,"cancelled":false}}"#
+        );
+        let view: MtrView = serde_json::from_str(&json).unwrap();
+        assert_eq!(view.mode, None);
+        assert_eq!(view.hops[0].asn, None);
+    }
 }

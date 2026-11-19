@@ -9,4 +9,16 @@ addr?: string,
 /**
  * Other routers that answered at this hop (load balancing / route changes).
  */
-other_addrs: Array<string>, name?: string, sent: number, received: number, loss_percent: number, rtt?: RttView, address_changes: number, };
+other_addrs: Array<string>, name?: string, sent: number, received: number, loss_percent: number, rtt?: RttView, address_changes: number, 
+/**
+ * Autonomous system number of `addr` (local GeoIP database; absent for private addresses).
+ */
+asn?: number, 
+/**
+ * Organisation that owns the autonomous system.
+ */
+as_org?: string, 
+/**
+ * ISO 3166-1 alpha-2 country code of `addr`.
+ */
+country?: string, };
