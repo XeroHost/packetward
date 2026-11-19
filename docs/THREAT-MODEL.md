@@ -40,6 +40,6 @@ evidence (test or code) for each control and what is still open. See `docs/ARCHI
 - **Operators group** members can switch the Guardian to Monitor/Active and unblock; treat membership as an admin-light grant.
 - **Raw-socket capture is inbound-blind on the dev VPS** (hypothesis: Windows Firewall); the installer adds the allow rule, still to be verified on a test VPS (TESTING §F4).
 - **No Authenticode/updater key yet**: until the owner supplies them (`docs/RELEASE-KEYS.md`) releases are unsigned and the updater and the XeroHost list stay disabled.
-- **Live verification pending** for every write path to the firewall, RDP and service control (they were exercised only with fakes on the dev VPS, by rule); see TESTING §F6–F10.
+- **Live verification pending** for every write path to the firewall, RDP and service control (they were exercised only with fakes on the dev VPS, by rule); see TESTING §F6–F11.
 - **Fuzzing** with libFuzzer has not been run (nightly toolchain needed); the seeded robustness test is the CI substitute.
 - **Resource budget** (idle < 1 % CPU, < 60 MB) is measured on the dev VPS and reported in PROGRESS; a 1 vCPU / 2 GB test VPS run under the attack fixtures is pending.

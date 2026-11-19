@@ -492,17 +492,83 @@ Discreet XeroHost presence: "by XeroHost" in the sidebar footer and About, a "Co
   certificate is available, `cargo deny` + `cargo audit` + SBOM in CI.
 
 ## 9. Packaging and updates
-- Tauri bundler, **NSIS** installer with hooks to install/start/stop/remove the agent service
-  (`packetward-agent.exe install|uninstall`) and purge the `PacketWard` firewall group on uninstall.
-- WebView2: use an embedded bootstrapper or offline installer mode — many Windows Server images do not ship it.
-- `tauri-plugin-updater` against GitHub Releases with **two channels**: `stable` (tags `vX.Y.Z`) and `beta`
-  (tags `vX.Y.Z-beta.N`), each with its own `latest.json` endpoint; channel chosen in Settings.
-  The update installer also updates the service.
-- Code signing: no certificate yet. Releases start unsigned (README documents the SmartScreen prompt); the CI
-  release job has an Authenticode step that runs only when signing secrets are configured.
+
+### 9.1 Installer (Tauri bundler, NSIS)
+- The committed `apps/desktop/src-tauri/tauri.conf.json` keeps `bundle.active = false`, because `tauri-build` fails
+  every normal `cargo build/clippy` of the desktop crate when `bundle.resources` point to files that do not exist.
+  Everything release-only lives in `apps/desktop/src-tauri/tauri.release.conf.json` and is merged with
+  `pnpm tauri build --config src-tauri/tauri.release.conf.json` (after `cargo build --release -p packetward-agent
+  -p packetward-cli`): target `nsis`, per-machine install, languages English / Spanish / Portuguese (BR) with the
+  language selector, the GPL-3.0 text on the license page (`licenseFile`), `createUpdaterArtifacts`, and
+  `resources` = `packetward-agent.exe` and `pwctl.exe` installed next to `PacketWard.exe`.
+- WebView2: **embedded bootstrapper** (silent). Many Windows Server images do not ship the runtime; the bootstrapper
+  downloads it at install time, so the installer needs internet access on a machine without WebView2.
+- Hooks: `src-tauri/installer/hooks.nsh` (`NSIS_HOOK_PREINSTALL/POSTINSTALL/PREUNINSTALL/POSTUNINSTALL`). The installer
+  script is the only place allowed to shell out (netsh, PowerShell). Every step is tolerant (a failure is logged, never
+  aborts) and logged to `%TEMP%\packetward-installer.log`.
+  - **Pre-install** (new install and upgrade): `packetward-agent stop`, so the running service releases its exe.
+  - **Post-install**: `packetward-agent install` (creates the `PacketWard Operators` group, adds the installing user —
+    or the SID in `/OPERATORSID=<SID>` for unattended installs by another account —, registers/repairs the service
+    and starts it; the same command serves install and upgrade), then ONE inbound allow rule
+    `PacketWard agent (raw capture)` for `packetward-agent.exe` in the rule group `PacketWard`. `netsh ... add rule` has
+    no `group=` parameter, so the rule is created with `New-NetFirewallRule -Group PacketWard`. Reason: raw-socket
+    capture delivery (DECISIONS M4 row; hypothesis, to be confirmed by TESTING §F4/§F11).
+  - **Pre-uninstall** (not in update mode): if `%ProgramData%\PacketWard\rdp_shield.json` exists, `pwctl rdp reset`
+    (through the agent, which falls back to a direct reset when it is not reachable) and, if that fails,
+    `pwctl rdp reset --offline` with the service stopped; only after a successful reset `pwctl firewall purge` (agent
+    unreachable: PowerShell removes the group's rules except `PW-RDP-*`), then the agent rule by name, then
+    `packetward-agent uninstall` (service and operators group). If Remote Desktop could not be restored, the PacketWard
+    rules are left in place and a message says so: never trade a clean uninstall for a lockout.
+  - **Post-uninstall**: `%ProgramData%\PacketWard` and the signed-in user's `%AppData%\PacketWard` are removed only
+    with the "Delete the application data" check box or the `/PURGE` switch (works with `/S`); otherwise settings,
+    logs and the audit trail are kept for a later reinstall.
+  - **Update mode** (`/UPDATE`, used by the updater): the old uninstaller is not run; if it is, the uninstall hooks
+    only stop the service and change nothing else. The Tauri template's own "choose how to install" page runs the
+    old uninstaller *without* `/UPDATE` when the user keeps its default "uninstall before installing": that is a
+    full uninstall followed by a fresh install (RDP Shield changes are reset to factory). Updating through the
+    updater or choosing "do not uninstall" keeps everything.
+- The UI autostart is not registered by the installer: it is the user's switch in Settings → Startup (per user,
+  HKCU). The "sign out and back in" notice for a new operator is shown by the app (`AgentUnavailable`,
+  access denied), not by the installer, because installer dialogs would block silent and passive runs.
 - Npcap: not bundled; first-run screen explains benefits and links to npcap.com.
-- Installer also registers UI autostart at user logon (tray), creates the `PacketWard Operators` group and adds the
-  installing user (`packetward-agent install`), and tells that user to sign out and back in once.
+
+### 9.2 Updater (`tauri-plugin-updater`, `src-tauri/src/updater.rs`)
+- Two channels against GitHub Releases, chosen in Settings → Updates and stored in `ui.json` (`updates.channel`,
+  default `stable`; `updates.checkOnStart`, default **off**).
+  - `stable`: `https://github.com/XeroHost/packetward/releases/latest/download/latest.json` (GitHub's `latest` skips
+    pre-releases). Published by tags `vX.Y.Z`.
+  - `beta`: `https://github.com/XeroHost/packetward/releases/download/updater-beta/latest.json`, an asset of one fixed
+    pre-release (`updater-beta`) that holds only the manifest. The release workflow overwrites it on every beta **and**
+    every stable release, because the updater takes the first endpoint that answers (not the highest version): a beta
+    user is therefore also offered a stable release that supersedes the beta they run. Published by tags
+    `vX.Y.Z-beta.N` (a GitHub pre-release with the installer).
+    Known gap: a stable hotfix lower than the newest beta (0.1.1 after 0.2.0-beta.1) replaces the beta manifest with
+    the lower version until the next beta is tagged; a beta user already on the newer beta is simply not offered it.
+  - The channel is selected per call (`.endpoints(...)`), not in `tauri.conf.json`. Versions are compared by semver
+    (`0.2.0-beta.1 < 0.2.0`); downgrades are never offered (`allowDowngrades` stays off).
+- **Fail closed**: `plugins.updater.pubkey` in `tauri.conf.json` is a placeholder (`REPLACE_WITH_UPDATER_PUBLIC_KEY`)
+  until the owner generates the key (docs/RELEASE-KEYS.md). At start `updater::register` validates it (base64 of a
+  minisign public key); the plugin is registered only when valid, and `update_info/update_check/update_install`
+  answer "not configured" without any network call otherwise. No `updater:*` permission is granted to the webview, so
+  only the three app commands below are reachable from the UI. The config file must still carry the `pubkey` entry
+  (the plugin needs it to initialise).
+- Commands: `update_info` (version + configured, no network), `update_check(channel)` (one GET of the channel's
+  `latest.json`), `update_install(on_event)` (downloads, verifies the minisign signature against the pinned key and
+  starts the NSIS installer in `passive` mode; Windows ends the app; progress is streamed on a `Channel`). Frontend:
+  `src/api/update.ts` (only caller of `invoke`), Pinia store `stores/update.ts`, "Updates" section of Settings.
+- No automatic check without consent (a check is an allowed network call, but it is still the user's choice): the
+  start-up check runs only when `updates.checkOnStart` is on, five seconds after the UI opened. The updater uses the
+  system proxy of Windows (reqwest `system-proxy`); the agent-config proxy of ARCHITECTURE §10 is not applied to it yet.
+- Release workflow `.github/workflows/release.yml` (tag `v*`): validates the tag against the app and workspace
+  versions, stamps the full version (beta suffix included) into the CI copy of the release config and `package.json` (About page), builds the agent and `pwctl` in release mode, imports the Authenticode certificate when
+  `WINDOWS_CERTIFICATE` exists (signs the exes and, through `bundle.windows.signCommand`, the installer — before the
+  updater `.sig` is made), builds the installer, writes `SHA256SUMS.txt`, creates the release (pre-release for beta
+  tags) with the installer and, **only when `TAURI_SIGNING_PRIVATE_KEY` exists and the public key is real**, the `.sig`
+  and `latest.json`. Without the secret it builds unsigned (visible warning) and publishes no manifest. If the secret
+  exists but the public key is still the placeholder the job fails. The helpers are in `.github/scripts/release.mjs`
+  with `node --test` tests.
+- Code signing: no certificate yet. Releases start unsigned (README documents the SmartScreen prompt); the release
+  workflow's Authenticode steps run only when the secrets are configured.
 - Autostart is toggled in Settings → Startup and registers `PacketWard.exe --minimized` under the Run key. The UI is
   meant to run unelevated, which registers it for the current user (HKCU). The autostart library writes to
   **HKLM** instead when the process is elevated, so only toggle it from an unelevated session.
@@ -511,11 +577,11 @@ Discreet XeroHost presence: "by XeroHost" in the sidebar footer and About, a "Co
 **Agent config** — `%ProgramData%\PacketWard\config.toml`, edited through the UI/CLI, validated by `pw-core`:
 capture interface + backend, tick interval, retention, guardian mode (default Monitor)/rules/allowlist/management
 ranges, blocklists (enabled, refresh interval), speed-test server list URL + custom servers, proxy
-(HTTP/HTTPS/SOCKS5, applies to all outbound HTTP), update channel.
+(HTTP/HTTPS/SOCKS5, applies to all outbound HTTP). The update channel and the start-up check live in `ui.json` (§9.2).
 
 **UI preferences** — per user, `%AppData%\PacketWard\ui.json` (owned by the desktop app, not the agent):
 language (auto: `es-*`→es, `pt-*`→pt-BR, else en; or manual), Appearance (theme dark/light/system, mono font,
-density, text size, reduce motion), notification mutes/quiet hours.
+density, text size, reduce motion), notification mutes/quiet hours, updates (`channel` stable|beta, `checkOnStart`).
 
 **As built (M11).** There is no `config.toml`: each area keeps its own file in `%ProgramData%\PacketWard` (`defense.json` Guardian policy,
 allowlist and blocks; `intel/intel.json` blocklists; `alerts.jsonl`; `rdp_shield.json`; `settings.json` the proxy), all restricted to SYSTEM and

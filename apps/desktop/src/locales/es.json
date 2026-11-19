@@ -91,6 +91,27 @@
       "hint": "http://, https:// o socks5:// con host y puerto. No se aceptan credenciales en la dirección.",
       "saved": "Guardado.",
       "restart": "El cambio se aplica cuando el servicio PacketWard se reinicie (Servicios → PacketWard → Reiniciar)."
+    },
+    "updates": {
+      "title": "Actualizaciones",
+      "description": "PacketWard nunca se actualiza solo. Tú decides cuándo buscar una versión nueva y cuándo instalarla.",
+      "currentVersion": "Versión instalada",
+      "channel": "Canal",
+      "stable": "Estable",
+      "beta": "Beta",
+      "stableHint": "Solo versiones probadas.",
+      "betaHint": "Versiones preliminares para pruebas; también recibes las versiones estables que las reemplazan.",
+      "checkOnStart": "Buscar al iniciar PacketWard",
+      "checkOnStartHint": "Desactivado por defecto. Si lo activas, se hace una consulta a GitHub unos segundos después de abrir la aplicación.",
+      "check": "Buscar actualizaciones",
+      "checking": "Buscando…",
+      "install": "Descargar e instalar {version}",
+      "installing": "Iniciando el instalador…",
+      "downloading": "Descargando… {percent}%",
+      "upToDate": "Tienes la última versión de este canal.",
+      "notConfigured": "Las actualizaciones no están configuradas en esta compilación: no tiene clave de firma de actualizaciones, así que no puede verificar ni instalar actualizaciones. Descarga las versiones nuevas desde la página de versiones de PacketWard.",
+      "error": "No se pudo completar la actualización: {reason}",
+      "privacy": "Una búsqueda solo descarga un pequeño archivo de versión desde GitHub. Los instaladores se verifican con la clave de firma incluida en esta aplicación antes de ejecutarse. El instalador detiene el servicio de PacketWard, reemplaza los archivos y lo inicia de nuevo; tus ajustes y reglas se conservan."
     }
   },
   "about": {

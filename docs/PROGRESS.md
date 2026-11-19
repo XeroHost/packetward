@@ -44,10 +44,10 @@ Measured on the dev VPS (16 logical cores; release build; `run --console`; captu
   tick, the raw-socket capture thread. To do on a 1 vCPU / 2 GB test VPS together with the attack-fixture replay.
 
 ## Blockers
-None open. Everything that needs live firewall/RDP/service changes is deferred to a test VPS (TESTING §F4–F10).
+None open. Everything that needs live firewall/RDP/service changes is deferred to a test VPS (TESTING §F4–F11).
 
 ## Live tests pending for a test VPS
-See docs/TESTING.md §F4–F10 (capture/Npcap, alerts, firewall + Guardian, RDP Shield, threat-intel lists, speed test, MTR modes,
+See docs/TESTING.md §F4–F11 (capture/Npcap, alerts, firewall + Guardian, RDP Shield, threat-intel lists, speed test, MTR modes,
 installer/upgrade/uninstall/updater).
 
 ## How to run everything

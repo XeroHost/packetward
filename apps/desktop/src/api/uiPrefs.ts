@@ -25,11 +25,23 @@ export interface NotificationPrefs {
   low: boolean
 }
 
+export type UpdateChannel = 'stable' | 'beta'
+
+/**
+ * Update preferences. Nothing is requested from the network unless the user presses the button or
+ * switched `checkOnStart` on, which is why it defaults to off.
+ */
+export interface UpdatePrefs {
+  channel: UpdateChannel
+  checkOnStart: boolean
+}
+
 export interface UiPrefs {
   version: 1
   language: LanguageSetting
   appearance: AppearancePrefs
   notifications: NotificationPrefs
+  updates: UpdatePrefs
 }
 
 export const DEFAULT_NOTIFICATIONS: NotificationPrefs = {
@@ -38,6 +50,8 @@ export const DEFAULT_NOTIFICATIONS: NotificationPrefs = {
   medium: false,
   low: false,
 }
+
+export const DEFAULT_UPDATES: UpdatePrefs = { channel: 'stable', checkOnStart: false }
 
 export const DEFAULT_UI_PREFS: UiPrefs = {
   version: 1,
@@ -50,6 +64,7 @@ export const DEFAULT_UI_PREFS: UiPrefs = {
     reduceMotion: false,
   },
   notifications: { ...DEFAULT_NOTIFICATIONS },
+  updates: { ...DEFAULT_UPDATES },
 }
 
 /** True when running inside the Tauri webview (false in plain browsers and unit tests). */

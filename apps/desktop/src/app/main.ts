@@ -5,6 +5,7 @@ import '@/styles/main.css'
 import { startWindowVisibility } from '@/lib/visibility'
 import { useAgentStore } from '@/stores/agent'
 import { useSettingsStore } from '@/stores/settings'
+import { useUpdateStore } from '@/stores/update'
 import App from './App.vue'
 import { i18n } from './i18n'
 import { router } from './router'
@@ -23,6 +24,9 @@ async function bootstrap(): Promise<void> {
 
   // Follow the agent for the whole life of the window; the shell reconnects on its own.
   useAgentStore(pinia).start()
+
+  // Only when the user switched it on in Settings (default off): no connection without consent.
+  void useUpdateStore(pinia).checkAtStart()
 }
 
 void bootstrap()

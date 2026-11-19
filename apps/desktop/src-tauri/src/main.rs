@@ -8,6 +8,7 @@ mod bridge;
 mod prefs;
 mod sys;
 mod tray;
+mod updater;
 
 use tauri::{Manager, WindowEvent};
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
@@ -110,7 +111,9 @@ fn startup_locale(app: &tauri::AppHandle) -> &'static str {
 fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
 
-    tauri::Builder::default()
+    let context = tauri::generate_context!();
+
+    let builder = tauri::Builder::default()
         // Must be first: a second launch just brings the existing window forward.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             tray::show_main_window(app);
@@ -121,7 +124,9 @@ fn main() -> anyhow::Result<()> {
         ))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
-        .manage(bridge::Bridge::default())
+        .manage(bridge::Bridge::default());
+    // The updater plugin is only registered with a valid public key; see updater.rs.
+    updater::register(builder, context.config())
         .invoke_handler(tauri::generate_handler![
             ui_prefs_load,
             ui_prefs_save,
@@ -136,7 +141,10 @@ fn main() -> anyhow::Result<()> {
             bridge::support_bundle_save,
             tray_set_state,
             notify_alert,
-            bridge::agent_elevate
+            bridge::agent_elevate,
+            updater::update_info,
+            updater::update_check,
+            updater::update_install
         ])
         .setup(|app| {
             let handle = app.handle();
@@ -166,7 +174,7 @@ fn main() -> anyhow::Result<()> {
                 _ => {}
             }
         })
-        .run(tauri::generate_context!())
+        .run(context)
         .map_err(|err| {
             tracing::error!(%err, "tauri runtime failed");
             err

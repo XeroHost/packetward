@@ -137,11 +137,17 @@ is rejected; works offline except AbuseIPDB and list refresh.
 - [x] Settings UI: language/appearance/notifications/autostart (earlier), proxy applied to all outbound HTTP (speed test, GeoIP and blocklist
       downloads, AbuseIPDB; read when the agent starts). The other agent settings live on their own pages (Guardian, Firewall, RDP Shield,
       Capture, Threat Intel, Speed Test); there is no `config.toml` (see DECISIONS).
-- [x] Logs page over the audit log (`audit.jsonl`: filter, copy CSV/JSON). Not `audit_events` of SQLite: the store is not wired in (see PROGRESS).
-- [ ] NSIS installer with service hooks, WebView2 handling, uninstall purge.
-- [ ] Tauri updater with signed artifacts; **Stable + Beta** channels; release workflow on tag
+- [x] Logs page over the audit log (`audit.jsonl`: filter, copy CSV/JSON). The audit log lives in SQLite (`pw-store`) since the store was wired in for the defense state and the audit log (see ARCHITECTURE §6.9).
+- [x] NSIS installer with service hooks, WebView2 handling, uninstall purge.
+      (`tauri.release.conf.json` + `installer/hooks.nsh`, embedded WebView2 bootstrapper, per-machine, en/es/pt-BR, RDP reset
+      and firewall purge before the service is removed, `/PURGE`. The NSIS installer (stable and `-beta.N` versions) was built on the dev VPS with `pnpm tauri build` but never run:
+      clean install/upgrade/uninstall is TESTING §F11 and is pending for Windows Server 2019/2022 test VMs.)
+- [x] Tauri updater with signed artifacts; **Stable + Beta** channels; release workflow on tag
       (`vX.Y.Z` → stable, `vX.Y.Z-beta.N` → beta).
-- [ ] Optional Authenticode step in CI (runs only when signing secrets exist).
+      (Built and unit-tested; fails closed with the placeholder public key. Signed artifacts, `latest.json` and the channel
+      switch need the owner's keys (docs/RELEASE-KEYS.md) and were never exercised end to end: TESTING §F11.)
+- [x] Optional Authenticode step in CI (runs only when signing secrets exist).
+      (In `release.yml`; untested until a certificate exists.)
 **Accept:** clean install/upgrade/uninstall on Windows Server 2019 and 2022 VMs; switching channel works.
 
 ## M12 — Hardening & 1.0
