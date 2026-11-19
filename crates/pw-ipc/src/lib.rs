@@ -10,11 +10,16 @@
 //! This crate does not depend on the engine: the agent implements [`Handler`] with `pw-engine`
 //! and hands it to [`server::serve`].
 
+#[cfg(windows)]
+pub mod access;
 pub mod client;
 pub mod framing;
 #[cfg(any(test, feature = "memory"))]
 pub mod memory;
+#[cfg(windows)]
+pub mod pipe;
 pub mod server;
+mod sys;
 #[cfg(test)]
 mod tests;
 

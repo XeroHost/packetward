@@ -20,5 +20,17 @@ thiserror.workspace = true
 tokio = { workspace = true, features = ["io-util", "macros", "rt", "sync", "time"] }
 tracing.workspace = true
 
+# Named pipe transport and the ACL / group helpers only exist on Windows; the rest of the crate
+# (framing, client, server, in-memory transport) is platform-agnostic and tested on Linux.
+[target.'cfg(windows)'.dependencies]
+tokio = { workspace = true, features = ["net"] }
+windows = { workspace = true, features = [
+  "Win32_Foundation",
+  "Win32_NetworkManagement_NetManagement",
+  "Win32_Security",
+  "Win32_Security_Authorization",
+  "Win32_System_Threading",
+] }
+
 [lints]
 workspace = true
