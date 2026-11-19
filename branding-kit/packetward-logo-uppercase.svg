@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 470 96" width="940" height="192" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="29.50 21.50 350.33 55.00" width="1401" height="220" fill="none">
   <defs>
     <style>
             @font-face {
@@ -32,8 +32,6 @@
       <stop offset="100%" stop-color="#0284C7" stop-opacity="0.03" />
     </linearGradient>
   </defs>
-
-  <rect width="470" height="96" rx="12" fill="#0B0F19" />
 
   <g transform="translate(22, 16)">
     <path
