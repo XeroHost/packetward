@@ -83,17 +83,17 @@ not freeze the UI (drops are counted, not hidden).
 for a critical alert while the main window is closed.
 
 ## M6 — Firewall manager
-- [ ] COM API: list (with filters), create, edit, enable/disable, delete user rules; group `PacketWard`.
-- [ ] Batched block lists; manual block/unblock IP or CIDR from anywhere in the UI (context menu).
-- [ ] `pwctl firewall purge`.
+- [x] COM API: list (with filters), create, edit, enable/disable, delete user rules; group `PacketWard`.
+- [x] Batched block lists; manual block/unblock IP or CIDR from anywhere in the UI (shield button on every address).
+- [x] `pwctl firewall purge`.
 **Accept:** rules appear in `wf.msc`; purge leaves no PacketWard rules; 5k blocked IPs use < 10 rules.
 
 ## M7 — Guardian mode
-- [ ] Policy editor (presets: Gentle / Balanced / Strict + custom), modes Off / **Monitor (default)** / Active.
-- [ ] Protected set (RDP clients, allowlist, gateway, DNS, mgmt ranges), circuit breaker, TTL + escalation.
-- [ ] Reconcile on start; expiry task; `pwctl unblock --all`, `pwctl guardian off|monitor|active`.
-- [ ] Guardian page: live blocks with countdown, history, "why was this blocked", Monitor report
-      ("would have blocked N IPs in the last 24 h") with a one-click "Switch to Active".
+- [x] Policy editor (presets: Gentle / Balanced / Strict + custom), modes Off / **Monitor (default)** / Active.
+- [x] Protected set (RDP clients, allowlist, gateway, DNS, mgmt ranges), circuit breaker, TTL + escalation.
+- [x] Reconcile on start; expiry task; `pwctl unblock --all`, `pwctl guardian off|monitor|active`.
+- [x] Guardian page: decisions with "why", Monitor report ("would have blocked N IPs in the last 24 h") and a
+      confirmed "Switch to Active"; the live blocks with their expiry are on the Firewall page.
 **Accept:** tests prove the current RDP client IP is never blocked; blocks survive agent restart and expire;
 fresh install is in Monitor.
 

@@ -204,6 +204,25 @@ capture sink), the alert store and the inbox/notification logic. Live, on a **te
    alert, but it is still in the inbox. Medium/low never pop up by default.
 5. Restart the agent: the inbox still lists the earlier alerts (marked finished); *Clear finished* removes them for good.
 
+## F6. Firewall manager and Guardian (M6/M7) — TEST VPS ONLY
+
+The automated tests drive the real manager/guards against an in-memory firewall. These steps change real firewall rules: do NOT run
+them on a production machine without a console (VNC) fallback.
+
+1. **Block / unblock**: Firewall → Blocks: block `203.0.113.7` for 15 minutes. `wf.msc` shows the rule `PW-Manual-001` (group PacketWard)
+   with that address; `ping` from that address (another machine, or a VPN exit) is dropped. Unblock removes the address; the rule is
+   deleted when empty. Block 5000 addresses (paste a list): fewer than 10 rules. Apply the same list twice: no rule writes the second time.
+2. **Protected**: try to block your own RDP client address, the gateway, a DNS server: each is refused with its reason, nothing is created.
+3. **Foreign rules**: toggle a built-in Remote Desktop rule: a warning and the typed phrase are required; with the phrase RDP stops accepting
+   new connections only after you confirm (keep the VNC console open!). Re-enable it.
+4. **Purge**: *Remove all PacketWard rules* (or `pwctl firewall purge`) leaves no rule of the group in `wf.msc`.
+5. **Guardian Monitor → Active**: leave Monitor for a day on an exposed server: *Would block* lists the bots. Switch to Active (confirm):
+   a RDP guessing bot gets a 15-minute block; a second incident from the same address 1 hour; your own RDP address is never blocked even
+   if you mistype passwords 15 times. Stop and restart the agent: the blocks are re-applied; they expire on time. `pwctl unblock --all`
+   removes everything.
+6. **Circuit breaker**: lower the limit to 2/hour, trigger three attackers: the third is not blocked, the page says the breaker is open.
+7. `icacls %ProgramData%\PacketWard` shows only SYSTEM and Administrators.
+
 ## G. Leave-no-trace check
 
 After testing, all of these must be empty / `False`:

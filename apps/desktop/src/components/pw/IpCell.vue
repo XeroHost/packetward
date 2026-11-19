@@ -1,10 +1,11 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup lang="ts">
-import { Check, Copy } from 'lucide-vue-next'
+import { Check, Copy, ShieldBan } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Badge } from '@/components/ui/badge'
 import { copyText } from '@/lib/clipboard'
+import { useDefenseStore } from '@/stores/defense'
 
 const props = defineProps<{
   addr: string
@@ -16,6 +17,10 @@ const props = defineProps<{
 }>()
 
 const { t } = useI18n()
+const defense = useDefenseStore()
+
+/** Only a single address (no CIDR) can be blocked from here, and never a private one. */
+const blockable = computed(() => props.addr !== '' && !props.addr.includes('/'))
 
 /** IPv6 with a port needs brackets: [2001:db8::1]:443. */
 const text = computed(() => {
@@ -60,6 +65,16 @@ onBeforeUnmount(() => {
     >
       <Check v-if="copied" class="text-success size-3.5" aria-hidden="true" />
       <Copy v-else class="size-3.5" aria-hidden="true" />
+    </button>
+    <button
+      v-if="blockable"
+      type="button"
+      class="text-text-muted hover:text-danger focus-visible:ring-brand shrink-0 rounded p-0.5 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:outline-none"
+      :aria-label="t('firewall.dialog.blockAddr', { addr })"
+      :title="t('firewall.dialog.blockAddr', { addr })"
+      @click.stop="defense.requestBlock(addr)"
+    >
+      <ShieldBan class="size-3.5" aria-hidden="true" />
     </button>
   </span>
   <span v-else class="text-text-muted">—</span>

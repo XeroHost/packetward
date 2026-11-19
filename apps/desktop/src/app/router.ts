@@ -6,6 +6,8 @@ const PlaceholderPage = () => import('@/features/placeholder/PlaceholderPage.vue
 const DashboardPage = () => import('@/features/dashboard/DashboardPage.vue')
 const ConnectionsPage = () => import('@/features/connections/ConnectionsPage.vue')
 const AlertsPage = () => import('@/features/alerts/AlertsPage.vue')
+const FirewallPage = () => import('@/features/firewall/FirewallPage.vue')
+const GuardianPage = () => import('@/features/guardian/GuardianPage.vue')
 const TrafficPage = () => import('@/features/traffic/TrafficPage.vue')
 const CapturePage = () => import('@/features/capture/CapturePage.vue')
 const DiagnosticsPage = () => import('@/features/diagnostics/DiagnosticsPage.vue')
@@ -16,6 +18,8 @@ const pageComponents: Record<string, RouteRecordRaw['component']> = {
   dashboard: DashboardPage,
   alerts: AlertsPage,
   traffic: TrafficPage,
+  firewall: FirewallPage,
+  guardian: GuardianPage,
   connections: ConnectionsPage,
   capture: CapturePage,
   diagnostics: DiagnosticsPage,

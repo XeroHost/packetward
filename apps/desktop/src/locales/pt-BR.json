@@ -569,5 +569,155 @@
       "utilization_permille": "Uso do link",
       "sustained_secs": "Sustentado"
     }
+  },
+  "firewall": {
+    "tabs": {
+      "blocks": "Bloqueios",
+      "rules": "Regras",
+      "protected": "Protegidos e lista permitida"
+    },
+    "blocks": {
+      "hint": "Endereços bloqueados pelo Firewall do Windows, por você ou pelo Guardião. Muitos endereços compartilham poucas regras.",
+      "targets": "Endereços ou intervalos (um por linha)",
+      "duration": "Bloquear por",
+      "reason": "Motivo (opcional)",
+      "block": "Bloquear",
+      "forever": "Até eu remover",
+      "minutes": "{n} minutos",
+      "hours": "{n} hora(s)",
+      "days": "{n} dia(s)",
+      "untilRemoved": "até ser removido",
+      "refusedProtected": "não bloqueado: protegido ({reason}).",
+      "refusedBroad": "não bloqueado: o intervalo é amplo demais (mais largo que /8 em IPv4).",
+      "count": "{count} bloqueados, usando {rules} regra(s) do firewall.",
+      "unblockAll": "Desbloquear tudo",
+      "unblockAllConfirm": "Remover todos os bloqueios?",
+      "unblockAllYes": "Sim, desbloquear tudo",
+      "address": "Endereço",
+      "source": "Origem",
+      "why": "Motivo",
+      "until": "Até",
+      "sources": {
+        "manual": "Você",
+        "guardian": "Guardião"
+      },
+      "repeat": "reincidente ×{n}",
+      "unblock": "Desbloquear {addr}",
+      "none": "Nada está bloqueado."
+    },
+    "purge": {
+      "title": "Remover todas as regras do PacketWard",
+      "hint": "Apaga todas as regras de firewall que o PacketWard criou (bloqueios, regras de permitir, regras de RDP) e nada mais. Use para voltar a um estado limpo.",
+      "phrase": "Se o PacketWard restringe a Área de Trabalho Remota, digite: {phrase}",
+      "run": "Remover todas as regras do PacketWard",
+      "done": "{count} regra(s) removida(s)."
+    },
+    "rules": {
+      "searchPlaceholder": "Nome, descrição, programa",
+      "managedOnly": "Somente regras do PacketWard",
+      "count": "Mostrando {shown} de {total}",
+      "add": "Nova regra",
+      "foreignNote": "Regras que o PacketWard não criou são mostradas para referência. Alterar uma pede confirmação antes.",
+      "name": "Nome",
+      "direction": "Direção",
+      "inbound": "Entrada",
+      "outbound": "Saída",
+      "action": "Ação",
+      "allow": "Permitir",
+      "block": "Bloquear",
+      "localPorts": "Portas locais",
+      "remoteAddresses": "Endereços remotos",
+      "create": "Criar regra",
+      "confirm": {
+        "disable": "Desativar a regra “{name}”?",
+        "enable": "Ativar a regra “{name}”?",
+        "delete": "Apagar a regra “{name}”? Isso não pode ser desfeito."
+      },
+      "foreignWarning": "Esta regra não foi criada pelo PacketWard. Você está alterando uma regra do Windows ou de outro programa.",
+      "lockoutPhrase": "Isso pode deixar você sem acesso à Área de Trabalho Remota. Digite: {phrase}",
+      "confirmYes": "Confirmar",
+      "what": "Aplica-se a",
+      "state": "Estado",
+      "enabled": "ativa",
+      "disabled": "inativa",
+      "delete": "Apagar {name}",
+      "truncated": "Apenas as primeiras regras são mostradas; refine a busca."
+    },
+    "protected": {
+      "hint": "Estes endereços nunca são bloqueados, nem por você nem pelo Guardião: esta máquina, seu gateway e servidores DNS, todo endereço com logon bem-sucedido na Área de Trabalho Remota e as listas abaixo.",
+      "never": "Nunca bloqueados",
+      "allowlist": "Lista permitida",
+      "allowlistHint": "Seus próprios endereços ou intervalos (um por linha).",
+      "management": "Intervalos de gerenciamento da XeroHost",
+      "managementHint": "Intervalos que a XeroHost usa para gerenciar o servidor (um por linha).",
+      "save": "Salvar",
+      "saved": "Salvo."
+    },
+    "protectedReasons": {
+      "loopback": "esta máquina",
+      "gateway": "gateway padrão",
+      "dns": "servidor DNS",
+      "rdp_client": "cliente de Área de Trabalho Remota com logon bem-sucedido",
+      "allowlist": "sua lista permitida",
+      "management": "intervalo de gerenciamento",
+      "reserved": "endereço reservado"
+    },
+    "dialog": {
+      "title": "Bloquear este endereço?",
+      "consequence": "O Firewall do Windows descartará todo o tráfego dele. Endereços dos quais você depende (gateway, DNS, clientes de Área de Trabalho Remota confiáveis, lista permitida) são recusados.",
+      "allow": "Nunca bloquear",
+      "blockAddr": "Bloquear {addr}"
+    }
+  },
+  "guardian": {
+    "mode": {
+      "title": "Modo do Guardião",
+      "explain": {
+        "off": "O Guardião não faz nada. Os alertas continuam aparecendo; nada é bloqueado automaticamente.",
+        "monitor": "O Guardião observa e registra o que bloquearia, sem bloquear nada. Revise o relatório abaixo e depois passe para Ativo.",
+        "active": "O Guardião bloqueia atacantes automaticamente por tempo limitado, com um limite por hora. Os bloqueios expiram sozinhos e podem ser removidos a qualquer momento."
+      }
+    },
+    "active": {
+      "warning": "O bloqueio automático pode bloquear por engano um endereço legítimo. Seus clientes de Área de Trabalho Remota, o gateway e o DNS são protegidos, e todo bloqueio expira.",
+      "report": "Nas últimas 24 horas o Guardião teria bloqueado {count} endereço(s).",
+      "reviewed": "Revisei o relatório do Monitor e quero o bloqueio automático.",
+      "confirm": "Passar para Ativo"
+    },
+    "status": {
+      "circuit": "Disjuntor",
+      "open": "aberto: não bloqueia",
+      "closed": "fechado",
+      "lastHour": "Bloqueios automáticos (última hora / limite)",
+      "wouldBlock": "Teria bloqueado (24 h, Monitor)",
+      "protected": "Entradas protegidas",
+      "circuitNote": "O limite horário de bloqueios automáticos foi atingido, então o Guardião parou de bloquear. Ele volta quando a hora passar. Se parecer um ataque grande, revise os alertas."
+    },
+    "policy": {
+      "title": "Política",
+      "preset": "Sensibilidade dos detectores",
+      "presets": {
+        "gentle": "Suave",
+        "balanced": "Equilibrada",
+        "strict": "Rigorosa"
+      },
+      "minSeverity": "Bloquear a partir da gravidade",
+      "ladder": "Duração dos bloqueios em minutos (primeira vez, depois reincidências)",
+      "perHour": "Máximo de bloqueios por hora",
+      "hint": "A tentativa de adivinhar senhas na Área de Trabalho Remota é bloqueada a partir da gravidade Média; o resto, a partir da gravidade escolhida aqui."
+    },
+    "decisions": {
+      "title": "Decisões",
+      "hint": "Por que cada endereço foi (ou teria sido) bloqueado ou deixado em paz.",
+      "none": "Ainda não há decisões.",
+      "outcomes": {
+        "blocked": "bloqueado",
+        "would_block": "bloquearia",
+        "skipped_protected": "protegido",
+        "skipped_circuit": "disjuntor aberto",
+        "skipped_below_threshold": "abaixo do limite",
+        "skipped_failed": "o firewall recusou"
+      }
+    }
   }
 }

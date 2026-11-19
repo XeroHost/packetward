@@ -569,5 +569,155 @@
       "utilization_permille": "Link use",
       "sustained_secs": "Sustained"
     }
+  },
+  "firewall": {
+    "tabs": {
+      "blocks": "Blocks",
+      "rules": "Rules",
+      "protected": "Protected & allowlist"
+    },
+    "blocks": {
+      "hint": "Addresses blocked through Windows Firewall, by you or by the Guardian. Many addresses share a few rules.",
+      "targets": "Addresses or ranges (one per line)",
+      "duration": "Block for",
+      "reason": "Reason (optional)",
+      "block": "Block",
+      "forever": "Until I remove it",
+      "minutes": "{n} minutes",
+      "hours": "{n} hour(s)",
+      "days": "{n} day(s)",
+      "untilRemoved": "until removed",
+      "refusedProtected": "not blocked: protected ({reason}).",
+      "refusedBroad": "not blocked: the range is too wide (wider than /8 for IPv4).",
+      "count": "{count} blocked, using {rules} firewall rule(s).",
+      "unblockAll": "Unblock everything",
+      "unblockAllConfirm": "Remove every block?",
+      "unblockAllYes": "Yes, unblock all",
+      "address": "Address",
+      "source": "Source",
+      "why": "Why",
+      "until": "Until",
+      "sources": {
+        "manual": "You",
+        "guardian": "Guardian"
+      },
+      "repeat": "repeat offender ×{n}",
+      "unblock": "Unblock {addr}",
+      "none": "Nothing is blocked."
+    },
+    "purge": {
+      "title": "Remove all PacketWard rules",
+      "hint": "Deletes every firewall rule PacketWard created (blocks, allow rules, RDP rules) and nothing else. Use it to get back to a clean state.",
+      "phrase": "If PacketWard restricts Remote Desktop, type: {phrase}",
+      "run": "Remove all PacketWard rules",
+      "done": "Removed {count} rule(s)."
+    },
+    "rules": {
+      "searchPlaceholder": "Name, description, program",
+      "managedOnly": "Only PacketWard rules",
+      "count": "Showing {shown} of {total}",
+      "add": "New rule",
+      "foreignNote": "Rules that PacketWard did not create are shown for reference. Changing one asks for confirmation first.",
+      "name": "Name",
+      "direction": "Direction",
+      "inbound": "Inbound",
+      "outbound": "Outbound",
+      "action": "Action",
+      "allow": "Allow",
+      "block": "Block",
+      "localPorts": "Local ports",
+      "remoteAddresses": "Remote addresses",
+      "create": "Create rule",
+      "confirm": {
+        "disable": "Turn off the rule “{name}”?",
+        "enable": "Turn on the rule “{name}”?",
+        "delete": "Delete the rule “{name}”? This cannot be undone."
+      },
+      "foreignWarning": "This rule was not created by PacketWard. You are changing a rule of Windows or another program.",
+      "lockoutPhrase": "This can cut you off from Remote Desktop. Type: {phrase}",
+      "confirmYes": "Confirm",
+      "what": "Applies to",
+      "state": "State",
+      "enabled": "on",
+      "disabled": "off",
+      "delete": "Delete {name}",
+      "truncated": "Only the first rules are shown; narrow the search."
+    },
+    "protected": {
+      "hint": "These addresses are never blocked, by you or by the Guardian: this machine, its gateway and DNS servers, every address with a successful Remote Desktop logon, and the lists below.",
+      "never": "Never blocked",
+      "allowlist": "Allowlist",
+      "allowlistHint": "Your own addresses or ranges (one per line).",
+      "management": "XeroHost management ranges",
+      "managementHint": "Ranges XeroHost uses to manage the server (one per line).",
+      "save": "Save",
+      "saved": "Saved."
+    },
+    "protectedReasons": {
+      "loopback": "this machine",
+      "gateway": "default gateway",
+      "dns": "DNS server",
+      "rdp_client": "Remote Desktop client with a successful logon",
+      "allowlist": "your allowlist",
+      "management": "management range",
+      "reserved": "reserved address"
+    },
+    "dialog": {
+      "title": "Block this address?",
+      "consequence": "Windows Firewall will drop all traffic from it. Addresses you rely on (gateway, DNS, trusted Remote Desktop clients, allowlist) are refused.",
+      "allow": "Never block it",
+      "blockAddr": "Block {addr}"
+    }
+  },
+  "guardian": {
+    "mode": {
+      "title": "Guardian mode",
+      "explain": {
+        "off": "The Guardian does nothing. Alerts still appear; nothing is blocked automatically.",
+        "monitor": "The Guardian watches and records what it would block, without blocking anything. Review the report below, then switch to Active.",
+        "active": "The Guardian blocks attackers automatically for a limited time, with a limit per hour. Blocks expire by themselves and can be removed any time."
+      }
+    },
+    "active": {
+      "warning": "Automatic blocking can block a legitimate address by mistake. Your Remote Desktop clients, gateway and DNS are protected, and every block expires.",
+      "report": "In the last 24 hours the Guardian would have blocked {count} address(es).",
+      "reviewed": "I reviewed the Monitor report and want automatic blocking.",
+      "confirm": "Switch to Active"
+    },
+    "status": {
+      "circuit": "Circuit breaker",
+      "open": "open: not blocking",
+      "closed": "closed",
+      "lastHour": "Automatic blocks (last hour / limit)",
+      "wouldBlock": "Would block (24 h, Monitor)",
+      "protected": "Protected entries",
+      "circuitNote": "The hourly limit of automatic blocks was reached, so the Guardian stopped blocking. It resumes when the hour has passed. If this looks like a big attack, review the alerts."
+    },
+    "policy": {
+      "title": "Policy",
+      "preset": "Detector sensitivity",
+      "presets": {
+        "gentle": "Gentle",
+        "balanced": "Balanced",
+        "strict": "Strict"
+      },
+      "minSeverity": "Block from severity",
+      "ladder": "Block durations in minutes (first offence, then repeats)",
+      "perHour": "Most blocks per hour",
+      "hint": "Password guessing against Remote Desktop is blocked from Medium severity; everything else from the severity chosen here."
+    },
+    "decisions": {
+      "title": "Decisions",
+      "hint": "Why each address was (or would have been) blocked or left alone.",
+      "none": "No decisions yet.",
+      "outcomes": {
+        "blocked": "blocked",
+        "would_block": "would block",
+        "skipped_protected": "protected",
+        "skipped_circuit": "circuit open",
+        "skipped_below_threshold": "below threshold",
+        "skipped_failed": "firewall refused"
+      }
+    }
   }
 }

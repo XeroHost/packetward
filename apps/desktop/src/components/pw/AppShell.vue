@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup lang="ts">
 import AuditBanner from '@/components/pw/AuditBanner.vue'
+import BlockDialog from '@/components/pw/BlockDialog.vue'
 import SidebarNav from '@/components/pw/SidebarNav.vue'
 import TopBar from '@/components/pw/TopBar.vue'
 </script>
@@ -14,6 +15,7 @@ import TopBar from '@/components/pw/TopBar.vue'
       <main class="flex-1 overflow-y-auto p-5">
         <slot />
       </main>
+      <BlockDialog />
     </div>
   </div>
 </template>

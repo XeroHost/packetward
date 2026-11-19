@@ -230,6 +230,23 @@ critical + high).
 - Read-only view of non-PacketWard rules with a clear warning before editing them.
 - Uninstall / `pwctl firewall purge` removes everything in group `PacketWard`.
 
+**Integration (M6/M7).** `pw-firewall` is split in `FirewallBackend` (raw COM, `WindowsFirewall`, or the in-memory fake) and
+`FirewallManager` (every guard: protected set, breadth limit, foreign rules, lock-out confirmations, operation order). The engine's
+`Defense` (`pw-engine/src/defense.rs`) keeps the **desired** blocks (manual and Guardian, each with expiry, reason, alert id and
+escalation level) in memory and in `defense.json`, and **reconciles** them into the batches `PW-Manual-NNN` and `PW-AutoBlock-NNN`
+every 10 s (only when something is desired or already present: otherwise the firewall is not even read) and after every change. Expired
+blocks are dropped, blocks that became protected are evicted. **Protected set** = loopback, the default gateways and DNS servers
+(`NetStat::network_context`), every address with a successful RDP logon, the user's allowlist and the XeroHost management ranges; it is
+re-checked at decision time, never trusted from an alert flag. The **Guardian** subscribes to the alert store: Off / **Monitor** (default;
+records `would_block` decisions, touches nothing) / Active (needs an explicit confirmation); one decision per incident; TTL ladder
+(15 min, 1 h, 24 h, 7 d, by default) advanced per repeat offender (remembered 30 days); circuit breaker (default 20 automatic blocks per
+hour, then it stops and says so); RdpBruteForce qualifies from Medium, other detectors from the policy's threshold (High). Every action
+is appended to `audit.jsonl`. Only `Engine::with_system_firewall` (the agent) uses the real Windows Firewall; `Engine::new`, the tests and
+tools use an in-memory one. `%ProgramData%\PacketWard` is restricted to SYSTEM and Administrators when the agent starts. IPC:
+`firewall.rules|rule.add|rule.update|rule.remove|rule.enable|blocks|block|unblock|unblock_all|purge`, `guardian.status|set_policy|allowlist|
+set_allowlist`; `pwctl block|unblock [--all]|firewall list|purge|guardian`. Persistence is currently JSON; `pw-store` (SQLite, merged) replaces
+it when the engine is wired to it.
+
 ### 6.5 Netstat (`pw-netstat`)
 - `GetExtendedTcpTable` / `GetExtendedUdpTable` (IPv4+IPv6, with owning PID → process name).
 - `GetIfTable2` for adapters and byte/packet counters (bandwidth without capture) and `GetIpForwardTable2` for
