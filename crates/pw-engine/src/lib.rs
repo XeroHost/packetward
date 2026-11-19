@@ -11,6 +11,7 @@ mod defense;
 mod detect;
 mod diag;
 mod poller;
+mod rdp_shield;
 mod support;
 mod sys;
 mod trust;
@@ -26,9 +27,11 @@ use pw_proto::{
     method, topic, AllowlistConfig, BlockRequest, CaptureFileRequest, CaptureStartRequest,
     ConnectionsRequest, DiagJobRequest, DnsLookupRequest, ErrorCode, ErrorPayload,
     FirewallRuleAction, FirewallRuleEdit, FirewallRulesRequest, Heartbeat, HelloResponse,
-    MtrStartRequest, PingStartRequest, PortCheckRequest, PurgeRequest, RecordStartRequest,
-    SetGuardianPolicy, SupportBundleRequest, SupportDiscardRequest, SupportReadRequest, SystemInfo,
-    UnblockRequest, PROTOCOL_MAJOR, PROTOCOL_MINOR,
+    MtrStartRequest, PingStartRequest, PortCheckRequest, PurgeRequest, RdpAttempts,
+    RdpConfirmRequest, RdpEndSessionRequest, RdpLockoutRequest, RdpNlaRequest, RdpPortRequest,
+    RdpRestrictRequest, RecordStartRequest, SetGuardianPolicy, SupportBundleRequest,
+    SupportDiscardRequest, SupportReadRequest, SystemInfo, UnblockRequest, PROTOCOL_MAJOR,
+    PROTOCOL_MINOR,
 };
 use serde_json::Value;
 use tokio::sync::{mpsc, watch};
@@ -41,6 +44,7 @@ pub use defense::{Defense, JsonPersistence, MemoryPersistence, Persistence};
 pub use detect::{AlertStore, DetectionService, KEEP_INCIDENTS};
 pub use diag::{Diag, MAX_RUNNING_JOBS};
 pub use poller::{Poller, Snapshot};
+pub use rdp_shield::RdpShield;
 pub use trust::{TrustState, DEFAULT_WINDOW_DAYS};
 
 /// Events buffered per subscription before the producer waits for the consumer.
@@ -120,10 +124,12 @@ pub struct Engine {
     alerts: Arc<AlertStore>,
     defense: Arc<Defense>,
     detection: Arc<DetectionService>,
+    shield: Arc<RdpShield>,
     _poller: AbortOnDrop,
     _detector: AbortOnDrop,
     _guardian: AbortOnDrop,
     _upkeep: AbortOnDrop,
+    _shield: AbortOnDrop,
 }
 
 impl Engine {
@@ -142,6 +148,7 @@ impl Engine {
             Arc::new(SystemCaptureHost),
             None,
             Arc::new(pw_firewall::system_firewall()),
+            Arc::new(pw_netstat::WindowsRdpControl),
         )
     }
 
@@ -156,7 +163,9 @@ impl Engine {
         let firewall: Arc<dyn pw_firewall::Firewall> = Arc::new(pw_firewall::FirewallManager::new(
             pw_firewall::fake::FakeFirewall::windows_defaults(),
         ));
-        Self::build(config, netstat, host, sink, firewall)
+        let control: Arc<dyn pw_netstat::rdp_control::RdpControl> =
+            Arc::new(pw_netstat::rdp_control::FakeRdpControl::new());
+        Self::build(config, netstat, host, sink, firewall, control)
     }
 
     fn build(
@@ -165,22 +174,52 @@ impl Engine {
         host: Arc<dyn CaptureHost>,
         sink: Option<PacketSink>,
         firewall: Arc<dyn pw_firewall::Firewall>,
+        control: Arc<dyn pw_netstat::rdp_control::RdpControl>,
     ) -> Self {
         let (publish, latest) = watch::channel(None);
         let trust = TrustState::new(config.rdp_trust_days);
+        let alerts = Arc::new(AlertStore::new(config.alerts_log.clone()));
         // Learning RDP logons reads the event log (a bounded initial load, then live events); it
         // blocks, so it runs on a blocking thread and never delays the first snapshot.
         {
             let netstat = Arc::clone(&netstat);
             let trust = Arc::clone(&trust);
+            let alerts = Arc::clone(&alerts);
             tokio::task::spawn_blocking(move || {
-                let state = netstat.start_logon_feed(trust.window_ms(), trust.sink());
+                // A successful logon from an address never seen before is worth a notification; the
+                // initial load of history (feed still "loading") never is.
+                let recorder = trust.sink();
+                let watcher = Arc::clone(&trust);
+                let alerts = Arc::clone(&alerts);
+                let counter = std::sync::atomic::AtomicU64::new(1);
+                let sink: pw_netstat::LogonSink = Arc::new(move |event| {
+                    let known = watcher
+                        .addresses(poller::unix_ms())
+                        .iter()
+                        .any(|a| a.addr == event.addr.to_string());
+                    let ready = watcher.feed() == pw_proto::TrustFeed::Ready;
+                    recorder(event);
+                    if ready && !known {
+                        let id = counter.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                        let known_count = watcher.addresses(poller::unix_ms()).len();
+                        let started = detect::new_logon_alert(
+                            id,
+                            &event.addr.to_string(),
+                            event.at_unix_ms,
+                            known_count,
+                        );
+                        let mut ended = started.clone();
+                        ended.phase = pw_proto::AlertPhaseView::Ended;
+                        alerts.record(started);
+                        alerts.record(ended);
+                    }
+                });
+                let state = netstat.start_logon_feed(trust.window_ms(), sink);
                 trust.set_feed(state);
             });
         }
         // Detection: fed by netstat, the adapter counters, the failed-logon feed and (when it works)
         // the packet capture. The alerts it raises are kept, persisted and pushed to subscribers.
-        let alerts = Arc::new(AlertStore::new(config.alerts_log.clone()));
         let detection = Arc::new(DetectionService::new(
             config.detect_preset,
             Arc::clone(&alerts),
@@ -220,6 +259,7 @@ impl Engine {
             Some(dir) => Arc::new(JsonPersistence::new(dir.clone())),
             None => Arc::new(MemoryPersistence::default()),
         };
+        let defense_firewall = Arc::clone(&firewall);
         let defense = Arc::new(Defense::new(
             firewall,
             persistence,
@@ -227,6 +267,17 @@ impl Engine {
             Arc::clone(&trust),
         ));
         detection.set_preset(preset_of(defense.policy().preset));
+        let shield = Arc::new(RdpShield::new(
+            control,
+            Arc::clone(&defense_firewall),
+            Arc::clone(&trust),
+            Arc::clone(&defense),
+            config.defense_dir.clone(),
+        ));
+        if let Some(attempts) = shield.saved_attempts() {
+            detection.set_rdp_attempts(attempts.threshold, attempts.window_secs);
+        }
+        let shield_task = tokio::spawn(shield_loop(Arc::clone(&shield)));
         let guardian_task = tokio::spawn(guardian_loop(Arc::clone(&defense), alerts.events()));
         let upkeep_task = tokio::spawn(upkeep_loop(
             Arc::clone(&defense),
@@ -272,11 +323,46 @@ impl Engine {
             alerts,
             defense,
             detection,
+            shield,
             _poller: AbortOnDrop(task),
             _detector: AbortOnDrop(detector_task),
             _guardian: AbortOnDrop(guardian_task),
             _upkeep: AbortOnDrop(upkeep_task),
+            _shield: AbortOnDrop(shield_task),
         }
+    }
+
+    fn shield_inputs(&self) -> rdp_shield::Inputs {
+        let latest = self.latest.borrow().clone();
+        rdp_shield::Inputs {
+            listening_ports: latest
+                .as_ref()
+                .map(|snapshot| {
+                    snapshot
+                        .table
+                        .rows
+                        .iter()
+                        .filter(|r| {
+                            r.proto == pw_proto::Proto::Tcp
+                                && r.state == Some(pw_proto::TcpState::Listen)
+                        })
+                        .map(|r| r.local_port)
+                        .collect()
+                })
+                .unwrap_or_default(),
+            logon_audit: latest
+                .as_ref()
+                .map(|snapshot| snapshot.stats.rdp_trust.audit)
+                .unwrap_or_default(),
+        }
+    }
+
+    async fn rdp_audit(&self) -> Result<Value, ErrorPayload> {
+        let shield = Arc::clone(&self.shield);
+        let inputs = self.shield_inputs();
+        blocking(move || shield.audit(&inputs))
+            .await
+            .and_then(|v| to_value(&v))
     }
 
     fn support_inputs(&self) -> support::Inputs {
@@ -305,6 +391,20 @@ impl Engine {
             pid: std::process::id(),
             uptime_secs: self.uptime_secs(),
             service_mode: self.config.service_mode,
+        }
+    }
+}
+
+/// Reverts RDP changes nobody confirmed in time. The very first pass runs at once: a change that
+/// outlived an agent restart was never confirmed.
+async fn shield_loop(shield: Arc<RdpShield>) {
+    let mut ticker = tokio::time::interval(Duration::from_secs(1));
+    ticker.set_missed_tick_behavior(MissedTickBehavior::Skip);
+    loop {
+        ticker.tick().await;
+        let shield = Arc::clone(&shield);
+        if let Err(err) = tokio::task::spawn_blocking(move || shield.tick()).await {
+            tracing::error!(%err, "the RDP Shield check failed");
         }
     }
 }
@@ -534,6 +634,74 @@ impl Handler for Engine {
             method::SUPPORT_DISCARD => {
                 let request: SupportDiscardRequest = parse(payload)?;
                 self.support.discard(&request.id);
+                Ok(Value::Null)
+            }
+            method::RDP_AUDIT => {
+                let shield = Arc::clone(&self.shield);
+                let inputs = self.shield_inputs();
+                blocking(move || shield.audit(&inputs))
+                    .await
+                    .and_then(|v| to_value(&v))
+            }
+            method::RDP_RESTRICT => {
+                let request: RdpRestrictRequest = parse(payload)?;
+                let shield = Arc::clone(&self.shield);
+                blocking(move || shield.restrict(&request)).await?;
+                self.rdp_audit().await
+            }
+            method::RDP_UNRESTRICT => {
+                let shield = Arc::clone(&self.shield);
+                blocking(move || shield.unrestrict()).await?;
+                self.rdp_audit().await
+            }
+            method::RDP_PORT => {
+                let request: RdpPortRequest = parse(payload)?;
+                let shield = Arc::clone(&self.shield);
+                let inputs = self.shield_inputs();
+                blocking(move || shield.change_port(&request, &inputs)).await?;
+                self.rdp_audit().await
+            }
+            method::RDP_NLA => {
+                let request: RdpNlaRequest = parse(payload)?;
+                let shield = Arc::clone(&self.shield);
+                blocking(move || shield.set_nla(request.required)).await?;
+                self.rdp_audit().await
+            }
+            method::RDP_LOCKOUT => {
+                let request: RdpLockoutRequest = parse(payload)?;
+                let shield = Arc::clone(&self.shield);
+                blocking(move || shield.set_lockout(&request)).await?;
+                self.rdp_audit().await
+            }
+            method::RDP_ATTEMPTS => {
+                let attempts: RdpAttempts = parse(payload)?;
+                let shield = Arc::clone(&self.shield);
+                let saved = blocking(move || shield.set_attempts(attempts)).await?;
+                self.detection
+                    .set_rdp_attempts(saved.threshold, saved.window_secs);
+                self.rdp_audit().await
+            }
+            method::RDP_CONFIRM => {
+                let request: RdpConfirmRequest = parse(payload)?;
+                let shield = Arc::clone(&self.shield);
+                blocking(move || shield.confirm(request.id)).await?;
+                self.rdp_audit().await
+            }
+            method::RDP_CANCEL => {
+                let request: RdpConfirmRequest = parse(payload)?;
+                let shield = Arc::clone(&self.shield);
+                blocking(move || shield.cancel(request.id)).await?;
+                self.rdp_audit().await
+            }
+            method::RDP_RESET => {
+                let shield = Arc::clone(&self.shield);
+                blocking(move || shield.reset()).await?;
+                self.rdp_audit().await
+            }
+            method::RDP_END_SESSION => {
+                let request: RdpEndSessionRequest = parse(payload)?;
+                let shield = Arc::clone(&self.shield);
+                blocking(move || shield.end_session(&request)).await?;
                 Ok(Value::Null)
             }
             method::ALERTS_LIST => to_value(&self.alerts.list()),

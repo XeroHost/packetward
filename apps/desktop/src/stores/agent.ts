@@ -12,6 +12,7 @@ import type { Heartbeat } from '@/types/generated/Heartbeat'
 import { useAlertsStore } from './alerts'
 import { useCaptureStore } from './capture'
 import { useDefenseStore } from './defense'
+import { useRdpStore } from './rdp'
 import { useDiagStore } from './diag'
 import { useLiveStore } from './live'
 
@@ -63,6 +64,7 @@ export const useAgentStore = defineStore('agent', () => {
         useCaptureStore().reset()
         useAlertsStore().reset()
         useDefenseStore().reset()
+        useRdpStore().disconnect()
       } else {
         // Connecting counts as a sign of life: do not report "unresponsive" before the first beat.
         lastBeatAt.value = Date.now()
@@ -70,6 +72,7 @@ export const useAgentStore = defineStore('agent', () => {
         // The inbox starts with what the agent already knows about.
         void useAlertsStore().load()
         void useDefenseStore().loadGuardian()
+        useRdpStore().startWatch()
       }
       return
     }

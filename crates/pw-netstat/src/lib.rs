@@ -11,6 +11,7 @@ pub mod fake;
 pub mod logon;
 pub mod rates;
 pub mod rdp;
+pub mod rdp_control;
 mod sys;
 pub mod tables;
 
@@ -24,6 +25,8 @@ use pw_proto::{Connection, LogonAudit, RdpSession, TrustFeed};
 
 pub use classify::{classify_kind, counts_toward_total};
 pub use rates::{Counters, RateTracker, Rates};
+#[cfg(windows)]
+pub use sys::rdp_control::WindowsRdpControl;
 #[cfg(windows)]
 pub use sys::windows::WindowsNetStat;
 

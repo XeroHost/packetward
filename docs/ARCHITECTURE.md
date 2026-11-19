@@ -374,6 +374,22 @@ the Guardian (M7) and the trusted-RDP-client set (§6.3).
   or blocks, NLA unchanged. The UI names the provider's **VNC/console** as the recovery path if RDP is lost.
 - All of it is covered by fakes and tests; live runs are documented in `docs/TESTING.md` for a **test VPS** only.
 
+**Integration (M7b).** `pw-netstat::rdp_control` (`RdpControl` trait, `FakeRdpControl`, `WindowsRdpControl`: registry
+`PortNumber`/`UserAuthentication`/`fDenyTSConnections`/`SecurityLayer`, `NetUserModalsGet/Set` for the lockout policy, SCM stop/start of
+`TermService` with its dependents, `WTSDisconnectSession`/`WTSLogoffSession`) and `pw-engine::rdp_shield::RdpShield`. One change may
+wait for confirmation at a time (`Busy` otherwise); the transaction (revert plan: previous port, NLA, lockout, firewall snapshot) is
+written to `rdp_shield.json` BEFORE the confirmation timer starts, the factory baseline (`original`) is written once and never
+overwritten. The agent's 1 s loop reverts anything past its deadline; at start the same check runs first (a change that survived a
+restart was never confirmed). A failed revert is retried every 15 s, six times, and audited. Port change: the new port is opened in the
+firewall first (same allow list as now, everybody when unrestricted), then `PortNumber` + service restart; a failed restart reverts at
+once. Restriction: `allowed` = request ∪ every trusted RDP client ∪ allowlist ∪ management ranges, so the current client can never be
+excluded; the built-in rules are only disabled with the typed phrase (and need at least one trusted client). Attempt limit = the
+detector's `rdp_brute_force` threshold/window (the Guardian does the blocking). Account lockout needs the denial-of-service
+acknowledgement and is off by default. `reset`: port 3389, built-in rules enabled, `PW-RDP-Allow*` removed, NLA untouched;
+`pwctl rdp reset --offline` does it without the agent and forgets pending changes. A successful logon from an address the trust set had
+never seen (once the history is loaded) raises the Medium alert `rdp_new_logon`. IPC `rdp.audit|restrict|unrestrict|port|nla|lockout|attempts|
+confirm|cancel|reset|end_session`; UI page "RDP Shield" and a countdown banner on every page while a change waits.
+
 ### 6.12 Branding
 Discreet XeroHost presence: "by XeroHost" in the sidebar footer and About, a "Contact XeroHost support" link
 (opens xerohost.net), XeroHost speed-test nodes and shared blocklist as defaults. No plan promotion or upsell.

@@ -53,6 +53,28 @@ fn severity_view(severity: Severity) -> AlertSeverity {
     }
 }
 
+/// A successful RDP logon from an address never seen before, as an alert (ids start high so they
+/// never collide with the detectors' own).
+pub fn new_logon_alert(id: u64, addr: &str, at_unix_ms: u64, trusted_known: usize) -> AlertView {
+    AlertView {
+        id: (1 << 62) + id,
+        phase: AlertPhaseView::Started,
+        kind: pw_proto::AlertKindView::RdpNewLogon,
+        severity: AlertSeverity::Medium,
+        source: Some(addr.to_owned()),
+        summary_key: "rdp_new_logon".to_owned(),
+        metrics: vec![pw_proto::AlertMetric {
+            key: "trusted_addresses".to_owned(),
+            value: trusted_known as u64,
+        }],
+        window_secs: 0,
+        first_seen_unix_ms: at_unix_ms,
+        last_seen_unix_ms: at_unix_ms,
+        protected: true,
+        peak_severity: AlertSeverity::Medium,
+    }
+}
+
 fn kind_view(kind: DetectorKind) -> AlertKindView {
     match kind {
         DetectorKind::SynFlood => AlertKindView::SynFlood,
@@ -315,6 +337,15 @@ impl DetectionService {
             diff: Mutex::new(ConnectionDiff::default()),
             store,
         }
+    }
+
+    /// The RDP attempt limit: this many failed logons from one address within the window.
+    pub fn set_rdp_attempts(&self, threshold: u32, window_secs: u32) {
+        let mut detector = lock(&self.detector);
+        let mut config = detector.config().clone();
+        config.rdp_brute_force.min_failures = threshold;
+        config.rdp_brute_force.window_secs = window_secs;
+        detector.set_config(config);
     }
 
     /// Changes how sensitive the detectors are; open incidents are kept.

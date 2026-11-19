@@ -6,4 +6,6 @@ pub(crate) mod adapters;
 #[cfg(windows)]
 pub(crate) mod eventlog;
 #[cfg(windows)]
+pub(crate) mod rdp_control;
+#[cfg(windows)]
 pub(crate) mod windows;

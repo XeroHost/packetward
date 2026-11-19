@@ -25,7 +25,7 @@ Read this first when resuming after a stop or a context compaction.
 | M5 Detection & alerts | implemented on dev (engine service, 4625 feed, inbox, toasts, tray badge); live tests pending for a test VPS |
 | M6 Firewall manager | implemented on dev (manager, IPC, pwctl, Firewall page, block dialog on every address); real-firewall tests pending for a test VPS |
 | M7 Guardian | implemented on dev (Monitor default, Active with confirmation, ladder, circuit breaker, audit); live Active test pending for a test VPS |
-| M7b RDP Shield | not started |
+| M7b RDP Shield | implemented on dev (audit, restrict/port/NLA/lockout/attempts with agent-side auto-revert, sessions, reset, pwctl rdp, UI); every write path is fake-tested only: live tests pending for a test VPS; country restriction waits for M8 |
 | M8 GeoIP, intel, blocklists | pw-intel core merged; integration/UI pending |
 | M9 Speed test | tools/speed-server merged; client/UI pending |
 | M10 MTR advanced | not started |

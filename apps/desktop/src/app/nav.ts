@@ -11,6 +11,7 @@ import {
   ScrollText,
   Settings,
   Shield,
+  ShieldHalf,
   Stethoscope,
   type LucideIcon,
 } from 'lucide-vue-next'
@@ -31,6 +32,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { id: 'connections', labelKey: 'nav.connections', icon: Network },
   { id: 'capture', labelKey: 'nav.capture', icon: Radio },
   { id: 'guardian', labelKey: 'nav.guardian', icon: Shield },
+  { id: 'rdp-shield', labelKey: 'nav.rdpShield', icon: ShieldHalf },
   { id: 'firewall', labelKey: 'nav.firewall', icon: BrickWall },
   { id: 'diagnostics', labelKey: 'nav.diagnostics', icon: Stethoscope },
   { id: 'speed-test', labelKey: 'nav.speedTest', icon: Gauge },

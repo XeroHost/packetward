@@ -18,7 +18,8 @@
     "logs": "Registros",
     "settings": "Configurações",
     "about": "Sobre",
-    "alerts": "Alertas"
+    "alerts": "Alertas",
+    "rdpShield": "Escudo RDP"
   },
   "topbar": {
     "agent": {
@@ -532,7 +533,8 @@
       "port_scan_horizontal": "Varredura de rede",
       "conn_flood": "Flood de conexões",
       "rdp_brute_force": "Tentativa de adivinhar senhas RDP",
-      "volumetric_attack": "Link saturado"
+      "volumetric_attack": "Link saturado",
+      "rdp_new_logon": "Logon bem-sucedido por Área de Trabalho Remota de um endereço novo"
     },
     "explain": {
       "syn_flood": "Um endereço abre uma enorme quantidade de conexões que nunca completa, para esgotar o servidor.",
@@ -545,7 +547,8 @@
       "port_scan_horizontal": "Um endereço sonda a mesma porta em muitos equipamentos.",
       "conn_flood": "Um endereço mantém ou abre um número incomum de conexões.",
       "rdp_brute_force": "Um endereço falha repetidamente ao entrar por Área de Trabalho Remota: alguém está testando senhas.",
-      "volumetric_attack": "O tráfego de entrada usa quase todo o link de rede."
+      "volumetric_attack": "O tráfego de entrada usa quase todo o link de rede.",
+      "rdp_new_logon": "Alguém entrou por Área de Trabalho Remota a partir de um endereço que nunca tinha entrado. Se foi você em uma conexão nova, ignore; se não, troque a senha e revise as sessões."
     },
     "metrics": {
       "syn": "Pacotes SYN",
@@ -567,7 +570,8 @@
       "inbound_bps": "Entrada",
       "link_bps": "Link",
       "utilization_permille": "Uso do link",
-      "sustained_secs": "Sustentado"
+      "sustained_secs": "Sustentado",
+      "trusted_addresses": "Endereços conhecidos"
     }
   },
   "firewall": {
@@ -718,6 +722,113 @@
         "skipped_below_threshold": "abaixo do limite",
         "skipped_failed": "o firewall recusou"
       }
+    }
+  },
+  "rdp": {
+    "pending": {
+      "explain": "Confirme a partir de uma conexão nova em {seconds} s ou será revertido automaticamente.",
+      "keep": "Manter a alteração",
+      "revert": "Reverter agora"
+    },
+    "audit": {
+      "title": "Auditoria de exposição",
+      "service": "Área de Trabalho Remota",
+      "on": "ativada",
+      "off": "desativada",
+      "required": "obrigatória",
+      "notRequired": "não obrigatória",
+      "firewall": "Firewall",
+      "restricted": "restrita a {count} entradas",
+      "openToAny": "aberta a qualquer endereço",
+      "notOpen": "não aberta a todos",
+      "clean": "Nada preocupante encontrado."
+    },
+    "findings": {
+      "open_to_any": {
+        "title": "A Área de Trabalho Remota é acessível de qualquer endereço",
+        "fix": "Restrinja aos endereços que você usa (abaixo). Até lá, qualquer bot da Internet pode testar suas senhas."
+      },
+      "nla_off": {
+        "title": "A autenticação em nível de rede (NLA) não é exigida",
+        "fix": "Exija: os atacantes precisam se autenticar antes de uma sessão sequer ser criada. Ative abaixo."
+      },
+      "weak_security_layer": {
+        "title": "A camada de segurança do RDP é a antiga",
+        "fix": "Defina a camada de segurança como Negociar ou TLS na Diretiva de Grupo (Host da Sessão da Área de Trabalho Remota → Segurança)."
+      },
+      "default_port": {
+        "title": "A Área de Trabalho Remota usa a porta padrão 3389",
+        "fix": "Outra porta evita a maioria das varreduras automáticas (não é uma defesa por si só). Altere abaixo e conecte depois na porta nova."
+      },
+      "no_lockout": {
+        "title": "Sem bloqueio de contas",
+        "fix": "Opcional. Bloquear o endereço atacante (Guardião) é mais seguro que bloquear contas, porque um atacante pode bloquear de propósito uma conta real."
+      },
+      "audit_failures_off": {
+        "title": "Logons com falha não são auditados",
+        "fix": "Sem eles o PacketWard não vê a tentativa de adivinhar senhas. Execute: auditpol /set /subcategory:\"Logon\" /success:enable /failure:enable"
+      },
+      "audit_success_off": {
+        "title": "Logons bem-sucedidos não são auditados",
+        "fix": "Sem eles o PacketWard não sabe quais endereços são seus. Execute: auditpol /set /subcategory:\"Logon\" /success:enable /failure:enable"
+      },
+      "only_administrators": {
+        "title": "O grupo “Usuários da Área de Trabalho Remota” está vazio",
+        "fix": "Só administradores podem conectar. Dê às outras pessoas contas próprias nesse grupo em vez de compartilhar a senha de administrador."
+      }
+    },
+    "restrict": {
+      "title": "Restringir a Área de Trabalho Remota a endereços confiáveis",
+      "hint": "Cria regras do PacketWard que permitem a porta RDP apenas desses endereços. Todo endereço com logon bem-sucedido é sempre incluído, então você não se bloqueia com isso. As regras internas do Windows (que permitem todos) continuam ativas a menos que você as desative aqui.",
+      "allowed": "Endereços ou intervalos adicionais (um por linha)",
+      "disableBuiltin": "Desativar também as regras internas da Área de Trabalho Remota (permitem todos)",
+      "apply": "Restringir",
+      "remove": "Remover a restrição"
+    },
+    "port": {
+      "title": "Alterar a porta do RDP",
+      "hint": "Move a Área de Trabalho Remota para outra porta e a abre antes no firewall. O serviço reinicia e todas as sessões são desconectadas: reconecte na porta nova e confirme.",
+      "new": "Porta nova",
+      "apply": "Alterar porta",
+      "understand": "Entendo que todas as sessões da Área de Trabalho Remota serão desconectadas e que devo reconectar na porta nova."
+    },
+    "nla": {
+      "title": "Autenticação em nível de rede (NLA)",
+      "hint": "Faz os clientes se autenticarem antes de existir uma sessão. Recomendado; só clientes com suporte a NLA conectam.",
+      "require": "Exigir NLA",
+      "allowOff": "Desativar NLA"
+    },
+    "attempts": {
+      "title": "Limite de tentativas por endereço",
+      "hint": "Quantos logons com falha de um endereço, em quantos segundos, contam como tentativa de adivinhar senhas.",
+      "threshold": "Falhas",
+      "window": "Em (segundos)",
+      "guardian": "O Guardião então bloqueia esse endereço por tempo limitado (veja a página do Guardião). Endereços com logon bem-sucedido nunca são bloqueados."
+    },
+    "lockout": {
+      "title": "Bloqueio de contas do Windows",
+      "warning": "Desativado por padrão. Um atacante pode bloquear de propósito uma conta legítima, o que é uma negação de serviço. O PacketWard prefere bloquear o endereço atacante.",
+      "threshold": "Falhas",
+      "window": "Janela (min)",
+      "duration": "Bloqueio (min)",
+      "understand": "Entendo que atacantes podem bloquear contas reais.",
+      "apply": "Aplicar bloqueio",
+      "turnOff": "Desativar o bloqueio"
+    },
+    "sessions": {
+      "title": "Sessões",
+      "none": "Não há sessões da Área de Trabalho Remota.",
+      "disconnect": "Desconectar",
+      "logoff": "Encerrar sessão",
+      "confirmDisconnect": "Desconectar esta sessão (ela continua executando)?",
+      "confirmLogoff": "Encerrar esta sessão (trabalho não salvo é perdido)?"
+    },
+    "recovery": {
+      "title": "Se você perder o acesso",
+      "hint": "Toda alteração é revertida sozinha se você não a confirmar. Se mesmo assim a Área de Trabalho Remota parar, abra o console VNC do seu provedor, entre lá e execute isto em um shell de administrador. Restaura a porta 3389, as regras internas e remove as restrições do PacketWard.",
+      "reset": "Restaurar a Área de Trabalho Remota aos padrões de fábrica",
+      "confirm": "Restaurar a porta padrão, as regras internas e remover as regras RDP do PacketWard?",
+      "yes": "Sim, restaurar"
     }
   }
 }

@@ -98,14 +98,15 @@ for a critical alert while the main window is closed.
 fresh install is in Monitor.
 
 ## M7b — RDP Shield
-- [ ] Exposure audit (read-only) with recommendations; live per-IP logon monitor; sessions list with disconnect/log off.
-- [ ] Transactional actions with agent-side auto-revert (confirm within 120 s, configurable), previous state stored,
+- [x] Exposure audit (read-only) with recommendations; sessions list with disconnect/log off. (The live per-IP logon monitor is the
+      Alerts inbox, the Guardian decisions and the sessions list; a dedicated timeline is not built.)
+- [x] Transactional actions with agent-side auto-revert (confirm within 120 s, configurable), previous state stored,
       survives agent restart: restrict RDP to trusted IPs/CIDRs (built-in rules off only while active), attempt limit
       per IP (threshold/window/TTL/escalation via the Guardian), change RDP port, force NLA, optional account lockout
       (off by default, DoS warning).
-- [ ] Notification for a successful logon from a never-seen address; optional country restriction (needs M8 GeoIP,
-      off by default, never applied to trusted addresses).
-- [ ] `pwctl rdp reset`; UI mentions the provider's VNC/console for recovery.
+- [x] Notification for a successful logon from a never-seen address (alert `rdp_new_logon`, Medium).
+- [ ] Optional country restriction (needs M8 GeoIP integration; off by default, never applied to trusted addresses).
+- [x] `pwctl rdp reset` (also `--offline`); UI mentions the provider's VNC/console for recovery.
 **Accept:** tests (fakes) prove: unconfirmed change is reverted by the agent; revert survives restart; the current
 successful-logon IP is never excluded; reset restores factory state. Live checks are in TESTING.md (test VPS only).
 

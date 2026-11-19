@@ -4,6 +4,8 @@
 #[cfg(windows)]
 mod defense;
 #[cfg(windows)]
+mod rdp;
+#[cfg(windows)]
 mod status;
 #[cfg(windows)]
 mod support;
@@ -42,6 +44,11 @@ fn main() -> std::process::ExitCode {
         Firewall {
             #[command(subcommand)]
             action: FirewallAction,
+        },
+        /// Remote Desktop: exposure audit, confirm/cancel a pending change, factory reset.
+        Rdp {
+            #[command(subcommand)]
+            action: RdpAction,
         },
         /// Show or set the Guardian mode (off, monitor, active).
         Guardian {
@@ -84,6 +91,22 @@ fn main() -> std::process::ExitCode {
         },
     }
 
+    #[derive(Subcommand)]
+    enum RdpAction {
+        /// Show how Remote Desktop is configured and exposed.
+        Status,
+        /// Keep a change that is waiting for confirmation (run it from a NEW connection).
+        Confirm { id: u64 },
+        /// Revert a change that is waiting for confirmation.
+        Cancel { id: u64 },
+        /// Restore Remote Desktop to factory state: port 3389, built-in rules, no PacketWard restriction.
+        Reset {
+            /// Do not talk to the agent; change the machine directly (elevated shell).
+            #[arg(long)]
+            offline: bool,
+        },
+    }
+
     #[derive(Clone, Copy, clap::ValueEnum)]
     enum GuardianArg {
         Off,
@@ -113,6 +136,12 @@ fn main() -> std::process::ExitCode {
         Command::Firewall { action } => match action {
             FirewallAction::List => runtime.block_on(defense::list_blocks()),
             FirewallAction::Purge { confirm } => runtime.block_on(defense::purge(confirm)),
+        },
+        Command::Rdp { action } => match action {
+            RdpAction::Status => runtime.block_on(rdp::status()),
+            RdpAction::Confirm { id } => runtime.block_on(rdp::confirm(id, false)),
+            RdpAction::Cancel { id } => runtime.block_on(rdp::confirm(id, true)),
+            RdpAction::Reset { offline } => runtime.block_on(rdp::reset(offline)),
         },
         Command::Guardian { mode, yes } => runtime.block_on(defense::guardian(
             mode.map(|m| match m {

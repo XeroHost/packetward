@@ -18,7 +18,8 @@
     "logs": "Logs",
     "settings": "Settings",
     "about": "About",
-    "alerts": "Alerts"
+    "alerts": "Alerts",
+    "rdpShield": "RDP Shield"
   },
   "topbar": {
     "agent": {
@@ -532,7 +533,8 @@
       "port_scan_horizontal": "Network sweep",
       "conn_flood": "Connection flood",
       "rdp_brute_force": "RDP password guessing",
-      "volumetric_attack": "Link saturated"
+      "volumetric_attack": "Link saturated",
+      "rdp_new_logon": "Successful Remote Desktop logon from a new address"
     },
     "explain": {
       "syn_flood": "One address is opening a huge number of connections it never completes, to exhaust the server.",
@@ -545,7 +547,8 @@
       "port_scan_horizontal": "One address is probing the same port on many hosts.",
       "conn_flood": "One address holds or opens an unusual number of connections.",
       "rdp_brute_force": "One address keeps failing to log in over Remote Desktop: someone is guessing passwords.",
-      "volumetric_attack": "Incoming traffic is using almost all of the network link."
+      "volumetric_attack": "Incoming traffic is using almost all of the network link.",
+      "rdp_new_logon": "Someone logged in over Remote Desktop from an address that had never logged in before. If it was you on a new connection, ignore this; if not, change the password and review the sessions."
     },
     "metrics": {
       "syn": "SYN packets",
@@ -567,7 +570,8 @@
       "inbound_bps": "Inbound",
       "link_bps": "Link",
       "utilization_permille": "Link use",
-      "sustained_secs": "Sustained"
+      "sustained_secs": "Sustained",
+      "trusted_addresses": "Known addresses"
     }
   },
   "firewall": {
@@ -718,6 +722,113 @@
         "skipped_below_threshold": "below threshold",
         "skipped_failed": "firewall refused"
       }
+    }
+  },
+  "rdp": {
+    "pending": {
+      "explain": "Confirm it from a new connection within {seconds} s or it will be reverted automatically.",
+      "keep": "Keep the change",
+      "revert": "Revert now"
+    },
+    "audit": {
+      "title": "Exposure audit",
+      "service": "Remote Desktop",
+      "on": "enabled",
+      "off": "disabled",
+      "required": "required",
+      "notRequired": "not required",
+      "firewall": "Firewall",
+      "restricted": "restricted to {count} entries",
+      "openToAny": "open to any address",
+      "notOpen": "not open to everybody",
+      "clean": "Nothing worrying found."
+    },
+    "findings": {
+      "open_to_any": {
+        "title": "Remote Desktop is reachable from any address",
+        "fix": "Restrict it to the addresses you use (below). Until then every bot on the Internet can try your passwords."
+      },
+      "nla_off": {
+        "title": "Network Level Authentication is not required",
+        "fix": "Require it: attackers must authenticate before a session is even created. Turn it on below."
+      },
+      "weak_security_layer": {
+        "title": "The RDP security layer is the old one",
+        "fix": "Set the security layer to Negotiate or TLS in Group Policy (Remote Desktop Session Host → Security)."
+      },
+      "default_port": {
+        "title": "Remote Desktop uses the default port 3389",
+        "fix": "A different port avoids most automatic scans (it is not a defense by itself). Change it below, and connect to the new port afterwards."
+      },
+      "no_lockout": {
+        "title": "No account lockout",
+        "fix": "Optional. Blocking the attacking address (Guardian) is safer than locking accounts, because attackers can lock a real account on purpose."
+      },
+      "audit_failures_off": {
+        "title": "Failed logons are not audited",
+        "fix": "Without them PacketWard cannot see password guessing. Run: auditpol /set /subcategory:\"Logon\" /success:enable /failure:enable"
+      },
+      "audit_success_off": {
+        "title": "Successful logons are not audited",
+        "fix": "Without them PacketWard cannot learn which addresses are yours. Run: auditpol /set /subcategory:\"Logon\" /success:enable /failure:enable"
+      },
+      "only_administrators": {
+        "title": "The group “Remote Desktop Users” is empty",
+        "fix": "Only administrators can connect. Give other people their own accounts in that group instead of sharing the administrator password."
+      }
+    },
+    "restrict": {
+      "title": "Restrict Remote Desktop to trusted addresses",
+      "hint": "Creates PacketWard rules that allow the RDP port only from these addresses. Every address that has logged in successfully is always included, so you cannot lock yourself out with this. The built-in Windows rules (which allow everybody) stay on unless you turn them off here.",
+      "allowed": "Extra addresses or ranges (one per line)",
+      "disableBuiltin": "Also turn off the built-in Remote Desktop rules (they allow everybody)",
+      "apply": "Restrict",
+      "remove": "Remove the restriction"
+    },
+    "port": {
+      "title": "Change the RDP port",
+      "hint": "Moves Remote Desktop to another port and opens it in the firewall first. The service restarts and every session is disconnected: reconnect to the new port and confirm.",
+      "new": "New port",
+      "apply": "Change port",
+      "understand": "I understand that every Remote Desktop session will be disconnected and that I must reconnect to the new port."
+    },
+    "nla": {
+      "title": "Network Level Authentication",
+      "hint": "Makes clients authenticate before a session exists. Recommended; only clients that support NLA can connect.",
+      "require": "Require NLA",
+      "allowOff": "Turn NLA off"
+    },
+    "attempts": {
+      "title": "Attempt limit per address",
+      "hint": "How many failed logons from one address, within how many seconds, count as password guessing.",
+      "threshold": "Failures",
+      "window": "Within (seconds)",
+      "guardian": "The Guardian then blocks that address for a limited time (see the Guardian page). Addresses with a successful logon are never blocked."
+    },
+    "lockout": {
+      "title": "Windows account lockout",
+      "warning": "Off by default. An attacker can lock a legitimate account on purpose, which is a denial of service. PacketWard prefers blocking the attacking address.",
+      "threshold": "Failures",
+      "window": "Window (min)",
+      "duration": "Lock (min)",
+      "understand": "I understand that attackers can lock real accounts.",
+      "apply": "Apply lockout",
+      "turnOff": "Turn lockout off"
+    },
+    "sessions": {
+      "title": "Sessions",
+      "none": "No Remote Desktop sessions.",
+      "disconnect": "Disconnect",
+      "logoff": "Log off",
+      "confirmDisconnect": "Disconnect this session (it keeps running)?",
+      "confirmLogoff": "Log this session off (unsaved work is lost)?"
+    },
+    "recovery": {
+      "title": "If you lose access",
+      "hint": "Every change reverts by itself if you do not confirm it. If Remote Desktop still stops working, open your provider’s VNC / console, sign in there and run this in an administrator shell. It restores port 3389, the built-in rules and removes PacketWard’s restrictions.",
+      "reset": "Restore Remote Desktop to factory settings",
+      "confirm": "Restore the default port, the built-in rules and remove PacketWard’s RDP rules?",
+      "yes": "Yes, restore"
     }
   }
 }

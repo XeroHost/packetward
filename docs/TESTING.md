@@ -223,6 +223,24 @@ them on a production machine without a console (VNC) fallback.
 6. **Circuit breaker**: lower the limit to 2/hour, trigger three attackers: the third is not blocked, the page says the breaker is open.
 7. `icacls %ProgramData%\PacketWard` shows only SYSTEM and Administrators.
 
+## F7. RDP Shield (M7b) — TEST VPS WITH A VNC/CONSOLE FALLBACK ONLY
+
+Every step below can cut Remote Desktop. Keep the provider's console open and a second RDP window ready.
+
+1. **Audit** (safe anywhere): RDP Shield lists port, NLA, firewall exposure and findings with fixes; `pwctl rdp status` shows the same.
+2. **Restrict + auto-revert**: restrict to your own address (+ trusted ones), *without* confirming: after 120 s the banner disappears and the
+   firewall is back (`wf.msc`: no `PW-RDP-Allow`). Repeat and *Keep the change* from a second RDP connection: it stays. Try excluding your
+   own address: it is added anyway. Turn the built-in rules off (typed phrase): a connection from an address not in the list is refused.
+3. **Change port**: change to 43389, do NOT confirm: after 120 s the agent restores 3389 and restarts the service (you are disconnected twice).
+   Repeat, reconnect on 43389 within the time and confirm. Restart the agent while a change is pending: on start it reverts when the deadline passed.
+4. **NLA / lockout**: toggle NLA with and without confirming; account lockout needs the acknowledgement and reverts when unconfirmed
+   (`net accounts` shows the values).
+5. **Attempt limit**: set 3 failures / 60 s and guess a wrong password 3 times from another machine: an RDP guessing alert and (Active) a block.
+6. **Sessions**: disconnect and log off a test session from the list.
+7. **Reset**: after the above, *Restore Remote Desktop to factory settings* and `pwctl rdp reset --offline` (agent stopped) both give port
+   3389, built-in rules enabled, no PacketWard RDP rules.
+8. **New address**: log in from an address that never logged in: an `rdp_new_logon` alert appears; logging in again from it does not repeat it.
+
 ## G. Leave-no-trace check
 
 After testing, all of these must be empty / `False`:

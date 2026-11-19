@@ -35,6 +35,8 @@ pub enum AlertKindView {
     ConnFlood,
     RdpBruteForce,
     Aggregate,
+    /// A successful Remote Desktop logon from an address never seen before.
+    RdpNewLogon,
 }
 
 /// A named number of an alert; the unit is part of the key (`_permille`, `_bytes`, `_secs`).

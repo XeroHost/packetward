@@ -15,6 +15,7 @@ mod firewall;
 mod handshake;
 mod live;
 mod netstat;
+mod rdp;
 mod subscribe;
 mod support;
 mod system;
@@ -48,6 +49,10 @@ pub use netstat::{
     InterfaceKind, InterfaceStats, LiveStats, LogonAudit, Proto, RdpSession, RdpSessionState,
     RdpTrust, RemoteTalker, TcpState, TrafficTotals, TrustFeed, TrustedAddress,
     DEFAULT_CONNECTION_LIMIT,
+};
+pub use rdp::{
+    RdpAttempts, RdpAudit, RdpConfirmRequest, RdpEndSessionRequest, RdpFinding, RdpLockoutRequest,
+    RdpNlaRequest, RdpPending, RdpPortRequest, RdpRestrictRequest,
 };
 pub use subscribe::{SubscribeRequest, SubscribeResponse, UnsubscribeRequest};
 pub use support::{
@@ -95,6 +100,17 @@ pub mod method {
     pub const GUARDIAN_SET_POLICY: &str = "guardian.set_policy";
     pub const GUARDIAN_ALLOWLIST: &str = "guardian.allowlist";
     pub const GUARDIAN_SET_ALLOWLIST: &str = "guardian.set_allowlist";
+    pub const RDP_AUDIT: &str = "rdp.audit";
+    pub const RDP_RESTRICT: &str = "rdp.restrict";
+    pub const RDP_UNRESTRICT: &str = "rdp.unrestrict";
+    pub const RDP_PORT: &str = "rdp.port";
+    pub const RDP_NLA: &str = "rdp.nla";
+    pub const RDP_LOCKOUT: &str = "rdp.lockout";
+    pub const RDP_ATTEMPTS: &str = "rdp.attempts";
+    pub const RDP_CONFIRM: &str = "rdp.confirm";
+    pub const RDP_CANCEL: &str = "rdp.cancel";
+    pub const RDP_RESET: &str = "rdp.reset";
+    pub const RDP_END_SESSION: &str = "rdp.end_session";
     pub const ALERTS_LIST: &str = "alerts.list";
     pub const ALERTS_CLEAR: &str = "alerts.clear";
     pub const SUBSCRIBE: &str = "subscribe";

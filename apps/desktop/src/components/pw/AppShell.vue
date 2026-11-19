@@ -2,6 +2,7 @@
 <script setup lang="ts">
 import AuditBanner from '@/components/pw/AuditBanner.vue'
 import BlockDialog from '@/components/pw/BlockDialog.vue'
+import RdpPendingBanner from '@/components/pw/RdpPendingBanner.vue'
 import SidebarNav from '@/components/pw/SidebarNav.vue'
 import TopBar from '@/components/pw/TopBar.vue'
 </script>
@@ -11,6 +12,7 @@ import TopBar from '@/components/pw/TopBar.vue'
     <SidebarNav />
     <div class="flex min-w-0 flex-1 flex-col">
       <TopBar />
+      <RdpPendingBanner />
       <AuditBanner />
       <main class="flex-1 overflow-y-auto p-5">
         <slot />

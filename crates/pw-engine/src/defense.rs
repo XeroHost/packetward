@@ -360,6 +360,11 @@ impl Defense {
         });
     }
 
+    /// Adds an entry to the audit log on behalf of another part of the engine (RDP Shield).
+    pub fn audit_entry(&self, actor: &str, action: &str, target: &str, detail: &str, result: &str) {
+        self.audit(actor, action, target, detail, result);
+    }
+
     fn persist(&self, state: &State) {
         self.persistence.save(&PersistedState {
             blocks: state

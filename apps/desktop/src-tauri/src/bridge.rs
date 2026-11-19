@@ -292,6 +292,17 @@ const CALLABLE_METHODS: &[&str] = &[
     method::GUARDIAN_SET_POLICY,
     method::GUARDIAN_ALLOWLIST,
     method::GUARDIAN_SET_ALLOWLIST,
+    method::RDP_AUDIT,
+    method::RDP_RESTRICT,
+    method::RDP_UNRESTRICT,
+    method::RDP_PORT,
+    method::RDP_NLA,
+    method::RDP_LOCKOUT,
+    method::RDP_ATTEMPTS,
+    method::RDP_CONFIRM,
+    method::RDP_CANCEL,
+    method::RDP_RESET,
+    method::RDP_END_SESSION,
 ];
 
 fn is_callable(method_name: &str) -> bool {
@@ -539,6 +550,7 @@ mod tests {
                     || allowed.starts_with("alerts.")
                     || allowed.starts_with("firewall.")
                     || allowed.starts_with("guardian.")
+                    || allowed.starts_with("rdp.")
                     || *allowed == method::SUPPORT_PREVIEW,
                 "{allowed}"
             );
