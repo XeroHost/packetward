@@ -5,6 +5,7 @@
 //! feature the types also derive `ts_rs::TS`; `cargo test -p pw-proto --features ts-export`
 //! regenerates `apps/desktop/src/types/generated`.
 
+mod bridge;
 mod envelope;
 mod error;
 mod handshake;
@@ -12,6 +13,7 @@ mod live;
 mod subscribe;
 mod system;
 
+pub use bridge::{AccessReason, AgentConnection, BridgeEvent, ElevatedAction, ElevationOutcome};
 pub use envelope::{Envelope, Kind, ShapeError, ENVELOPE_VERSION, MAX_FRAME_BYTES};
 pub use error::{ErrorCode, ErrorPayload};
 pub use handshake::{ClientKind, HelloRequest, HelloResponse, PROTOCOL_MAJOR, PROTOCOL_MINOR};

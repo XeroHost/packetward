@@ -3,13 +3,19 @@ import { createRouter, createWebHashHistory, type RouteRecordRaw } from 'vue-rou
 import { NAV_ITEMS } from './nav'
 
 const PlaceholderPage = () => import('@/features/placeholder/PlaceholderPage.vue')
+const DashboardPage = () => import('@/features/dashboard/DashboardPage.vue')
 const SettingsPage = () => import('@/features/settings/SettingsPage.vue')
 const AboutPage = () => import('@/features/about/AboutPage.vue')
+
+const pageComponents: Record<string, RouteRecordRaw['component']> = {
+  dashboard: DashboardPage,
+  settings: SettingsPage,
+}
 
 const pageRoutes: RouteRecordRaw[] = NAV_ITEMS.map((item) => ({
   path: `/${item.id}`,
   name: item.id,
-  component: item.id === 'settings' ? SettingsPage : PlaceholderPage,
+  component: pageComponents[item.id] ?? PlaceholderPage,
   meta: { titleKey: item.labelKey },
 }))
 

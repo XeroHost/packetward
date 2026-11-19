@@ -24,7 +24,8 @@
       "label": "Agente",
       "unknown": "Sem conexão",
       "connected": "Conectado",
-      "disconnected": "Parado"
+      "disconnected": "Parado",
+      "unresponsive": "Sem resposta"
     },
     "guardian": {
       "label": "Guardian",
@@ -76,5 +77,68 @@
     "license": "Licença",
     "licenseValue": "GPL-3.0-or-later",
     "madeBy": "Criado pela XeroHost e publicado como código aberto."
+  },
+  "agent": {
+    "connecting": "Conectando ao agente do PacketWard…",
+    "unavailable": {
+      "notInstalled": {
+        "title": "O agente do PacketWard não está instalado",
+        "body": "O PacketWard precisa do serviço em segundo plano para vigiar sua rede, mesmo quando você está desconectado. Instale-o para continuar."
+      },
+      "stopped": {
+        "title": "O agente do PacketWard não está em execução",
+        "body": "O serviço está instalado, mas parado, então nada está sendo monitorado. Inicie-o para continuar."
+      },
+      "starting": {
+        "title": "Iniciando o agente do PacketWard…",
+        "body": "Normalmente leva alguns segundos."
+      },
+      "groupMissing": {
+        "title": "Sua conta ainda não consegue acessar o agente",
+        "body": "O grupo “PacketWard Operators” não existe. Repare a instalação para criá-lo e adicionar sua conta."
+      },
+      "notMember": {
+        "title": "Sua conta não tem permissão para usar o agente",
+        "body": "Somente administradores e membros do grupo “PacketWard Operators” podem se conectar. Repare a instalação para adicionar sua conta."
+      },
+      "signOutRequired": {
+        "title": "Saia do Windows e entre novamente",
+        "body": "Sua conta está no grupo “PacketWard Operators”, mas o Windows só aplica isso ao iniciar a sessão. Desconectar e reconectar a Área de Trabalho Remota não basta: encerre a sessão por completo e abra o PacketWard de novo."
+      },
+      "unexplained": {
+        "title": "O agente recusou a conexão",
+        "body": "Sua conta parece autorizada, mas o acesso foi negado. Tente Reparar; se continuar, confira o log do agente em C:\\ProgramData\\PacketWard\\logs."
+      },
+      "agentOutdated": {
+        "title": "O agente está desatualizado",
+        "body": "O agente instalado é mais antigo que este aplicativo e não consegue se comunicar com ele. Atualize o PacketWard."
+      },
+      "uiOutdated": {
+        "title": "Este aplicativo está desatualizado",
+        "body": "O agente é mais novo que este aplicativo e não consegue se comunicar com ele. Atualize o PacketWard."
+      },
+      "error": {
+        "title": "Não foi possível conectar ao agente",
+        "body": "Algo inesperado interrompeu a conexão. Reparar resolve a maioria dos casos."
+      },
+      "actionStart": "Iniciar agente",
+      "actionRepair": "Reparar instalação",
+      "uacHint": "O Windows pedirá permissão de administrador.",
+      "cancelled": "O aviso de permissão do Windows foi recusado, então nada mudou.",
+      "failed": "Não funcionou: {reason}"
+    }
+  },
+  "dashboard": {
+    "agent": {
+      "title": "Agente",
+      "description": "Conexão ao vivo com o serviço do agente do PacketWard.",
+      "version": "Versão do agente",
+      "protocol": "Protocolo",
+      "heartbeat": "Batimento",
+      "waiting": "Aguardando o primeiro batimento…",
+      "uptime": "Tempo ativo do agente",
+      "lastBeat": "Último batimento",
+      "secondsAgo": "há {n} s"
+    }
   }
 }

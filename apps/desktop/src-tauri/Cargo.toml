@@ -18,14 +18,23 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 anyhow = "1"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+pw-ipc = { path = "../../../crates/pw-ipc" }
+pw-proto = { path = "../../../crates/pw-proto" }
+serde.workspace = true
+serde_json.workspace = true
 sys-locale = "0.3"
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
-thiserror = "2"
-tracing = "0.1"
+thiserror.workspace = true
+tokio = { workspace = true, features = ["sync", "time"] }
+tracing.workspace = true
 tracing-subscriber = "0.3"
+windows = { workspace = true, features = [
+  "Win32_Foundation",
+  "Win32_System_Threading",
+  "Win32_UI_Shell",
+  "Win32_UI_WindowsAndMessaging",
+] }
 
 [lints]
 workspace = true

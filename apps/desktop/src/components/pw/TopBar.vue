@@ -25,9 +25,10 @@ const agentPill = computed(() => {
   const map = {
     unknown: { icon: CircleHelp, tone: 'neutral' as PillTone },
     connected: { icon: CircleCheck, tone: 'success' as PillTone },
+    unresponsive: { icon: CircleAlert, tone: 'warning' as PillTone },
     disconnected: { icon: CircleX, tone: 'danger' as PillTone },
   }
-  return { ...map[agent.status], value: t(`topbar.agent.${agent.status}`) }
+  return { ...map[agent.pill], value: t(`topbar.agent.${agent.pill}`) }
 })
 
 const guardianPill = computed(() => {

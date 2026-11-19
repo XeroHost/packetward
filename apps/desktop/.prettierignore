@@ -5,3 +5,4 @@ pnpm-lock.yaml
 src/components/ui
 src/assets/brand
 *.md
+src/types/generated

@@ -18,6 +18,8 @@ pub mod framing;
 pub mod memory;
 #[cfg(windows)]
 pub mod pipe;
+#[cfg(windows)]
+pub mod scm;
 pub mod server;
 mod sys;
 #[cfg(test)]

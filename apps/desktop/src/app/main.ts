@@ -2,6 +2,7 @@
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 import '@/styles/main.css'
+import { useAgentStore } from '@/stores/agent'
 import { useSettingsStore } from '@/stores/settings'
 import App from './App.vue'
 import { i18n } from './i18n'
@@ -16,6 +17,9 @@ async function bootstrap(): Promise<void> {
   await useSettingsStore(pinia).init()
 
   app.mount('#app')
+
+  // Follow the agent for the whole life of the window; the shell reconnects on its own.
+  useAgentStore(pinia).start()
 }
 
 void bootstrap()

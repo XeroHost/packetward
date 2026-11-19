@@ -24,7 +24,8 @@
       "label": "Agent",
       "unknown": "Not connected",
       "connected": "Connected",
-      "disconnected": "Not running"
+      "disconnected": "Not running",
+      "unresponsive": "Not responding"
     },
     "guardian": {
       "label": "Guardian",
@@ -76,5 +77,68 @@
     "license": "License",
     "licenseValue": "GPL-3.0-or-later",
     "madeBy": "Built by XeroHost and released as open source."
+  },
+  "agent": {
+    "connecting": "Connecting to the PacketWard agent…",
+    "unavailable": {
+      "notInstalled": {
+        "title": "The PacketWard agent is not installed",
+        "body": "PacketWard needs its background service to watch your network, even while you are disconnected. Install it to continue."
+      },
+      "stopped": {
+        "title": "The PacketWard agent is not running",
+        "body": "The background service is installed but stopped, so nothing is being monitored. Start it to continue."
+      },
+      "starting": {
+        "title": "Starting the PacketWard agent…",
+        "body": "This usually takes a few seconds."
+      },
+      "groupMissing": {
+        "title": "Your account cannot reach the agent yet",
+        "body": "The “PacketWard Operators” group does not exist. Repair the installation to create it and add your account."
+      },
+      "notMember": {
+        "title": "Your account is not allowed to use the agent",
+        "body": "Only administrators and members of the “PacketWard Operators” group can connect. Repair the installation to add your account."
+      },
+      "signOutRequired": {
+        "title": "Sign out of Windows and sign back in",
+        "body": "Your account is in the “PacketWard Operators” group, but Windows only applies this when you sign in. Disconnecting and reconnecting Remote Desktop is not enough: sign out completely, then open PacketWard again."
+      },
+      "unexplained": {
+        "title": "The agent refused the connection",
+        "body": "Your account looks allowed, yet access was denied. Try Repair; if it keeps happening, check the agent log in C:\\ProgramData\\PacketWard\\logs."
+      },
+      "agentOutdated": {
+        "title": "The agent is out of date",
+        "body": "The installed agent is older than this app and cannot communicate with it. Update PacketWard."
+      },
+      "uiOutdated": {
+        "title": "This app is out of date",
+        "body": "The agent is newer than this app and cannot communicate with it. Update PacketWard."
+      },
+      "error": {
+        "title": "Could not connect to the agent",
+        "body": "Something unexpected stopped the connection. Repair can fix most cases."
+      },
+      "actionStart": "Start agent",
+      "actionRepair": "Repair installation",
+      "uacHint": "Windows will ask for administrator permission.",
+      "cancelled": "The Windows permission prompt was declined, so nothing changed.",
+      "failed": "That did not work: {reason}"
+    }
+  },
+  "dashboard": {
+    "agent": {
+      "title": "Agent",
+      "description": "Live connection to the PacketWard agent service.",
+      "version": "Agent version",
+      "protocol": "Protocol",
+      "heartbeat": "Heartbeat",
+      "waiting": "Waiting for the first heartbeat…",
+      "uptime": "Agent uptime",
+      "lastBeat": "Last heartbeat",
+      "secondsAgo": "{n}s ago"
+    }
   }
 }

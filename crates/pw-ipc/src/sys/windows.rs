@@ -22,6 +22,11 @@ use windows::Win32::Security::{
     CheckTokenMembership, GetTokenInformation, LookupAccountNameW, TokenUser, PSECURITY_DESCRIPTOR,
     PSID, SECURITY_ATTRIBUTES, SID_NAME_USE, TOKEN_QUERY, TOKEN_USER,
 };
+use windows::Win32::System::Services::{
+    CloseServiceHandle, OpenSCManagerW, OpenServiceW, QueryServiceStatus, SC_MANAGER_CONNECT,
+    SERVICE_QUERY_STATUS, SERVICE_RUNNING, SERVICE_START_PENDING, SERVICE_STATUS, SERVICE_STOPPED,
+    SERVICE_STOP_PENDING,
+};
 use windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
 
 const ERROR_INSUFFICIENT_BUFFER: u32 = 122;
@@ -268,6 +273,55 @@ pub fn local_group_has_member(group: &str, sid: &str) -> io::Result<Option<bool>
         }
     }
     Ok(Some(found))
+}
+
+const ERROR_SERVICE_DOES_NOT_EXIST: u32 = 1060;
+
+/// Raw state of a service as reported by the service control manager.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RawServiceState {
+    Stopped,
+    StartPending,
+    Running,
+    StopPending,
+    Other,
+}
+
+/// State of a registered service, or `None` when no such service exists. Needs no privileges.
+pub fn service_state(name: &str) -> io::Result<Option<RawServiceState>> {
+    let text = wide(name);
+    // SAFETY: null machine/database names mean "local, active database".
+    let manager = unsafe { OpenSCManagerW(PCWSTR::null(), PCWSTR::null(), SC_MANAGER_CONNECT) }
+        .map_err(to_io)?;
+    // SAFETY: `manager` is valid and `text` is NUL-terminated.
+    let opened = unsafe { OpenServiceW(manager, PCWSTR(text.as_ptr()), SERVICE_QUERY_STATUS) };
+    let result = match opened {
+        Ok(service) => {
+            let mut status = SERVICE_STATUS::default();
+            // SAFETY: `service` is valid and `status` is a valid out struct.
+            let queried = unsafe { QueryServiceStatus(service, &mut status) };
+            // SAFETY: closing the handle opened above, once.
+            unsafe {
+                let _ = CloseServiceHandle(service);
+            }
+            queried.map_err(to_io).map(|()| {
+                Some(match status.dwCurrentState {
+                    SERVICE_STOPPED => RawServiceState::Stopped,
+                    SERVICE_START_PENDING => RawServiceState::StartPending,
+                    SERVICE_RUNNING => RawServiceState::Running,
+                    SERVICE_STOP_PENDING => RawServiceState::StopPending,
+                    _ => RawServiceState::Other,
+                })
+            })
+        }
+        Err(err) if win32_code(&err) == ERROR_SERVICE_DOES_NOT_EXIST => Ok(None),
+        Err(err) => Err(to_io(err)),
+    };
+    // SAFETY: closing the handle opened above, once.
+    unsafe {
+        let _ = CloseServiceHandle(manager);
+    }
+    result
 }
 
 const NERR_GROUP_EXISTS: u32 = 2223;

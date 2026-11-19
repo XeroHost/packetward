@@ -4,7 +4,9 @@
 // Hide the console window in release builds on Windows.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod bridge;
 mod prefs;
+mod sys;
 
 use tauri::Manager;
 
@@ -41,10 +43,13 @@ fn main() -> anyhow::Result<()> {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .manage(bridge::Bridge::default())
         .invoke_handler(tauri::generate_handler![
             ui_prefs_load,
             ui_prefs_save,
-            system_locale
+            system_locale,
+            bridge::agent_watch,
+            bridge::agent_elevate
         ])
         .run(tauri::generate_context!())
         .map_err(|err| {

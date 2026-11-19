@@ -22,7 +22,7 @@ use windows_service::{define_windows_service, service_dispatcher};
 
 use crate::{host, logging};
 
-pub const SERVICE_NAME: &str = "PacketWard";
+pub use pw_ipc::scm::SERVICE_NAME;
 const DISPLAY_NAME: &str = "PacketWard Agent";
 const DESCRIPTION: &str =
     "PacketWard network defense and diagnostics agent. Required by the PacketWard desktop app.";
