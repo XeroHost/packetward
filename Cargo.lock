@@ -2838,6 +2838,13 @@ version = "0.1.0"
 [[package]]
 name = "pw-engine"
 version = "0.1.0"
+dependencies = [
+ "pw-ipc",
+ "pw-proto",
+ "serde_json",
+ "tokio",
+ "tracing",
+]
 
 [[package]]
 name = "pw-firewall"
