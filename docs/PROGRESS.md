@@ -33,7 +33,8 @@ Read this first when resuming after a stop or a context compaction.
 | M12 Hardening & 1.0 | not started |
 
 ## Now / next
-Now: setup of the `dev` branch and the first wave of crate-level subagents (pw-diag, pw-capture, pw-detect).
+Now: wave 1 of crate-level subagents running in worktrees (pw-diag, pw-capture, pw-detect). When they report: merge their branches into dev, verify, then integrate M3 (proto types, engine, UI Diagnostics page), M4, M5.
+Note: pw-core (PacketMeta, CIDR sets) was written first on dev so capture/detect share it. Subagent worktrees live in .claude/worktrees (ignored by git).
 
 ## Blockers
 None.
