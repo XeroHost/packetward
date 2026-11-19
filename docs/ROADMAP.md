@@ -20,15 +20,26 @@ Product decisions are fixed in `docs/DECISIONS.md`.
 **Accept:** `pnpm tauri dev` opens the shell on Windows; all Appearance options work live; CI green.
 
 ## M1 — Proto, IPC, agent service
-- [ ] `pw-proto` envelope + handshake + ts-rs export into `apps/desktop/src/types/generated`.
-- [ ] `pw-ipc`: named pipe transport with restricted ACL + in-memory transport (tests only); framing tests.
-- [ ] `pw-engine` skeleton with `system.info` and a `live.heartbeat` subscription.
-- [ ] `apps/agent`: Windows service (`install`, `uninstall`, `run`), logs to ProgramData.
-- [ ] Desktop: connects to agent; "Agent not running / not installed" screen with Start/Repair (UAC prompt).
-- [ ] Tray icon + autostart of the UI at user logon (minimized to tray).
-- [ ] `apps/cli`: `pwctl status`.
-- [ ] `docs/TESTING.md` manual checklist.
+- [x] `pw-proto` envelope + handshake + ts-rs export into `apps/desktop/src/types/generated`.
+- [x] `pw-ipc`: named pipe transport with restricted ACL + in-memory transport (tests only); framing tests.
+      (ACL = SYSTEM + Administrators + local group `PacketWard Operators`, because an unelevated admin cannot use an
+      Administrators-only ACE; see ARCHITECTURE §7/§8.)
+- [x] `pw-engine` skeleton with `system.info` and a `live.heartbeat` subscription.
+- [x] `apps/agent`: Windows service (`install`, `uninstall`, `run`), logs to ProgramData.
+      (Also `start`, `stop`, `repair`.)
+- [x] Desktop: connects to agent; "Agent not running / not installed" screen with Start/Repair (UAC prompt).
+      (Also the "access denied / sign out required" and version-mismatch states. On the dev VPS Admin Approval Mode is
+      off, so no UAC prompt was ever shown; the `runas` path ran and worked.)
+- [x] Tray icon + autostart of the UI at user logon (minimized to tray).
+      (Close hides to the tray, single instance, `--minimized` starts hidden: verified. Autostart is an opt-in switch in
+      Settings → Startup; registering it by default belongs to the installer (M11). The tray icon itself was not
+      looked at on screen.)
+- [x] `apps/cli`: `pwctl status`.
+- [x] `docs/TESTING.md` manual checklist.
 **Accept:** heartbeat visible in UI; stopping the service shows the repair screen; non-admin cannot open the pipe.
+(Met: the first two were checked live against the installed service; "non-admin cannot open the pipe" is proven by
+automated tests on a real pipe with a restricted token and by reading the live DACL. A run with a real second
+standard account is TESTING.md §D and has not been done yet. Windows CI not yet seen green.)
 
 ## M2 — Netstat & dashboard
 - [ ] TCP/UDP tables with PID/process, IPv4+IPv6; adapters; interface counters → bps/pps in/out.

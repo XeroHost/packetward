@@ -25,7 +25,8 @@
 │  ├─ capture  → detect → guardian → firewall                              │
 │  ├─ netstat poller, RDP-logon watcher (Security log 4625)                │
 │  ├─ store (SQLite)                                                       │
-│  └─ IPC server on \\.\pipe\packetward  (ACL: SYSTEM + Administrators)    │
+│  └─ IPC server on \\.\pipe\packetward  (ACL: SYSTEM + Administrators   │
+│                     + "PacketWard Operators", see §7/§8)                │
 │           ▲                       ▲                                      │
 │           │ length-prefixed JSON  │                                      │
 │  PacketWard.exe (Tauri 2)     pwctl.exe (CLI, basic)                     │
@@ -44,6 +45,10 @@
 - **CLI (`pwctl`)** talks to the same pipe. Basic scope in v1: emergency recovery and scripting
   (`status`, `guardian off|monitor|active`, `unblock --all`, `firewall purge`, `support-bundle`).
 - Dev convenience only: `packetward-agent run --console` runs the engine in a terminal without installing the service.
+- Agent subcommands: `run [--console]` (service entry point / dev), `install`, `uninstall`, `start`, `stop`
+  and `repair`. `install`/`repair` also create the local group `PacketWard Operators` and add a user to it
+  (`--operator-sid`, default the invoking user); `uninstall` removes the service and the group. The desktop's
+  Start/Repair buttons run `start`/`repair` elevated (UAC) from the agent executable next to the app.
 
 ## 3. Repository layout
 
@@ -61,7 +66,8 @@ PacketWard/
 │  ├─ pw-diag/      # ping, mtr, dns, port check, speed test client
 │  ├─ pw-intel/     # GeoIP/ASN (mmdb), AbuseIPDB client, reputation cache
 │  ├─ pw-store/     # SQLite: audit log, blocks, settings, intel cache, migrations
-│  ├─ pw-ipc/       # transport (named pipe + in-memory), framing, client/server, subscriptions
+│  ├─ pw-ipc/       # transport (named pipe + in-memory), framing, client/server, subscriptions,
+│  │                #   pipe ACL, operators group and service-state helpers (Windows)
 │  └─ pw-engine/    # orchestrator: wires everything, owns tasks and state, exposes the API
 ├─ apps/
 │  ├─ agent/        # Windows service host for pw-engine (+ install/uninstall subcommands)
@@ -73,8 +79,12 @@ PacketWard/
 └─ docs/
 ```
 
-Dependency direction (no cycles): `proto, core` ← `detect` ← `capture, netstat, firewall, diag, intel, store`
-← `engine` ← `ipc` ← `apps/*`. The desktop's `src-tauri` and `pwctl` depend only on `pw-proto` + `pw-ipc`.
+Dependency direction (no cycles): `proto, core` ← `detect` ← `capture, netstat, firewall, diag, intel, store`;
+`proto` ← `ipc` ← `engine` ← `apps/agent`. `pw-ipc` defines the `Handler` trait and `pw-engine` implements it, so
+the desktop's `src-tauri` and `pwctl` depend only on `pw-proto` + `pw-ipc` and never pull in the engine.
+(Earlier drafts had `engine` ← `ipc`; that would have linked the whole engine into every client.)
+`src-tauri` also uses the `windows` crate directly for the elevated launch (`ShellExecuteExW` with `runas`); the
+service-state and group checks live in `pw-ipc`.
 
 ## 4. Key dependencies (choose these unless there is a written reason)
 
@@ -236,18 +246,45 @@ Discreet XeroHost presence: "by XeroHost" in the sidebar footer and About, a "Co
 (opens xerohost.net), XeroHost speed-test nodes and shared blocklist as defaults. No plan promotion or upsell.
 
 ## 7. IPC protocol (`pw-ipc` + `pw-proto`)
-- Transport: Windows named pipe `\\.\pipe\packetward`, security descriptor granting SYSTEM and
-  BUILTIN\Administrators only. An in-memory transport exists for tests only.
+- Transport: Windows named pipe `\\.\pipe\packetward`. The DACL is protected and grants:
+  - **SYSTEM** and **BUILTIN\Administrators**: full control;
+  - **`PacketWard Operators`** (local group created by the installer / `repair`): only `FILE_READ_DATA |
+    FILE_WRITE_DATA | FILE_READ_ATTRIBUTES | READ_CONTROL | SYNCHRONIZE` (`0x120083`);
+  - nobody else.
+
+  Why the group: the desktop runs **unelevated**, and under UAC an unelevated administrator carries Administrators
+  as a *deny-only* SID, so an Administrators-only ACE would lock the app out. Group membership is not filtered by
+  UAC. The group ACE must **not** include `FILE_CREATE_PIPE_INSTANCE` (`FILE_APPEND_DATA`, part of `GENERIC_WRITE`):
+  that would let a member stand up a second server on the same name and answer clients in place of the agent.
+  Clients therefore open the pipe with the exact mask above (not `GENERIC_READ|GENERIC_WRITE`) and
+  `SECURITY_IDENTIFICATION`, so a rogue server cannot impersonate them.
+  The server creates the first instance with `FILE_FLAG_FIRST_PIPE_INSTANCE` (nobody can squat the name) and
+  rejects remote clients. An in-memory transport exists for tests only.
+- Windows applies group membership when a logon token is created: after a user is added to the group they must
+  **sign out and back in** (disconnecting/reconnecting RDP is not enough). `repair` prints this, and the desktop
+  tells the user when it detects "member of the group, but not in this token" (`access_denied: sign_out_required`).
 - Framing: 4-byte little-endian length + JSON (`serde_json`). Max frame 4 MB.
 - Envelope: `{ v: 1, id?: u64, kind: "req" | "res" | "event" | "err", method|topic, payload }`.
 - Request/response: `capture.start`, `firewall.list`, `guardian.setMode`, `diag.mtr.start`, …
 - Server push via subscriptions: `live.stats`, `alerts`, `capture.progress`, `diag.progress`, `guardian.blocks`.
-- Version handshake on connect; desktop shows "agent outdated" if major versions differ.
-- Desktop bridge: `src-tauri` exposes typed Tauri commands and forwards subscriptions to the webview using
-  `tauri::ipc::Channel` (one channel per subscription).
+  One subscription per topic per connection (`subscribe` / `unsubscribe` requests). Client-side queues are bounded;
+  a lagging consumer loses events and the loss is counted, never buffered without limit.
+- Handshake: the first request on every connection must be `session.hello` (client kind and version, protocol
+  major/minor). The agent always answers with its own versions; if the majors differ it then sends a
+  `version_mismatch` error and closes. The desktop shows "agent outdated" or "app outdated" accordingly.
+- Error codes: `bad_request`, `not_handshaken`, `version_mismatch`, `unknown_method`, `unknown_topic`,
+  `frame_too_large` (the connection is closed because the stream cannot be re-aligned), `internal`.
+- M1 surface: `session.hello`, `system.info`, `subscribe`/`unsubscribe`, topic `live.heartbeat` (1 s).
+- Desktop bridge: `src-tauri` runs one supervisor task per window that (re)connects to the pipe and sends the webview
+  a single `tauri::ipc::Channel` stream of `BridgeEvent`s: connection status (`connected`, `not_installed`,
+  `stopped`, `starting`, `access_denied` + reason, `agent_outdated`, `ui_outdated`, `error`) and, when connected,
+  the agent's pushed events. Anything but `connected` makes the UI show the "agent unavailable" screen.
+  The bridge types live in `pw-proto` so they are exported to TypeScript like the protocol.
 
 ## 8. Security model
-- Only the agent is privileged. The pipe ACL is the authorization boundary.
+- Only the agent is privileged. The pipe ACL is the authorization boundary: SYSTEM, Administrators and members of
+  `PacketWard Operators` (limited rights, see §7). Membership of that group is therefore a security-relevant grant:
+  an Operator can control the agent (Guardian mode, unblocking) though not become an administrator through it.
 - Input validation in the engine for every IPC request (IP/CIDR parsing, port ranges, size limits, file paths
   restricted to the PacketWard data/export folders).
 - Tauri: strict CSP, no remote content, capabilities limited to what the UI uses, no shell plugin.
@@ -265,7 +302,11 @@ Discreet XeroHost presence: "by XeroHost" in the sidebar footer and About, a "Co
 - Code signing: no certificate yet. Releases start unsigned (README documents the SmartScreen prompt); the CI
   release job has an Authenticode step that runs only when signing secrets are configured.
 - Npcap: not bundled; first-run screen explains benefits and links to npcap.com.
-- Installer also registers UI autostart at user logon (tray).
+- Installer also registers UI autostart at user logon (tray), creates the `PacketWard Operators` group and adds the
+  installing user (`packetward-agent install`), and tells that user to sign out and back in once.
+- Autostart is toggled in Settings → Startup and registers `PacketWard.exe --minimized` under the Run key. The UI is
+  meant to run unelevated, which registers it for the current user (HKCU). The autostart library writes to
+  **HKLM** instead when the process is elevated, so only toggle it from an unelevated session.
 
 ## 10. Configuration
 **Agent config** — `%ProgramData%\PacketWard\config.toml`, edited through the UI/CLI, validated by `pw-core`:

@@ -12,7 +12,8 @@ publish = false
 name = "pwctl"
 path = "src/main.rs"
 
-[dependencies]
+# pwctl only does something on Windows; on other platforms the binary is a stub that says so.
+[target.'cfg(windows)'.dependencies]
 clap = { version = "4", features = ["derive"] }
 pw-ipc = { path = "../../crates/pw-ipc" }
 pw-proto = { path = "../../crates/pw-proto" }

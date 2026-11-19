@@ -23,6 +23,15 @@ jobs:
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --exclude packetward-desktop --exclude packetward-agent --all-targets -- -D warnings
       - run: cargo test --workspace --exclude packetward-desktop --exclude packetward-agent
+      - name: Generated TypeScript types are up to date
+        run: |
+          cargo test -p pw-proto --features ts-export
+          if [ -n "$(git status --porcelain -- apps/desktop/src/types/generated)" ]; then
+            git status --short -- apps/desktop/src/types/generated
+            git diff -- apps/desktop/src/types/generated
+            echo "::error::Run 'cargo test -p pw-proto --features ts-export' and commit apps/desktop/src/types/generated"
+            exit 1
+          fi
 
   supply-chain:
     name: cargo deny + audit

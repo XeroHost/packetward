@@ -9,6 +9,8 @@ released under the same license.
   - Rust / TypeScript: `// SPDX-License-Identifier: GPL-3.0-or-later`
   - Vue: `<!-- SPDX-License-Identifier: GPL-3.0-or-later -->`
   - CSS / shell / YAML: `/* ... */` or `# SPDX-License-Identifier: GPL-3.0-or-later` as the file type allows.
+  - Generated files are exempt: `apps/desktop/src/types/generated/` (written by `cargo test -p pw-proto
+    --features ts-export`; CI fails if it is stale, so commit the regenerated files).
 - Generated shadcn-vue components in `apps/desktop/src/components/ui/` keep their upstream MIT attribution
   (see the `NOTICE.md` there) instead of a per-file header.
 - New dependencies must be GPLv3-compatible (MIT, Apache-2.0, BSD, ISC, Zlib, MPL-2.0, Unicode; OFL for
