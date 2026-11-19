@@ -39,7 +39,7 @@ Product decisions are fixed in `docs/DECISIONS.md`.
 **Accept:** heartbeat visible in UI; stopping the service shows the repair screen; non-admin cannot open the pipe.
 (Met: the first two were checked live against the installed service; "non-admin cannot open the pipe" is proven by
 automated tests on a real pipe with a restricted token and by reading the live DACL. A run with a real second
-standard account is TESTING.md §D and has not been done yet. The M1 run on GitHub Actions has not been seen yet.)
+standard account is TESTING.md §D and has not been done yet. The M1 run on GitHub Actions was reported green by the maintainer.)
 
 ## M2 — Netstat & dashboard
 - [ ] TCP/UDP tables with PID/process, IPv4+IPv6; adapters; interface counters → bps/pps in/out.
