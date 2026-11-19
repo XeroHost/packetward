@@ -278,6 +278,20 @@ const CALLABLE_METHODS: &[&str] = &[
     method::SUPPORT_PREVIEW,
     method::ALERTS_LIST,
     method::ALERTS_CLEAR,
+    method::FIREWALL_RULES,
+    method::FIREWALL_RULE_ADD,
+    method::FIREWALL_RULE_UPDATE,
+    method::FIREWALL_RULE_REMOVE,
+    method::FIREWALL_RULE_ENABLE,
+    method::FIREWALL_BLOCKS,
+    method::FIREWALL_BLOCK,
+    method::FIREWALL_UNBLOCK,
+    method::FIREWALL_UNBLOCK_ALL,
+    method::FIREWALL_PURGE,
+    method::GUARDIAN_STATUS,
+    method::GUARDIAN_SET_POLICY,
+    method::GUARDIAN_ALLOWLIST,
+    method::GUARDIAN_SET_ALLOWLIST,
 ];
 
 fn is_callable(method_name: &str) -> bool {
@@ -523,6 +537,8 @@ mod tests {
                 allowed.starts_with("diag.")
                     || allowed.starts_with("capture.")
                     || allowed.starts_with("alerts.")
+                    || allowed.starts_with("firewall.")
+                    || allowed.starts_with("guardian.")
                     || *allowed == method::SUPPORT_PREVIEW,
                 "{allowed}"
             );
@@ -536,7 +552,7 @@ mod tests {
             method::SUPPORT_CREATE,
             method::SUPPORT_READ,
             method::SUPPORT_DISCARD,
-            "firewall.block",
+            "agent.shutdown",
             "",
         ] {
             assert!(!is_callable(blocked), "{blocked:?}");

@@ -21,6 +21,7 @@ struct State {
     history: Vec<LogonEvent>,
     sink: Option<LogonSink>,
     failure_sink: Option<LogonSink>,
+    context: crate::NetworkContext,
 }
 
 /// Scripted network state: set what the "OS" reports, change it between polls.
@@ -78,6 +79,10 @@ impl FakeNetStat {
         }
     }
 
+    pub fn set_network_context(&self, context: crate::NetworkContext) {
+        self.state().context = context;
+    }
+
     /// Makes `connections()` fail, to test that a failing source does not stop the poller.
     pub fn set_connections_failing(&self, failing: bool) {
         self.state().fail_connections = failing;
@@ -87,6 +92,10 @@ impl FakeNetStat {
 impl NetStat for FakeNetStat {
     fn logon_audit(&self) -> LogonAudit {
         self.state().audit
+    }
+
+    fn network_context(&self) -> crate::NetworkContext {
+        self.state().context.clone()
     }
 
     fn start_failure_feed(&self, sink: LogonSink) -> bool {

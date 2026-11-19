@@ -71,7 +71,22 @@ pub struct ConnectionTable {
 /// Receives each successful RDP logon the event log feed learns about (from any thread).
 pub type LogonSink = Arc<dyn Fn(LogonEvent) + Send + Sync>;
 
+/// Addresses the machine itself depends on to reach the network. Blocking one of them would cut the
+/// server off, so the Guardian never does.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct NetworkContext {
+    /// Default gateways of the adapters that are up.
+    pub gateways: Vec<std::net::IpAddr>,
+    /// DNS servers configured on the adapters that are up.
+    pub dns_servers: Vec<std::net::IpAddr>,
+}
+
 pub trait NetStat: Send + Sync + 'static {
+    /// Default gateways and DNS servers. Empty when they cannot be read.
+    fn network_context(&self) -> NetworkContext {
+        NetworkContext::default()
+    }
+
     /// The "Audit Logon" policy. Without success events no RDP logon can be learned; without failure
     /// events RDP brute force cannot be detected.
     fn logon_audit(&self) -> LogonAudit {

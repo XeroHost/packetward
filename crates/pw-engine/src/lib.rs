@@ -7,6 +7,7 @@
 
 mod capture;
 mod connections;
+mod defense;
 mod detect;
 mod diag;
 mod poller;
@@ -15,17 +16,19 @@ mod sys;
 mod trust;
 
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
 use pw_diag::SystemPinger;
 use pw_ipc::{EventReceiver, Handler};
 use pw_netstat::NetStat;
 use pw_proto::{
-    method, topic, CaptureFileRequest, CaptureStartRequest, ConnectionsRequest, DiagJobRequest,
-    DnsLookupRequest, ErrorCode, ErrorPayload, Heartbeat, HelloResponse, MtrStartRequest,
-    PingStartRequest, PortCheckRequest, RecordStartRequest, SupportBundleRequest,
-    SupportDiscardRequest, SupportReadRequest, SystemInfo, PROTOCOL_MAJOR, PROTOCOL_MINOR,
+    method, topic, AllowlistConfig, BlockRequest, CaptureFileRequest, CaptureStartRequest,
+    ConnectionsRequest, DiagJobRequest, DnsLookupRequest, ErrorCode, ErrorPayload,
+    FirewallRuleAction, FirewallRuleEdit, FirewallRulesRequest, Heartbeat, HelloResponse,
+    MtrStartRequest, PingStartRequest, PortCheckRequest, PurgeRequest, RecordStartRequest,
+    SetGuardianPolicy, SupportBundleRequest, SupportDiscardRequest, SupportReadRequest, SystemInfo,
+    UnblockRequest, PROTOCOL_MAJOR, PROTOCOL_MINOR,
 };
 use serde_json::Value;
 use tokio::sync::{mpsc, watch};
@@ -33,6 +36,7 @@ use tokio::task::JoinHandle;
 use tokio::time::{Instant, MissedTickBehavior};
 
 pub use capture::{CaptureHost, CaptureManager, PacketSink, SystemCaptureHost};
+pub use defense::{Defense, JsonPersistence, MemoryPersistence, Persistence};
 pub use detect::{AlertStore, DetectionService, KEEP_INCIDENTS};
 pub use diag::{Diag, MAX_RUNNING_JOBS};
 pub use poller::{Poller, Snapshot};
@@ -63,6 +67,9 @@ pub struct EngineConfig {
     /// Alerts are appended here as JSON lines so the inbox survives restarts. `None` (the default of
     /// `EngineConfig::new`) keeps them in memory only; the agent sets the real path.
     pub alerts_log: Option<PathBuf>,
+    /// Where the blocks, the Guardian policy, the allowlist and the audit log are kept (`None`: in
+    /// memory only, as in tests).
+    pub defense_dir: Option<PathBuf>,
     /// How sensitive the detectors are.
     pub detect_preset: pw_detect::Preset,
     /// How often the detectors are ticked.
@@ -85,6 +92,7 @@ impl EngineConfig {
             support_dir: data_dir().join("support"),
             logs_dir: data_dir().join("logs"),
             alerts_log: None,
+            defense_dir: None,
             detect_preset: pw_detect::Preset::Balanced,
             detect_interval: Duration::from_secs(1),
             capture_autostart: false,
@@ -109,14 +117,30 @@ pub struct Engine {
     capture: Arc<CaptureManager>,
     support: support::SupportService,
     alerts: Arc<AlertStore>,
+    defense: Arc<Defense>,
     _poller: AbortOnDrop,
     _detector: AbortOnDrop,
+    _guardian: AbortOnDrop,
+    _upkeep: AbortOnDrop,
 }
 
 impl Engine {
     /// Starts the engine and its network poller. Must be called inside a tokio runtime.
     pub fn new(config: EngineConfig, netstat: Arc<dyn NetStat>) -> Self {
         Self::with_capture_host(config, netstat, Arc::new(SystemCaptureHost), None)
+    }
+
+    /// [`Engine::new`] with the real Windows Firewall. Only the agent calls this: `new` and the
+    /// tests use an in-memory firewall, so nothing but the agent can change the machine's rules.
+    #[cfg(windows)]
+    pub fn with_system_firewall(config: EngineConfig, netstat: Arc<dyn NetStat>) -> Self {
+        Self::build(
+            config,
+            netstat,
+            Arc::new(SystemCaptureHost),
+            None,
+            Arc::new(pw_firewall::system_firewall()),
+        )
     }
 
     /// `Engine::new` with another capture host (tests) and an optional consumer of every captured
@@ -126,6 +150,19 @@ impl Engine {
         netstat: Arc<dyn NetStat>,
         host: Arc<dyn CaptureHost>,
         sink: Option<PacketSink>,
+    ) -> Self {
+        let firewall: Arc<dyn pw_firewall::Firewall> = Arc::new(pw_firewall::FirewallManager::new(
+            pw_firewall::fake::FakeFirewall::windows_defaults(),
+        ));
+        Self::build(config, netstat, host, sink, firewall)
+    }
+
+    fn build(
+        config: EngineConfig,
+        netstat: Arc<dyn NetStat>,
+        host: Arc<dyn CaptureHost>,
+        sink: Option<PacketSink>,
+        firewall: Arc<dyn pw_firewall::Firewall>,
     ) -> Self {
         let (publish, latest) = watch::channel(None);
         let trust = TrustState::new(config.rdp_trust_days);
@@ -174,6 +211,25 @@ impl Engine {
                 }
             })
         };
+        // Firewall manager and Guardian: the protected set is the machine's own gateway and DNS
+        // servers, the addresses with a successful RDP logon and the user's allowlist.
+        let context = Arc::new(RwLock::new(pw_netstat::NetworkContext::default()));
+        let persistence: Arc<dyn Persistence> = match &config.defense_dir {
+            Some(dir) => Arc::new(JsonPersistence::new(dir.clone())),
+            None => Arc::new(MemoryPersistence::default()),
+        };
+        let defense = Arc::new(Defense::new(
+            firewall,
+            persistence,
+            Arc::clone(&context),
+            Arc::clone(&trust),
+        ));
+        let guardian_task = tokio::spawn(guardian_loop(Arc::clone(&defense), alerts.events()));
+        let upkeep_task = tokio::spawn(upkeep_loop(
+            Arc::clone(&defense),
+            Arc::clone(&netstat),
+            context,
+        ));
         let task = tokio::spawn(poll_loop(
             netstat,
             publish,
@@ -211,8 +267,11 @@ impl Engine {
             support,
             capture,
             alerts,
+            defense,
             _poller: AbortOnDrop(task),
             _detector: AbortOnDrop(detector_task),
+            _guardian: AbortOnDrop(guardian_task),
+            _upkeep: AbortOnDrop(upkeep_task),
         }
     }
 
@@ -242,6 +301,62 @@ impl Engine {
             pid: std::process::id(),
             uptime_secs: self.uptime_secs(),
             service_mode: self.config.service_mode,
+        }
+    }
+}
+
+/// Turns alerts into blocks (or Monitor-mode decisions). The firewall calls block, so they run on a
+/// blocking thread.
+async fn guardian_loop(
+    defense: Arc<Defense>,
+    mut events: tokio::sync::broadcast::Receiver<pw_proto::AlertView>,
+) {
+    loop {
+        match events.recv().await {
+            Ok(alert) => {
+                let defense = Arc::clone(&defense);
+                if let Err(err) =
+                    tokio::task::spawn_blocking(move || defense.on_alert(&alert)).await
+                {
+                    tracing::error!(%err, "the Guardian failed on an alert");
+                }
+            }
+            Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {}
+            Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
+        }
+    }
+}
+
+/// Keeps the machine's gateway and DNS servers current and expires/re-applies blocks. The firewall is
+/// only touched when there is something desired or something of ours already there.
+async fn upkeep_loop(
+    defense: Arc<Defense>,
+    netstat: Arc<dyn NetStat>,
+    context: Arc<RwLock<pw_netstat::NetworkContext>>,
+) {
+    let mut ticker = tokio::time::interval(Duration::from_secs(10));
+    ticker.set_missed_tick_behavior(MissedTickBehavior::Skip);
+    let mut round = 0u32;
+    loop {
+        ticker.tick().await;
+        let defense = Arc::clone(&defense);
+        let netstat = Arc::clone(&netstat);
+        let context = Arc::clone(&context);
+        let refresh_context = round.is_multiple_of(3);
+        round = round.wrapping_add(1);
+        let job = tokio::task::spawn_blocking(move || {
+            if refresh_context {
+                let fresh = netstat.network_context();
+                *context
+                    .write()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner) = fresh;
+            }
+            if let Err(err) = defense.reconcile() {
+                tracing::warn!(reason = %err.message, "could not apply the blocks to the firewall");
+            }
+        });
+        if let Err(err) = job.await {
+            tracing::error!(%err, "the firewall upkeep failed");
         }
     }
 }
@@ -422,6 +537,81 @@ impl Handler for Engine {
                 self.alerts.clear_ended();
                 to_value(&self.alerts.list())
             }
+            method::FIREWALL_RULES => {
+                let request: FirewallRulesRequest = parse_or_default(payload)?;
+                let defense = Arc::clone(&self.defense);
+                blocking(move || defense.rules(&request))
+                    .await
+                    .and_then(|v| to_value(&v))
+            }
+            method::FIREWALL_RULE_ADD => {
+                let edit: FirewallRuleEdit = parse(payload)?;
+                let defense = Arc::clone(&self.defense);
+                blocking(move || defense.add_rule(&edit, "ui")).await?;
+                Ok(Value::Null)
+            }
+            method::FIREWALL_RULE_UPDATE => {
+                let edit: FirewallRuleEdit = parse(payload)?;
+                let defense = Arc::clone(&self.defense);
+                blocking(move || defense.update_rule(&edit, "ui")).await?;
+                Ok(Value::Null)
+            }
+            method::FIREWALL_RULE_REMOVE => {
+                let action: FirewallRuleAction = parse(payload)?;
+                let defense = Arc::clone(&self.defense);
+                blocking(move || defense.remove_rule(&action, "ui")).await?;
+                Ok(Value::Null)
+            }
+            method::FIREWALL_RULE_ENABLE => {
+                let action: FirewallRuleAction = parse(payload)?;
+                let defense = Arc::clone(&self.defense);
+                blocking(move || defense.enable_rule(&action, "ui")).await?;
+                Ok(Value::Null)
+            }
+            method::FIREWALL_BLOCKS => to_value(&self.defense.list_blocks()),
+            method::FIREWALL_BLOCK => {
+                let request: BlockRequest = parse(payload)?;
+                let defense = Arc::clone(&self.defense);
+                blocking(move || defense.block(&request, "ui"))
+                    .await
+                    .and_then(|v| to_value(&v))
+            }
+            method::FIREWALL_UNBLOCK => {
+                let request: UnblockRequest = parse(payload)?;
+                let defense = Arc::clone(&self.defense);
+                blocking(move || defense.unblock(&request.targets, "ui"))
+                    .await
+                    .and_then(|v| to_value(&v))
+            }
+            method::FIREWALL_UNBLOCK_ALL => {
+                let defense = Arc::clone(&self.defense);
+                blocking(move || defense.unblock_all("ui"))
+                    .await
+                    .and_then(|v| to_value(&v))
+            }
+            method::FIREWALL_PURGE => {
+                let request: PurgeRequest = parse_or_default(payload)?;
+                let defense = Arc::clone(&self.defense);
+                blocking(move || defense.purge(&request, "ui"))
+                    .await
+                    .and_then(|v| to_value(&v))
+            }
+            method::GUARDIAN_STATUS => to_value(&self.defense.status()),
+            method::GUARDIAN_SET_POLICY => {
+                let request: SetGuardianPolicy = parse(payload)?;
+                let defense = Arc::clone(&self.defense);
+                blocking(move || defense.set_policy(&request, "ui"))
+                    .await
+                    .and_then(|v| to_value(&v))
+            }
+            method::GUARDIAN_ALLOWLIST => to_value(&self.defense.allowlist()),
+            method::GUARDIAN_SET_ALLOWLIST => {
+                let config: AllowlistConfig = parse(payload)?;
+                let defense = Arc::clone(&self.defense);
+                blocking(move || defense.set_allowlist(config, "ui"))
+                    .await
+                    .and_then(|v| to_value(&v))
+            }
             other => Err(ErrorPayload::new(
                 ErrorCode::UnknownMethod,
                 format!("unknown method `{other}`"),
@@ -527,6 +717,15 @@ fn data_dir() -> PathBuf {
     std::env::var_os("ProgramData")
         .map_or_else(|| PathBuf::from(r"C:ProgramData"), PathBuf::from)
         .join("PacketWard")
+}
+
+/// Runs a call that blocks (firewall COM, disk) off the async workers.
+async fn blocking<T: Send + 'static>(
+    job: impl FnOnce() -> Result<T, ErrorPayload> + Send + 'static,
+) -> Result<T, ErrorPayload> {
+    tokio::task::spawn_blocking(job)
+        .await
+        .map_err(|err| ErrorPayload::new(ErrorCode::Internal, err.to_string()))?
 }
 
 fn parse<T: serde::de::DeserializeOwned>(payload: Value) -> Result<T, ErrorPayload> {

@@ -186,6 +186,11 @@ impl AlertStore {
         removed
     }
 
+    /// Every change of an incident, as it happens (for in-process consumers such as the Guardian).
+    pub fn events(&self) -> broadcast::Receiver<AlertView> {
+        self.events.subscribe()
+    }
+
     /// Every change of an incident, as it happens.
     pub fn subscribe(&self) -> mpsc::Receiver<serde_json::Value> {
         let (out, rx) = mpsc::channel(32);

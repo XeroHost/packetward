@@ -13,6 +13,7 @@ pw-capture = { path = "../pw-capture" }
 pw-core = { path = "../pw-core" }
 pw-detect = { path = "../pw-detect" }
 pw-diag = { path = "../pw-diag" }
+pw-firewall = { path = "../pw-firewall" }
 pw-proto = { path = "../pw-proto" }
 pw-ipc = { path = "../pw-ipc" }
 pw-netstat = { path = "../pw-netstat" }

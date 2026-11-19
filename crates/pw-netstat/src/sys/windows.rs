@@ -431,6 +431,13 @@ impl NetStat for WindowsNetStat {
         state
     }
 
+    fn network_context(&self) -> crate::NetworkContext {
+        crate::sys::adapters::network_context().unwrap_or_else(|err| {
+            tracing::warn!(%err, "could not read gateways and DNS servers");
+            crate::NetworkContext::default()
+        })
+    }
+
     fn start_failure_feed(&self, sink: crate::LogonSink) -> bool {
         let feed = crate::sys::eventlog::start_failure_feed(&sink);
         let started = feed.is_some();

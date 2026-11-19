@@ -11,6 +11,7 @@ mod capture;
 mod diag;
 mod envelope;
 mod error;
+mod firewall;
 mod handshake;
 mod live;
 mod netstat;
@@ -34,6 +35,12 @@ pub use diag::{
 };
 pub use envelope::{Envelope, Kind, ShapeError, ENVELOPE_VERSION, MAX_FRAME_BYTES};
 pub use error::{ErrorCode, ErrorPayload};
+pub use firewall::{
+    AllowlistConfig, BlockList, BlockRefusal, BlockRequest, BlockResult, BlockSource, BlockView,
+    FirewallRuleAction, FirewallRuleEdit, FirewallRuleView, FirewallRules, FirewallRulesRequest,
+    GuardianDecision, GuardianMode, GuardianPolicy, GuardianPreset, GuardianStatus, ProtectedEntry,
+    PurgeRequest, PurgeResult, RuleAction, RuleDirection, SetGuardianPolicy, UnblockRequest,
+};
 pub use handshake::{ClientKind, HelloRequest, HelloResponse, PROTOCOL_MAJOR, PROTOCOL_MINOR};
 pub use live::Heartbeat;
 pub use netstat::{
@@ -74,6 +81,20 @@ pub mod method {
     pub const SUPPORT_CREATE: &str = "support.bundle.create";
     pub const SUPPORT_READ: &str = "support.bundle.read";
     pub const SUPPORT_DISCARD: &str = "support.bundle.discard";
+    pub const FIREWALL_RULES: &str = "firewall.rules";
+    pub const FIREWALL_RULE_ADD: &str = "firewall.rule.add";
+    pub const FIREWALL_RULE_UPDATE: &str = "firewall.rule.update";
+    pub const FIREWALL_RULE_REMOVE: &str = "firewall.rule.remove";
+    pub const FIREWALL_RULE_ENABLE: &str = "firewall.rule.enable";
+    pub const FIREWALL_BLOCKS: &str = "firewall.blocks";
+    pub const FIREWALL_BLOCK: &str = "firewall.block";
+    pub const FIREWALL_UNBLOCK: &str = "firewall.unblock";
+    pub const FIREWALL_UNBLOCK_ALL: &str = "firewall.unblock_all";
+    pub const FIREWALL_PURGE: &str = "firewall.purge";
+    pub const GUARDIAN_STATUS: &str = "guardian.status";
+    pub const GUARDIAN_SET_POLICY: &str = "guardian.set_policy";
+    pub const GUARDIAN_ALLOWLIST: &str = "guardian.allowlist";
+    pub const GUARDIAN_SET_ALLOWLIST: &str = "guardian.set_allowlist";
     pub const ALERTS_LIST: &str = "alerts.list";
     pub const ALERTS_CLEAR: &str = "alerts.clear";
     pub const SUBSCRIBE: &str = "subscribe";

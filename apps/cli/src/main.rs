@@ -2,6 +2,8 @@
 //! pwctl — basic command line client for emergency recovery and scripting.
 
 #[cfg(windows)]
+mod defense;
+#[cfg(windows)]
 mod status;
 #[cfg(windows)]
 mod support;
@@ -21,6 +23,34 @@ fn main() -> std::process::ExitCode {
     enum Command {
         /// Show whether the agent is reachable and what it reports.
         Status,
+        /// Block addresses or CIDR blocks through the firewall (protected addresses are refused).
+        Block {
+            targets: Vec<String>,
+            /// Remove the block after this many minutes.
+            #[arg(long)]
+            minutes: Option<u64>,
+            #[arg(long, default_value = "pwctl")]
+            reason: String,
+        },
+        /// Remove blocks: the given addresses, or every block with --all (emergency recovery).
+        Unblock {
+            targets: Vec<String>,
+            #[arg(long)]
+            all: bool,
+        },
+        /// Firewall rules and blocks made by PacketWard.
+        Firewall {
+            #[command(subcommand)]
+            action: FirewallAction,
+        },
+        /// Show or set the Guardian mode (off, monitor, active).
+        Guardian {
+            #[arg(value_enum)]
+            mode: Option<GuardianArg>,
+            /// Confirm switching to Active after reviewing the Monitor report.
+            #[arg(long)]
+            yes: bool,
+        },
         /// Build a support zip (traffic summary, adapters, logs, optional short capture) and save it
         /// locally. Nothing is uploaded.
         SupportBundle {
@@ -42,6 +72,25 @@ fn main() -> std::process::ExitCode {
         },
     }
 
+    #[derive(Subcommand)]
+    enum FirewallAction {
+        /// List the blocks PacketWard applied.
+        List,
+        /// Remove every PacketWard firewall rule (blocks included).
+        Purge {
+            /// The typed phrase, required when a PacketWard RDP rule exists.
+            #[arg(long)]
+            confirm: Option<String>,
+        },
+    }
+
+    #[derive(Clone, Copy, clap::ValueEnum)]
+    enum GuardianArg {
+        Off,
+        Monitor,
+        Active,
+    }
+
     let cli = Cli::parse();
     let runtime = match tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -55,6 +104,24 @@ fn main() -> std::process::ExitCode {
     };
     match cli.command {
         Command::Status => runtime.block_on(status::run()),
+        Command::Block {
+            targets,
+            minutes,
+            reason,
+        } => runtime.block_on(defense::block(targets, minutes, reason)),
+        Command::Unblock { targets, all } => runtime.block_on(defense::unblock(targets, all)),
+        Command::Firewall { action } => match action {
+            FirewallAction::List => runtime.block_on(defense::list_blocks()),
+            FirewallAction::Purge { confirm } => runtime.block_on(defense::purge(confirm)),
+        },
+        Command::Guardian { mode, yes } => runtime.block_on(defense::guardian(
+            mode.map(|m| match m {
+                GuardianArg::Off => pw_proto::GuardianMode::Off,
+                GuardianArg::Monitor => pw_proto::GuardianMode::Monitor,
+                GuardianArg::Active => pw_proto::GuardianMode::Active,
+            }),
+            yes,
+        )),
         Command::SupportBundle {
             anonymize,
             capture_secs,

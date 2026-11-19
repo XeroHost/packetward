@@ -33,7 +33,7 @@ Read this first when resuming after a stop or a context compaction.
 | M12 Hardening & 1.0 | not started |
 
 ## Now / next
-Now: wave 2 subagents running (pw-firewall, pw-intel, speed-server). Meanwhile integrating M4 (capture manager in engine, capture proto/IPC/UI, support bundle) and M5. Design rule: detection must NOT depend on capture (raw socket is inbound-blind here): feed pw-detect from netstat connection counts, adapter bps and the 4625 feed; capture only adds SYN/UDP/ICMP flood detection; warn when capture is blind.
+Now: M4 and M5 pushed to dev (CI being verified). Wave 3 subagents running in worktrees: pw-store (SQLite), speed-test client (pw-diag::speed), advanced MTR (pw-diag::mtr_adv). Meanwhile I integrate M6 (firewall IPC + block manager + UI), then M7 Guardian and M7b RDP Shield (these need pw-store for persistence). Order after that: M8 integration, M9/M10 integration, M11, M12.
 Note: pw-core (PacketMeta, CIDR sets) was written first on dev so capture/detect share it. Subagent worktrees live in .claude/worktrees (ignored by git).
 
 ## Blockers
