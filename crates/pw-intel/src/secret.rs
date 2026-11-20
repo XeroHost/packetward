@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-//! Secret handling. Secrets (the AbuseIPDB key) live in the OS credential store, never in plain config, and
+//! Secret handling. Secrets (the AbuseIPDB key, the proxy credentials) live in the OS credential store, never in plain config, and
 //! never reach a log line: [`Secret`] redacts itself in `Debug` and has no `Display` or `Serialize`.
 
 use std::collections::HashMap;
@@ -34,6 +34,10 @@ impl std::fmt::Debug for Secret {
 pub const SECRET_SERVICE: &str = "PacketWard";
 /// Credential name of the AbuseIPDB API key.
 pub const ABUSEIPDB_KEY_NAME: &str = "abuseipdb-api-key";
+/// Credential name of the proxy user name (the proxy URL itself never carries credentials).
+pub const PROXY_USERNAME_NAME: &str = "proxy-username";
+/// Credential name of the proxy password.
+pub const PROXY_PASSWORD_NAME: &str = "proxy-password";
 
 #[derive(Debug, thiserror::Error)]
 pub enum SecretError {

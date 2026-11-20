@@ -13,6 +13,14 @@ proxy?: string,
  */
 applied_proxy?: string, 
 /**
- * The saved proxy differs from the running one: restart the PacketWard service to apply it.
+ * The saved proxy or its credentials differ from the running ones: restart the PacketWard service to apply them.
  */
-restart_required: boolean, };
+restart_required: boolean, 
+/**
+ * Proxy credentials are stored in the Windows Credential Manager. The password is never returned.
+ */
+proxy_credentials: boolean, 
+/**
+ * The stored proxy user name, if any (shown so the user can see what is saved).
+ */
+proxy_username?: string, };

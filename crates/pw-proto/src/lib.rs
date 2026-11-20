@@ -59,8 +59,9 @@ pub use netstat::{
     DEFAULT_CONNECTION_LIMIT,
 };
 pub use rdp::{
-    RdpAttempts, RdpAudit, RdpConfirmRequest, RdpEndSessionRequest, RdpFinding, RdpLockoutRequest,
-    RdpNlaRequest, RdpPending, RdpPortRequest, RdpRestrictRequest,
+    RdpAttempts, RdpAudit, RdpConfirmRequest, RdpCountryMode, RdpCountryPolicy, RdpCountryStatus,
+    RdpEndSessionRequest, RdpFinding, RdpLockoutRequest, RdpNlaRequest, RdpPending, RdpPortRequest,
+    RdpRestrictRequest,
 };
 pub use settings::{AgentSettingsView, AuditEntryView, AuditQuery, AuditView, ProxyRequest};
 pub use speed::{
@@ -126,6 +127,8 @@ pub mod method {
     pub const RDP_CANCEL: &str = "rdp.cancel";
     pub const RDP_RESET: &str = "rdp.reset";
     pub const RDP_END_SESSION: &str = "rdp.end_session";
+    pub const RDP_COUNTRY_GET: &str = "rdp.country.get";
+    pub const RDP_COUNTRY_SET: &str = "rdp.country.set";
     pub const INTEL_GEO_STATUS: &str = "intel.geo.status";
     pub const INTEL_GEO_UPDATE: &str = "intel.geo.update";
     pub const INTEL_LOOKUP: &str = "intel.lookup";

@@ -13,6 +13,8 @@ use crate::fetch::{FetchError, FetchRequest, FetchResponse, Fetcher, HttpMethod}
 pub struct HttpFetcherConfig {
     /// Explicit proxy URL from the settings; `None` uses the system proxy configuration.
     pub proxy: Option<String>,
+    /// Basic-auth credentials for the explicit proxy (never part of the URL). Ignored without `proxy`.
+    pub proxy_auth: Option<pw_core::ProxyAuth>,
     /// Sent as `User-Agent`. Generic on purpose: product and version only.
     pub user_agent: String,
     pub connect_timeout: Duration,
@@ -22,6 +24,7 @@ impl Default for HttpFetcherConfig {
     fn default() -> Self {
         Self {
             proxy: None,
+            proxy_auth: None,
             user_agent: concat!("PacketWard/", env!("CARGO_PKG_VERSION")).to_owned(),
             connect_timeout: Duration::from_secs(10),
         }
@@ -55,8 +58,11 @@ impl HttpFetcher {
             .connect_timeout(config.connect_timeout)
             .https_only(true);
         if let Some(proxy) = &config.proxy {
-            let proxy = reqwest::Proxy::all(proxy)
+            let mut proxy = reqwest::Proxy::all(proxy)
                 .map_err(|_| FetchError::InvalidUrl("invalid proxy URL".to_owned()))?;
+            if let Some(auth) = &config.proxy_auth {
+                proxy = proxy.basic_auth(auth.username(), auth.password());
+            }
             builder = builder.proxy(proxy);
         }
         let client = builder
@@ -148,6 +154,14 @@ mod tests {
             ..HttpFetcherConfig::default()
         };
         assert!(HttpFetcher::new(&ok).is_ok());
+        let with_credentials = HttpFetcherConfig {
+            proxy: Some("http://proxy.invalid:3128".to_owned()),
+            proxy_auth: Some(pw_core::ProxyAuth::new("alice", "hunter2")),
+            ..HttpFetcherConfig::default()
+        };
+        assert!(HttpFetcher::new(&with_credentials).is_ok());
+        let debug = format!("{with_credentials:?}");
+        assert!(!debug.contains("alice") && !debug.contains("hunter2"));
         let socks = HttpFetcherConfig {
             proxy: Some("socks5://proxy.invalid:1080".to_owned()),
             ..HttpFetcherConfig::default()

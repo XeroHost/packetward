@@ -30,6 +30,8 @@ const SMALL_BODY_LIMIT: usize = 64 * 1024;
 pub struct HttpTransportConfig {
     /// Explicit proxy URL from the app settings (`http://`, `https://`, `socks5://`); `None` = system proxy.
     pub proxy: Option<String>,
+    /// Basic-auth credentials for the explicit proxy (never part of the URL). Ignored without `proxy`.
+    pub proxy_auth: Option<pw_core::ProxyAuth>,
     /// Ignore every proxy (system and explicit). Used by the loopback integration test.
     pub no_proxy: bool,
     /// Sent as `User-Agent`: product and version only.
@@ -42,6 +44,7 @@ impl Default for HttpTransportConfig {
     fn default() -> Self {
         Self {
             proxy: None,
+            proxy_auth: None,
             no_proxy: false,
             user_agent: concat!("PacketWard/", env!("CARGO_PKG_VERSION")).to_owned(),
             connect_timeout: Duration::from_secs(10),
@@ -94,8 +97,11 @@ impl HttpTransport {
         if config.no_proxy {
             proxied = proxied.no_proxy();
         } else if let Some(proxy) = &config.proxy {
-            let proxy = reqwest::Proxy::all(proxy)
+            let mut proxy = reqwest::Proxy::all(proxy)
                 .map_err(|_| TransportError::Protocol("invalid proxy URL".to_owned()))?;
+            if let Some(auth) = &config.proxy_auth {
+                proxy = proxy.basic_auth(auth.username(), auth.password());
+            }
             proxied = proxied.proxy(proxy);
         }
         let client = build(proxied)?;
@@ -329,6 +335,24 @@ mod tests {
         };
         let error = HttpTransport::new(&bad).unwrap_err();
         assert!(!error.to_string().contains("not a url"));
+    }
+
+    #[test]
+    fn a_proxy_with_credentials_builds_without_a_network_and_never_shows_them() {
+        let config = HttpTransportConfig {
+            proxy: Some("http://proxy.invalid:3128".to_owned()),
+            proxy_auth: Some(pw_core::ProxyAuth::new("alice", "hunter2")),
+            ..HttpTransportConfig::default()
+        };
+        assert!(HttpTransport::new(&config).is_ok());
+        let debug = format!("{config:?}");
+        assert!(!debug.contains("alice") && !debug.contains("hunter2"));
+        // The credentials are ignored (not an error) when there is no explicit proxy.
+        let no_proxy = HttpTransportConfig {
+            proxy_auth: config.proxy_auth.clone(),
+            ..HttpTransportConfig::default()
+        };
+        assert!(HttpTransport::new(&no_proxy).is_ok());
     }
 
     #[test]

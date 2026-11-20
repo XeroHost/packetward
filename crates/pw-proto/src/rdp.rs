@@ -132,3 +132,47 @@ pub struct RdpEndSessionRequest {
     #[serde(default)]
     pub logoff: bool,
 }
+
+/// Whether the countries of an [`RdpCountryPolicy`] are the only ones allowed or the ones refused.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-export", derive(ts_rs::TS), ts(export))]
+#[serde(rename_all = "snake_case")]
+pub enum RdpCountryMode {
+    /// Only these countries may connect; every other public address is blocked.
+    Allow,
+    /// These countries are blocked.
+    #[default]
+    Deny,
+}
+
+/// The optional country restriction of the RDP Shield (`rdp.country.get` / `rdp.country.set`).
+///
+/// It is **reactive**: the Guardian blocks an address after it connected to the RDP port (or failed
+/// to log on), only in Active mode, and never an address the Guardian protects.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-export", derive(ts_rs::TS), ts(export))]
+pub struct RdpCountryPolicy {
+    /// Off by default.
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default)]
+    pub mode: RdpCountryMode,
+    /// ISO 3166-1 alpha-2 codes, upper case.
+    #[serde(default)]
+    pub countries: Vec<String>,
+}
+
+/// Reply to `rdp.country.get` and `rdp.country.set`.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-export", derive(ts_rs::TS), ts(export))]
+pub struct RdpCountryStatus {
+    pub policy: RdpCountryPolicy,
+    /// The GeoIP database is installed and readable. Without it nothing is ever blocked.
+    pub geo_ready: bool,
+    /// Countries of the protected addresses connected to the RDP port right now (the operator).
+    pub operator_countries: Vec<String>,
+    /// Addresses blocked by the restriction in the last 24 hours.
+    pub blocked_24h: u32,
+    /// Addresses the restriction would have blocked in the last 24 hours (Guardian not Active).
+    pub would_block_24h: u32,
+}

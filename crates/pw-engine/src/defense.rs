@@ -1028,13 +1028,15 @@ impl Defense {
         Ok(clean)
     }
 
-    fn record_decision(&self, decision: GuardianDecision) {
+    fn record_decision(&self, decision: GuardianDecision, remember: bool) {
         let mut state = lock(&self.state);
         // Below-threshold and failed attempts may still be acted on later (escalation, retry).
-        if !matches!(
-            decision.outcome.as_str(),
-            "skipped_below_threshold" | "skipped_failed"
-        ) {
+        if remember
+            && !matches!(
+                decision.outcome.as_str(),
+                "skipped_below_threshold" | "skipped_failed"
+            )
+        {
             state.acted.push_back(decision.alert_id);
             while state.acted.len() > 2000 {
                 state.acted.pop_front();
@@ -1080,48 +1082,103 @@ impl Defense {
         if alert.severity < threshold {
             decision.outcome = "skipped_below_threshold".to_owned();
             decision.why = "the alert is below the severity the Guardian acts on".to_owned();
-            self.record_decision(decision.clone());
+            self.record_decision(decision.clone(), true);
             return Some(decision);
         }
         let Ok(address) = source.parse::<IpAddr>() else {
             return None;
         };
         let target = Cidr::new(address, if address.is_ipv4() { 32 } else { 128 }).ok()?;
+        let act = Act {
+            alert_id: Some(alert.id),
+            label: format!("{} (severity {:?})", alert.summary_key, alert.severity),
+            block_reason: None,
+            escalate: true,
+        };
+        Some(self.act(decision, target, &source, &policy, &act))
+    }
+
+    /// Guards one address on behalf of a reactive rule that is not an alert (the RDP country
+    /// restriction): the same protected-set check, Monitor report, TTL ladder (first step: these
+    /// blocks never escalate), circuit breaker, audit and firewall path as an alert. `summary_key`
+    /// is what the decision shows (`rdp_country`), `block_reason` what the block is labelled with
+    /// (`rdp_country:CN`). Returns `None` when the Guardian is Off or the address is not valid.
+    pub fn guard_address(
+        &self,
+        address: IpAddr,
+        summary_key: &str,
+        block_reason: &str,
+    ) -> Option<GuardianDecision> {
+        let policy = self.policy();
+        if policy.mode == GuardianMode::Off {
+            return None;
+        }
+        let target = Cidr::new(address, if address.is_ipv4() { 32 } else { 128 }).ok()?;
+        let source = address.to_string();
+        let decision = GuardianDecision {
+            unix_ms: self.now() * 1000,
+            source: source.clone(),
+            alert_id: 0,
+            summary_key: summary_key.to_owned(),
+            severity: AlertSeverity::Medium,
+            outcome: String::new(),
+            ttl_secs: None,
+            why: String::new(),
+        };
+        let act = Act {
+            alert_id: None,
+            label: block_reason.to_owned(),
+            block_reason: Some(block_reason.to_owned()),
+            escalate: false,
+        };
+        Some(self.act(decision, target, &source, &policy, &act))
+    }
+
+    /// The decision tail shared by alerts and reactive rules: protected check, ladder step, Monitor
+    /// report, circuit breaker, block, audit.
+    fn act(
+        &self,
+        mut decision: GuardianDecision,
+        target: Cidr,
+        source: &str,
+        policy: &GuardianPolicy,
+        act: &Act,
+    ) -> GuardianDecision {
+        let now = self.now();
+        let remember = act.alert_id.is_some();
         // Re-check the protected set now; the alert's own flag may be stale.
         if let Some(reason) = why_protected(&target, &self.protected()) {
             decision.outcome = "skipped_protected".to_owned();
             decision.why = format!("{source} is protected ({reason}) and is never blocked");
-            self.audit("guardian", "block", &source, &reason, "refused");
-            self.record_decision(decision.clone());
-            return Some(decision);
+            self.audit("guardian", "block", source, &reason, "refused");
+            self.record_decision(decision.clone(), remember);
+            return decision;
         }
         let (ttl, level) = {
             let state = lock(&self.state);
-            let previous = state
-                .escalation
-                .get(&source)
-                .filter(|(_, at)| at + ESCALATION_MEMORY_SECS > now)
-                .map_or(0, |(level, _)| *level);
+            let previous = if act.escalate {
+                state
+                    .escalation
+                    .get(source)
+                    .filter(|(_, at)| at + ESCALATION_MEMORY_SECS > now)
+                    .map_or(0, |(level, _)| *level)
+            } else {
+                0
+            };
             let step = usize::from(previous).min(policy.ttl_ladder_secs.len().saturating_sub(1));
             (
                 policy.ttl_ladder_secs.get(step).copied().unwrap_or(15 * 60),
-                previous.saturating_add(1),
+                previous.saturating_add(u8::from(act.escalate)),
             )
         };
         decision.ttl_secs = Some(ttl);
-        let why = format!(
-            "{}: {} (severity {:?}); blocked for {} min",
-            source,
-            alert.summary_key,
-            alert.severity,
-            ttl / 60
-        );
+        let why = format!("{}: {}; blocked for {} min", source, act.label, ttl / 60);
         if policy.mode == GuardianMode::Monitor {
             decision.outcome = "would_block".to_owned();
             decision.why = why;
-            self.audit("guardian", "would_block", &source, &decision.why, "ok");
-            self.record_decision(decision.clone());
-            return Some(decision);
+            self.audit("guardian", "would_block", source, &decision.why, "ok");
+            self.record_decision(decision.clone(), remember);
+            return decision;
         }
         // Active: the circuit breaker first.
         {
@@ -1135,52 +1192,80 @@ impl Defense {
                     "the circuit breaker is open ({} automatic blocks in the last hour)",
                     policy.max_blocks_per_hour
                 );
-                self.audit(
-                    "guardian",
-                    "circuit_open",
-                    &source,
-                    &decision.why,
-                    "refused",
-                );
-                self.record_decision(decision.clone());
-                return Some(decision);
+                self.audit("guardian", "circuit_open", source, &decision.why, "refused");
+                self.record_decision(decision.clone(), remember);
+                return decision;
             }
             state.circuit_open = false;
             state.blocks.insert(
                 target,
                 BlockEntry {
                     manual: false,
-                    reason: why.clone(),
+                    reason: act.block_reason.clone().unwrap_or_else(|| why.clone()),
                     created_secs: now,
                     expires_secs: Some(now + ttl),
-                    alert_id: Some(alert.id),
+                    alert_id: act.alert_id,
                     escalation: level,
                 },
             );
             state.recent_auto.push_back(now);
-            state.escalation.insert(source.clone(), (level, now));
-            state
-                .escalation
-                .retain(|_, (_, at)| *at + ESCALATION_MEMORY_SECS > now);
+            if act.escalate {
+                state.escalation.insert(source.to_owned(), (level, now));
+                state
+                    .escalation
+                    .retain(|_, (_, at)| *at + ESCALATION_MEMORY_SECS > now);
+            }
             self.persist(&state);
         }
         match self.reconcile() {
             Ok(()) => {
                 decision.outcome = "blocked".to_owned();
                 decision.why = why;
-                self.audit("guardian", "block", &source, &decision.why, "ok");
+                self.audit("guardian", "block", source, &decision.why, "ok");
             }
             Err(err) => {
                 // The block could not be applied: do not pretend, and do not keep a phantom entry.
                 lock(&self.state).blocks.remove(&target);
                 decision.outcome = "skipped_failed".to_owned();
                 decision.why = format!("the firewall refused: {}", err.message);
-                self.audit("guardian", "block", &source, &decision.why, "failed");
+                self.audit("guardian", "block", source, &decision.why, "failed");
             }
         }
-        self.record_decision(decision.clone());
-        Some(decision)
+        self.record_decision(decision.clone(), remember);
+        decision
     }
+
+    /// Distinct addresses the reactive rule `summary_key` blocked and would have blocked in the
+    /// last 24 hours, from the Guardian's bounded decision list.
+    pub fn decision_counts_24h(&self, summary_key: &str) -> (u32, u32) {
+        let now = self.now();
+        let state = lock(&self.state);
+        let distinct = |outcome: &str| {
+            state
+                .decisions
+                .iter()
+                .filter(|d| {
+                    d.summary_key == summary_key
+                        && d.outcome == outcome
+                        && d.unix_ms / 1000 + DAY_SECS > now
+                })
+                .map(|d| d.source.as_str())
+                .collect::<std::collections::BTreeSet<_>>()
+                .len() as u32
+        };
+        (distinct("blocked"), distinct("would_block"))
+    }
+}
+
+/// How one decision is taken: what labels it and whether it climbs the escalation ladder.
+struct Act {
+    /// The incident the decision belongs to (`None` for a reactive rule).
+    alert_id: Option<u64>,
+    /// What the explanation says it was for.
+    label: String,
+    /// The label of the block itself (default: the whole explanation).
+    block_reason: Option<String>,
+    escalate: bool,
 }
 
 fn trim_recent(state: &mut State, now: u64) {

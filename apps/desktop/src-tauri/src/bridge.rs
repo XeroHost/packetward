@@ -332,6 +332,8 @@ const CALLABLE_METHODS: &[&str] = &[
     method::RDP_CANCEL,
     method::RDP_RESET,
     method::RDP_END_SESSION,
+    method::RDP_COUNTRY_GET,
+    method::RDP_COUNTRY_SET,
     method::SPEED_START,
     method::SPEED_CANCEL,
     method::INTEL_GEO_STATUS,

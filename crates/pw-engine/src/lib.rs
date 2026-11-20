@@ -9,6 +9,7 @@
 mod alert_db;
 mod capture;
 mod connections;
+mod country;
 mod defense;
 mod detect;
 mod diag;
@@ -38,8 +39,8 @@ use pw_proto::{
     FirewallRuleAction, FirewallRuleEdit, FirewallRulesRequest, GeoLookupRequest, Heartbeat,
     HelloResponse, ListEnableRequest, ListRefreshRequest, MtrExportRequest, MtrStartRequest,
     PingStartRequest, PortCheckRequest, ProxyRequest, PurgeRequest, RdpAttempts, RdpConfirmRequest,
-    RdpEndSessionRequest, RdpLockoutRequest, RdpNlaRequest, RdpPortRequest, RdpRestrictRequest,
-    RecordStartRequest, SetGuardianPolicy, SpeedRequest, SupportBundleRequest,
+    RdpCountryPolicy, RdpEndSessionRequest, RdpLockoutRequest, RdpNlaRequest, RdpPortRequest,
+    RdpRestrictRequest, RecordStartRequest, SetGuardianPolicy, SpeedRequest, SupportBundleRequest,
     SupportDiscardRequest, SupportReadRequest, SystemInfo, UnblockRequest, PROTOCOL_MAJOR,
     PROTOCOL_MINOR,
 };
@@ -50,6 +51,7 @@ use tokio::time::{Instant, MissedTickBehavior};
 
 pub use capture::ensure_private_dir;
 pub use capture::{CaptureHost, CaptureManager, PacketSink, SystemCaptureHost};
+pub use country::{CountryGuard, CountryInputs, CountrySource, IntelCountries};
 pub use defense::{Defense, JsonPersistence, MemoryPersistence, Persistence};
 pub use detect::{AlertRetention, AlertStore, DetectionService, KEEP_INCIDENTS};
 pub use diag::{Diag, IntelEnricher, SharedProbe, MAX_RUNNING_JOBS};
@@ -150,6 +152,7 @@ pub struct Engine {
     defense: Arc<Defense>,
     detection: Arc<DetectionService>,
     shield: Arc<RdpShield>,
+    country: Arc<CountryGuard>,
     speed: Arc<dyn SpeedApi>,
     intel: Arc<dyn IntelApi>,
     settings: settings::SettingsStore,
@@ -159,6 +162,7 @@ pub struct Engine {
     _guardian: AbortOnDrop,
     _upkeep: AbortOnDrop,
     _shield: AbortOnDrop,
+    _country: AbortOnDrop,
     _intel: AbortOnDrop,
 }
 
@@ -173,7 +177,12 @@ impl Engine {
     #[cfg(windows)]
     pub fn with_system_firewall(config: EngineConfig, netstat: Arc<dyn NetStat>) -> Self {
         // Read once: a change of the proxy setting applies at the next start.
+        // The proxy credentials come from the Windows Credential Manager, never from a file.
+        let secrets: Arc<dyn pw_intel::SecretStore> =
+            Arc::new(pw_intel::secret::KeyringSecretStore);
         let proxy = settings::saved_proxy(config.defense_dir.as_deref());
+        let proxy_auth =
+            settings::saved_proxy_auth(config.defense_dir.as_deref(), secrets.as_ref());
         Self::build(
             config,
             netstat,
@@ -182,8 +191,9 @@ impl Engine {
             Arc::new(pw_firewall::system_firewall()),
             Arc::new(pw_netstat::WindowsRdpControl),
             SharedProbe::new(diag::SystemProbe::new()),
-            system_speed(proxy.clone()),
-            system_intel_parts(proxy),
+            system_speed(proxy.clone(), proxy_auth.clone()),
+            system_intel_parts(proxy, proxy_auth, Arc::clone(&secrets)),
+            secrets,
         )
     }
 
@@ -212,6 +222,7 @@ impl Engine {
             SharedProbe::icmp(Arc::new(SystemPinger)),
             Arc::new(UnavailableSpeed),
             IntelParts::Offline,
+            Arc::new(pw_intel::MemorySecretStore::new()),
         )
     }
 
@@ -226,6 +237,7 @@ impl Engine {
         probe: SharedProbe,
         speed: Arc<dyn SpeedApi>,
         intel_parts: IntelParts,
+        secrets: Arc<dyn pw_intel::SecretStore>,
     ) -> Self {
         let (publish, latest) = watch::channel(None);
         let trust = TrustState::new(config.rdp_trust_days);
@@ -341,7 +353,7 @@ impl Engine {
             )),
         };
         let intel_task = tokio::spawn(intel_loop(Arc::clone(&intel)));
-        let settings = settings::SettingsStore::open(config.defense_dir.as_deref());
+        let settings = settings::SettingsStore::open(config.defense_dir.as_deref(), secrets);
         let shield = Arc::new(RdpShield::new(
             control,
             Arc::clone(&defense_firewall),
@@ -353,6 +365,16 @@ impl Engine {
             detection.set_rdp_attempts(attempts.threshold, attempts.window_secs);
         }
         let shield_task = tokio::spawn(shield_loop(Arc::clone(&shield)));
+        let country = Arc::new(CountryGuard::new(
+            Arc::clone(&defense),
+            Arc::new(IntelCountries(Arc::clone(&intel))),
+            config.defense_dir.clone(),
+        ));
+        let country_task = tokio::spawn(country_loop(
+            Arc::clone(&country),
+            latest.clone(),
+            Arc::clone(&alerts),
+        ));
         let guardian_task = tokio::spawn(guardian_loop(Arc::clone(&defense), alerts.events()));
         let upkeep_task = tokio::spawn(upkeep_loop(
             Arc::clone(&defense),
@@ -406,6 +428,7 @@ impl Engine {
             defense,
             detection,
             shield,
+            country,
             speed,
             intel,
             settings,
@@ -415,6 +438,7 @@ impl Engine {
             _guardian: AbortOnDrop(guardian_task),
             _upkeep: AbortOnDrop(upkeep_task),
             _shield: AbortOnDrop(shield_task),
+            _country: AbortOnDrop(country_task),
             _intel: AbortOnDrop(intel_task),
         }
     }
@@ -581,6 +605,55 @@ async fn shield_loop(shield: Arc<RdpShield>) {
         let shield = Arc::clone(&shield);
         if let Err(err) = tokio::task::spawn_blocking(move || shield.tick()).await {
             tracing::error!(%err, "the RDP Shield check failed");
+        }
+    }
+}
+
+/// The addresses connected to the RDP port in the latest snapshot.
+fn rdp_peers_of(snapshot: Option<&Snapshot>) -> Vec<std::net::IpAddr> {
+    snapshot
+        .map(|s| {
+            s.stats
+                .rdp_peers
+                .iter()
+                .filter_map(|p| p.parse().ok())
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// The optional RDP country restriction. Wakes up every few seconds but only looks at anything while
+/// the policy is on; the work (GeoIP lookups, maybe firewall writes) runs on a blocking thread.
+async fn country_loop(
+    country: Arc<CountryGuard>,
+    latest: watch::Receiver<Option<Arc<Snapshot>>>,
+    alerts: Arc<AlertStore>,
+) {
+    let mut ticker = tokio::time::interval(Duration::from_secs(country::TICK_SECS));
+    ticker.set_missed_tick_behavior(MissedTickBehavior::Skip);
+    loop {
+        ticker.tick().await;
+        if !country.enabled() {
+            continue;
+        }
+        let snapshot = latest.borrow().clone();
+        let now_ms = poller::unix_ms();
+        let inputs = CountryInputs {
+            peers: rdp_peers_of(snapshot.as_deref()),
+            failed_logon_sources: alerts
+                .list()
+                .alerts
+                .iter()
+                .filter(|a| {
+                    a.kind == pw_proto::AlertKindView::RdpBruteForce
+                        && a.last_seen_unix_ms + country::RECENT_INCIDENT_MS >= now_ms
+                })
+                .filter_map(|a| a.source.as_deref().and_then(|s| s.parse().ok()))
+                .collect(),
+        };
+        let country = Arc::clone(&country);
+        if let Err(err) = tokio::task::spawn_blocking(move || country.tick(&inputs)).await {
+            tracing::error!(%err, "the RDP country restriction failed");
         }
     }
 }
@@ -896,21 +969,37 @@ impl Handler for Engine {
                 blocking(move || shield.end_session(&request)).await?;
                 Ok(Value::Null)
             }
+            method::RDP_COUNTRY_GET => {
+                let country = Arc::clone(&self.country);
+                let peers = rdp_peers_of(self.latest.borrow().as_deref());
+                blocking(move || Ok(country.status(&peers)))
+                    .await
+                    .and_then(|v| to_value(&v))
+            }
+            method::RDP_COUNTRY_SET => {
+                let policy: RdpCountryPolicy = parse(payload)?;
+                let country = Arc::clone(&self.country);
+                let peers = rdp_peers_of(self.latest.borrow().as_deref());
+                blocking(move || country.set_policy(policy, &peers, "operator"))
+                    .await
+                    .and_then(|v| to_value(&v))
+            }
             method::SETTINGS_GET => to_value(&self.settings.view()),
             method::SETTINGS_SET_PROXY => {
                 let request: ProxyRequest = parse(payload)?;
-                let view = self.settings.set_proxy(request.proxy)?;
-                self.defense.audit_entry(
-                    "operator",
-                    "set_proxy",
-                    "-",
-                    if view.proxy.is_some() {
-                        "proxy set"
-                    } else {
-                        "system proxy"
-                    },
-                    "ok",
-                );
+                let (view, credentials) = self.settings.set_proxy(&request)?;
+                // The audit entry says what changed, never the proxy credentials themselves.
+                let detail = match (view.proxy.is_some(), credentials) {
+                    (false, settings::CredentialChange::Removed) => {
+                        "system proxy, credentials removed"
+                    }
+                    (false, _) => "system proxy",
+                    (true, settings::CredentialChange::Saved) => "proxy set, credentials saved",
+                    (true, settings::CredentialChange::Removed) => "proxy set, credentials removed",
+                    (true, settings::CredentialChange::Unchanged) => "proxy set",
+                };
+                self.defense
+                    .audit_entry("operator", "set_proxy", "-", detail, "ok");
                 to_value(&view)
             }
             method::LOGS_AUDIT => {
@@ -1163,16 +1252,19 @@ fn data_dir() -> PathBuf {
 
 #[cfg(windows)]
 #[cfg_attr(not(feature = "net-http"), allow(unused_variables))]
-fn system_intel_parts(proxy: Option<String>) -> IntelParts {
+fn system_intel_parts(
+    proxy: Option<String>,
+    proxy_auth: Option<pw_core::ProxyAuth>,
+    secrets: Arc<dyn pw_intel::SecretStore>,
+) -> IntelParts {
     #[cfg(feature = "net-http")]
     {
         match pw_intel::HttpFetcher::new(&pw_intel::HttpFetcherConfig {
             proxy,
+            proxy_auth,
             ..pw_intel::HttpFetcherConfig::default()
         }) {
-            Ok(fetcher) => {
-                return IntelParts::Http(fetcher, Arc::new(pw_intel::secret::KeyringSecretStore))
-            }
+            Ok(fetcher) => return IntelParts::Http(fetcher, secrets),
             Err(err) => {
                 tracing::warn!(%err, "no network transport for the threat intelligence downloads")
             }
@@ -1184,12 +1276,16 @@ fn system_intel_parts(proxy: Option<String>) -> IntelParts {
 /// The speed test of the real agent: HTTP(S) with the system proxy (needs the `speed-http` feature).
 #[cfg(windows)]
 #[cfg_attr(not(feature = "net-http"), allow(unused_variables))]
-fn system_speed(proxy: Option<String>) -> Arc<dyn SpeedApi> {
+fn system_speed(
+    proxy: Option<String>,
+    proxy_auth: Option<pw_core::ProxyAuth>,
+) -> Arc<dyn SpeedApi> {
     #[cfg(feature = "net-http")]
     {
         use pw_diag::speed::{HttpTransport, HttpTransportConfig};
         match HttpTransport::new(&HttpTransportConfig {
             proxy,
+            proxy_auth,
             ..HttpTransportConfig::default()
         }) {
             // XeroHost nodes: the list is published in the blocklist repository (nodes.json); until a node
@@ -1521,6 +1617,40 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn the_country_restriction_is_off_by_default_and_refuses_an_empty_allow_list() {
+        let engine = Engine::new(
+            fast(EngineConfig::new("1", true)),
+            Arc::new(FakeNetStat::new()),
+        );
+        let reply = engine
+            .handle(method::RDP_COUNTRY_GET, Value::Null)
+            .await
+            .unwrap();
+        let status: pw_proto::RdpCountryStatus = serde_json::from_value(reply).unwrap();
+        assert!(!status.policy.enabled && status.policy.countries.is_empty());
+        assert!(!status.geo_ready, "no GeoIP database in the offline engine");
+
+        let refused = engine
+            .handle(
+                method::RDP_COUNTRY_SET,
+                serde_json::json!({"enabled": true, "mode": "allow", "countries": []}),
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(refused.code, ErrorCode::BadRequest);
+        let saved = engine
+            .handle(
+                method::RDP_COUNTRY_SET,
+                serde_json::json!({"enabled": true, "mode": "deny", "countries": ["CN", "RU"]}),
+            )
+            .await
+            .unwrap();
+        let saved: pw_proto::RdpCountryStatus = serde_json::from_value(saved).unwrap();
+        assert!(saved.policy.enabled);
+        assert_eq!(saved.policy.countries, ["CN", "RU"]);
+    }
+
+    #[tokio::test]
     async fn the_engine_routes_mtr_export_and_refuses_udp_and_tcp_without_capture() {
         let engine = Engine::new(
             fast(EngineConfig::new("1", true)),
@@ -1644,5 +1774,58 @@ mod tests {
             stats_until(&mut sub, |_| true).await.rdp_trust.window_days,
             1
         );
+    }
+
+    #[tokio::test]
+    async fn proxy_credentials_never_reach_the_audit_log_the_view_or_the_errors() {
+        let engine = Engine::new(
+            fast(EngineConfig::new("1", true)),
+            Arc::new(FakeNetStat::new()),
+        );
+        let set = serde_json::json!({
+            "proxy": "http://proxy.example.com:3128",
+            "username": "alice-the-user",
+            "password": "hunter2-the-password",
+        });
+        let reply = engine
+            .handle(method::SETTINGS_SET_PROXY, set)
+            .await
+            .unwrap();
+        let text = reply.to_string();
+        assert!(!text.contains("hunter2") && text.contains("alice-the-user"));
+        assert_eq!(reply["proxy_credentials"], true);
+        assert_eq!(reply["restart_required"], true);
+        let got = engine
+            .handle(method::SETTINGS_GET, Value::Null)
+            .await
+            .unwrap();
+        assert!(!got.to_string().contains("hunter2"));
+        let audit = engine
+            .handle(method::LOGS_AUDIT, Value::Null)
+            .await
+            .unwrap();
+        let audit = audit.to_string();
+        assert!(audit.contains("credentials saved"), "{audit}");
+        assert!(!audit.contains("hunter2") && !audit.contains("alice-the-user"));
+        // A refused request does not echo the password either.
+        let err = engine
+            .handle(
+                method::SETTINGS_SET_PROXY,
+                serde_json::json!({"proxy": "http://proxy:1", "username": "", "password": "hunter2-x"}),
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(err.code, ErrorCode::BadRequest);
+        assert!(!err.message.contains("hunter2"));
+        // Removing them is audited too, and the view forgets the user name.
+        let cleared = engine
+            .handle(
+                method::SETTINGS_SET_PROXY,
+                serde_json::json!({"proxy": "http://proxy.example.com:3128", "clear_credentials": true}),
+            )
+            .await
+            .unwrap();
+        assert_eq!(cleared["proxy_credentials"], false);
+        assert!(cleared.get("proxy_username").is_none());
     }
 }
