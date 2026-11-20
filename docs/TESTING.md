@@ -311,7 +311,7 @@ Needs a Windows VPS with the agent running elevated, plus WinMTR (or `mtr`/`trac
    the support report shows *Source public IP*. Check that the browser-style download prompt of the webview appears and writes the file.
 7. **Old agent.** With an agent older than protocol 1.10 the mode/interval/IPv6 fields and Export are hidden and a note explains why.
 
-## F11. Installer, upgrade, uninstall, updater (M11) — TEST VPS ONLY (Windows Server 2019 AND 2022, fresh snapshots)
+## F11. Installer, upgrade, uninstall, updater (M12) — TEST VPS ONLY (Windows Server 2019 AND 2022, fresh snapshots)
 
 The installer was only compiled and statically checked on the development VPS (nothing was installed there). Every step
 below changes the machine: use a throwaway VPS with a provider console (VNC) as fallback. Installer log:

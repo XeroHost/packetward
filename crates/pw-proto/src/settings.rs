@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-//! Agent settings (M11) and the audit log viewer.
+//! Agent settings (M12) and the audit log viewer.
 
 use serde::{Deserialize, Serialize};
 

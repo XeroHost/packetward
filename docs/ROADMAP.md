@@ -32,7 +32,7 @@ Product decisions are fixed in `docs/DECISIONS.md`.
       off, so no UAC prompt was ever shown; the `runas` path ran and worked.)
 - [x] Tray icon + autostart of the UI at user logon (minimized to tray).
       (Close hides to the tray, single instance, `--minimized` starts hidden: verified. Autostart is an opt-in switch in
-      Settings → Startup; registering it by default belongs to the installer (M11). The tray icon itself was not
+      Settings → Startup; registering it by default belongs to the installer (M12). The tray icon itself was not
       looked at on screen.)
 - [x] `apps/cli`: `pwctl status`.
 - [x] `docs/TESTING.md` manual checklist.
@@ -132,7 +132,30 @@ is rejected; works offline except AbuseIPDB and list refresh.
 - [x] UI: mode selector, port/size/interval/hop fields, ASN/org and country columns, Export menu, Npcap hint when UDP/TCP cannot run (en/es/pt-BR).
 **Accept:** TCP mode reaches hosts that drop ICMP (with Npcap) — **not measured**: needs a test VPS and Npcap installed by hand, see TESTING §F10. Everything else is fake-tested.
 
-## M11 — Settings, logs, proxy, updates, installer
+## M11 — MCP server
+Design: ARCHITECTURE §6.14. Decisions: DECISIONS "MCP server". Nothing of this milestone is implemented yet.
+- [ ] `crates/pw-mcp` (new): tool catalog, JSON schemas, result envelope with untrusted-field marking, prompts; `rmcp` (official Rust SDK),
+      stdio transport, launched as `pwctl mcp`. No network transport in v1.
+- [ ] Agent: `ClientKind::Mcp`, MCP policy (master switch off by default, one level per tool: disabled / automatic / approval), pending-action
+      queue with a 5-minute expiry, write rate limit, `AuditActor::Mcp`, protocol 1.13 (`mcp.*` methods and the `mcp.pending` topic).
+      Enforcement lives in the agent, not only in `pwctl mcp`: an `Mcp` connection can only call the methods of the catalog.
+- [ ] Read tools (always available once the switch is on): live stats, connections, top remote IPs, alerts, Guardian decisions, capture summary,
+      MTR / ping / DNS / port check, IP lookup (GeoIP/ASN, AbuseIPDB only with the user's key), firewall rules, RDP Shield audit, audit log.
+- [ ] Execution tools, all disabled by default and set one by one: automatic-capable (`block_ip` with TTL, `start_capture`, `speed_test` ≤ 1 GB,
+      `support_bundle`) and approval-only (`unblock_ip`, `set_guardian_mode`, `create_firewall_rule`, `delete_firewall_rule`). Never exposed:
+      disabling the firewall, firewall purge, any RDP Shield action, the allowlist and the protected set.
+- [ ] Approval flow: pending action in the agent → desktop notification and an in-app banner/dialog with the full detail and Approve / Reject →
+      expires after 5 minutes; the AI cannot approve over MCP.
+- [ ] Guardian protected set applies to every MCP action; write actions are rate limited per minute; every call goes to the audit log as "mcp".
+- [ ] MCP prompts: `analyze-attack`, `diagnose-latency`, `rdp-security-review`.
+- [ ] Pending-approval UI in the desktop: notification, banner/dialog with the full detail and Approve / Reject, `mcp.pending` subscription (the Settings → MCP page is part of M12).
+- [ ] Tests with the fake agent: a "never exposed" action is not in the tool list; an approval-level action does not run without the UI's
+      approval; the protected set refuses an MCP request to block the trusted RDP client IP; plus rate limit, expiry, master switch, the
+      method allowlist of `Mcp` connections, and sanitization of untrusted fields.
+**Accept:** with the switch off the agent refuses every MCP request; with it on, an MCP client (Claude Desktop / Claude Code) can read the
+state, and every write path behaves as specified above on a test VPS (TESTING §F13, to be written with the implementation).
+
+## M12 — Settings, logs, proxy, updates, installer
 - [x] Settings UI: language/appearance/notifications/autostart (earlier), proxy applied to all outbound HTTP (speed test, GeoIP and blocklist
       downloads, AbuseIPDB; read when the agent starts). The other agent settings live on their own pages (Guardian, Firewall, RDP Shield,
       Capture, Threat Intel, Speed Test); there is no `config.toml` (see DECISIONS).
@@ -147,9 +170,11 @@ is rejected; works offline except AbuseIPDB and list refresh.
       switch need the owner's keys (docs/RELEASE-KEYS.md) and were never exercised end to end: TESTING §F11.)
 - [x] Optional Authenticode step in CI (runs only when signing secrets exist).
       (In `release.yml`; untested until a certificate exists.)
-**Accept:** clean install/upgrade/uninstall on Windows Server 2019 and 2022 VMs; switching channel works.
+- [ ] Settings → MCP page (needs M11): master switch (off), level per execution tool, write limit, "Copy configuration" for Claude Desktop, Claude Code,
+      OpenCode and Cursor using the installed `pwctl.exe` path; en/es/pt-BR. The installer already ships `pwctl.exe`; add a check that `pwctl mcp` starts from the installed path.
+**Accept:** clean install/upgrade/uninstall on Windows Server 2019 and 2022 VMs; switching channel works; the MCP page copies a working configuration.
 
-## M12 — Hardening & 1.0
+## M13 — Hardening & 1.0
 - [x] Threat-model review (`docs/THREAT-MODEL.md`).
 - [ ] Fuzz IPC decoder: seeded robustness tests run in CI and a `cargo fuzz` target exists (`crates/pw-ipc/fuzz`), but libFuzzer was **not run** (needs nightly).
 - [ ] CPU/RAM budget check on 1 vCPU / 2 GB VPS: met on the dev VPS (0.7–0.9 % of one core idle with the UI closed, RAM 39–45 MB, after the adaptive pace); still to confirm on a 1 vCPU test VPS; see PROGRESS.

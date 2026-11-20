@@ -29,12 +29,12 @@ Read this first when resuming after a stop or a context compaction.
 | M8 GeoIP, intel, blocklists | implemented on dev (IntelService, Threat Intel page, blocklists with confirmation, AbuseIPDB), attack map with flags and zoom, IP detail drawer (click any address). Live list activation pending for a test VPS. (CI of the M8 push failed once on the Windows job — reqwest without a rustls provider in the speed-server tests — fixed by `2979d19`) |
 | M9 Speed test | implemented on dev (SpeedService, Speed Test page, bin tests). Accuracy vs a reference tool (±10 %) **not measured**: needs a test VPS and a node |
 | M10 MTR advanced | merged on dev (ICMP/UDP/TCP, ASN/country, export, UI). Acceptance "TCP reaches hosts that drop ICMP with Npcap" **pending** for a test VPS |
-| M11 Settings/logs/installer/updater | done: proxy setting with user name/password in the Windows Credential Manager, Logs page (audit), pw-store wired for the defense state, the audit log and the **alert inbox** (retention 90 days / 10 000 rows, legacy `alerts.jsonl` imported once). Updater checks at start and every 24 h (switch in Settings, on by default) and never installs without the button. Packaging (NSIS installer, updater, release workflow) is merged but untested live: see "Packaging" below |
-| M12 Hardening & 1.0 | partly: threat model, IPC robustness tests (CI) + cargo-fuzz target (**not run**, needs nightly), README. CPU budget met on the dev VPS (below), to confirm on a 1 vCPU test VPS |
+| M11 MCP server | **designed, not implemented** (ARCHITECTURE §6.14, ROADMAP M11, DECISIONS "MCP"). It sits before Settings/installer (now M12) and is the next milestone to implement; M12 gained two unchecked items that depend on it (Settings → MCP page, `pwctl mcp` launch check) |
+| M12 Settings/logs/installer/updater | done, except the Settings → MCP page and the `pwctl mcp` launch check (they need M11): proxy setting with user name/password in the Windows Credential Manager, Logs page (audit), pw-store wired for the defense state, the audit log and the **alert inbox** (retention 90 days / 10 000 rows, legacy `alerts.jsonl` imported once). Updater checks at start and every 24 h (switch in Settings, on by default) and never installs without the button. Packaging (NSIS installer, updater, release workflow) is merged but untested live: see "Packaging" below |
+| M13 Hardening & 1.0 | partly: threat model, IPC robustness tests (CI) + cargo-fuzz target (**not run**, needs nightly), README. CPU budget met on the dev VPS (below), to confirm on a 1 vCPU test VPS |
 | UI redesign (2026-11-20) | done: floating-panel shell, own title bar, Warm Sentinel palette with the logo blue, per-icon motion, flags, attack map, themed dropdowns/checkboxes everywhere, IP detail drawer |
-| MCP server | **blocked: the prompt that describes it was never received** (the brief ended with a literal `[paste the MCP prompt here]` placeholder). Nothing was invented; send the prompt and it becomes the next milestone |
 
-## Packaging (M11) — status
+## Packaging (M12) — status
 Merged into `dev`: NSIS release config (`tauri.release.conf.json`) + `installer/hooks.nsh`, two-channel updater that fails closed
 with the placeholder public key, tag-driven `release.yml` (unsigned build without secrets; no `latest.json` without the signing key),
 docs ARCHITECTURE §9 and TESTING §F11. The installer was **built** on the dev VPS (setup .exe) but **never run**: install,
@@ -43,7 +43,7 @@ pending (needs Windows Server 2019/2022 test VMs and the owner's keys, docs/RELE
 (manual "uninstall first" upgrade path resets RDP Shield; a stable hotfix lower than the newest beta overwrites the beta manifest;
 the updater uses the Windows system proxy, not the agent-config proxy).
 
-## Resource budget (M12 acceptance: idle < 1 % CPU, < 60 MB RAM)
+## Resource budget (M13 acceptance: idle < 1 % CPU, < 60 MB RAM)
 Measured on the dev VPS (16 logical cores; release build; `run --console`; capture on, 1 s poll, ~60 connections, ~3 Mbps):
 - Working set 27 MB, private 15 MB → **RAM criterion met**.
 - Before optimizing: CPU **1.7 – 2.9 % of one core** (60 s window, spread across the tokio workers and the blocking pool).
@@ -61,8 +61,8 @@ HKCU/HKLM Run `False`/`False`, `Test-Path ProgramData\PacketWard` `False`, agent
 `PacketWard` `0`, `%AppData%\PacketWard` `False`. Build outputs (`target/`) and worktrees under `.claude/` are git-ignored and were left.
 
 ## Blockers
-- **MCP server milestone: waiting for its prompt** (see the status table). Everything else that needs live firewall/RDP/service
-  changes is deferred to a test VPS (TESTING §0 and §F4–F11).
+No open blockers. The MCP server (M11) is designed and waiting its turn; everything that needs live firewall/RDP/service
+changes is deferred to a test VPS (TESTING §0 and §F4–F12).
 
 ## Live tests pending for a test VPS
 See docs/TESTING.md §0 (inbound capture rule, first step) and §F4–F11 (capture/Npcap, alerts, firewall + Guardian, RDP Shield, threat-intel

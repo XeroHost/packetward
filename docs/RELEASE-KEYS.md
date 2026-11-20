@@ -39,7 +39,7 @@ gh secret set TAURI_SIGNING_PRIVATE_KEY_PASSWORD --repo XeroHost/packetward
 3. **Back up** `packetward-updater.key` and the password in your password manager (two separate entries) and, if you
    want, an offline copy. Never commit them, never paste them in chat.
 
-The release workflow (`.github/workflows/release.yml`, M11) reads these two secrets. Without them it builds
+The release workflow (`.github/workflows/release.yml`, M12) reads these two secrets. Without them it builds
 **unsigned** artifacts and skips publishing `latest.json`, so no update channel is advertised by accident.
 
 ## 2. Blocklist minisign key (on your PC)

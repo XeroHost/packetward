@@ -34,10 +34,12 @@ evidence (test or code) for each control and what is still open. See `docs/ARCHI
 | T10 | Spreadsheet formula injection from the audit export | Cells starting with `=`, `+`, `-`, `@` are neutralised | `stores/logs.test.ts` |
 | T11 | Capture or detectors overwhelmed by an attack (DoS of the defender) | Bounded channels with drop-and-count, no per-packet allocation, aggregates only over IPC, "capture is blind" warning | capture/detect tests; load check pending (below) |
 | T12 | Installer abuse (DLL planting, wrong ACLs) | Per-machine install under Program Files; the agent loads `wpcap.dll` only from an absolute system path; the installer script is tolerant and logs | `pw-capture` loader, installer hooks (reviewed statically) |
+| T13 | (Planned, M11) An AI client uses the MCP server to block, unblock or reconfigure the firewall, or is steered by prompt injection hidden in hostnames, process names or payload text | Master switch off by default; execution tools disabled by default and set one by one; risky actions need a human approval in the desktop (5 min, the AI cannot approve); never-exposed list (firewall off/purge, RDP Shield, allowlist, protected set); protected set applies; write rate limit; audit actor `mcp`; untrusted fields marked and sanitized; enforcement in the agent per connection kind | ARCHITECTURE §6.14; tests listed in ROADMAP M11 (not written yet) |
 
 ## Residual risks and open items
 - **A state file owned by a non-admin before the first protected start** is not detected (recorded in DECISIONS). Fresh installs are unaffected.
 - **Operators group** members can switch the Guardian to Monitor/Active and unblock; treat membership as an admin-light grant.
+- **MCP is a guardrail, not a sandbox** (planned, M11): pipe authorization is by group, so an AI client with a shell under an Operator account can call `pwctl` directly. Deny `pwctl` in the client's own permissions; Settings → MCP will say so.
 - **Raw-socket capture is inbound-blind on the dev VPS** (hypothesis: Windows Firewall); the installer adds the allow rule, still to be verified on a test VPS (TESTING §F4).
 - **No Authenticode/updater key yet**: until the owner supplies them (`docs/RELEASE-KEYS.md`) releases are unsigned and the updater and the XeroHost list stay disabled.
 - **Live verification pending** for every write path to the firewall, RDP and service control (they were exercised only with fakes on the dev VPS, by rule); see TESTING §F6–F11.
