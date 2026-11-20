@@ -6,6 +6,7 @@
 import { onKeyStroke } from '@vueuse/core'
 import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
 import { geoLookup } from '@/api/intel'
 import Flag from '@/components/pw/Flag.vue'
 import HIcon from '@/components/pw/HIcon.vue'
@@ -24,6 +25,7 @@ import type { GeoEntry } from '@/types/generated/GeoEntry'
 
 const { t, locale } = useI18n()
 const detail = useIpDetailStore()
+const route = useRoute()
 const alerts = useAlertsStore()
 const defense = useDefenseStore()
 const intel = useIntelStore()
@@ -37,6 +39,11 @@ const allowed = ref(false)
 let previousFocus: HTMLElement | null = null
 
 const addr = computed(() => detail.addr)
+// Going to another page closes the panel: it belongs to the page it was opened from.
+watch(
+  () => route.fullPath,
+  () => detail.close(),
+)
 onKeyStroke('Escape', () => {
   if (detail.addr !== null) detail.close()
 })

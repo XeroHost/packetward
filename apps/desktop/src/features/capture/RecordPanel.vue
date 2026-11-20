@@ -107,7 +107,7 @@ const payloadOptions = computed(() => [
           :disabled="running"
         />
       </label>
-      <label class="flex w-48 flex-col gap-1 text-sm">
+      <label class="flex w-64 flex-col gap-1 text-sm">
         <span class="text-text-muted">{{ t('capture.record.payload') }}</span>
         <PwSelect v-model="payload" :options="payloadOptions" :disabled="running" />
       </label>

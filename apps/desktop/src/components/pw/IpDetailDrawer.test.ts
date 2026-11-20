@@ -2,6 +2,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { reactive } from 'vue'
 import { i18n } from '@/app/i18n'
 import { useDefenseStore } from '@/stores/defense'
 import { useIpDetailStore } from '@/stores/ipDetail'
@@ -9,6 +10,9 @@ import type { AlertView } from '@/types/generated/AlertView'
 import type { BlockView } from '@/types/generated/BlockView'
 import IpCell from './IpCell.vue'
 import IpDetailDrawer from './IpDetailDrawer.vue'
+
+const route = vi.hoisted(() => ({ current: null as { fullPath: string } | null }))
+vi.mock('vue-router', () => ({ useRoute: () => route.current }))
 
 const api = vi.hoisted(() => ({
   geoLookup: vi.fn(),
@@ -92,6 +96,7 @@ const BLOCK: BlockView = {
 }
 
 beforeEach(() => {
+  route.current = reactive({ fullPath: '/connections' })
   setActivePinia(createPinia())
   i18n.global.locale.value = 'en'
   for (const fn of [...Object.values(api), ...Object.values(alertsApi)]) fn.mockReset()
@@ -169,6 +174,15 @@ describe('IpDetailDrawer', () => {
     const wrapper = await open()
     await wrapper.find('[data-testid="ip-block"]').trigger('click')
     expect(useDefenseStore().blockTarget).toBe('203.0.113.9')
+  })
+
+  it('closes when the user goes to another page', async () => {
+    const wrapper = await open()
+    expect(wrapper.find('[data-testid="ip-detail"]').exists()).toBe(true)
+    route.current!.fullPath = '/alerts'
+    await flushPromises()
+    expect(useIpDetailStore().addr).toBeNull()
+    expect(wrapper.find('[data-testid="ip-detail"]').exists()).toBe(false)
   })
 
   it('adds the address to the allowlist', async () => {

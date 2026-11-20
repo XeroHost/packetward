@@ -79,6 +79,7 @@ pub fn load_proxy_auth(secrets: &dyn SecretStore) -> Option<ProxyAuth> {
 }
 
 /// The proxy credentials the HTTP clients must use: only meaningful together with a saved proxy.
+#[cfg(any(windows, test))]
 pub fn saved_proxy_auth(dir: Option<&Path>, secrets: &dyn SecretStore) -> Option<ProxyAuth> {
     saved_proxy(dir)?;
     load_proxy_auth(secrets)
