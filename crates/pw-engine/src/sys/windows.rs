@@ -16,12 +16,24 @@ use windows::Win32::Security::{
     GetSecurityDescriptorDacl, ACL, DACL_SECURITY_INFORMATION, PROTECTED_DACL_SECURITY_INFORMATION,
     PSECURITY_DESCRIPTOR,
 };
+use windows::Win32::Storage::FileSystem::GetDiskFreeSpaceExW;
 
 /// SYSTEM and Administrators only, inherited by everything created inside, no inheritance from the parent.
 const PRIVATE_DIR_SDDL: &str = "D:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)";
 
 fn wide(text: &str) -> Vec<u16> {
     text.encode_utf16().chain(once(0)).collect()
+}
+
+/// Free bytes available to this process on the disk holding `dir`, or `None` if Windows does not answer.
+pub fn free_disk_bytes(dir: &Path) -> Option<u64> {
+    let path = wide(&dir.to_string_lossy());
+    let mut available = 0u64;
+    // SAFETY: `path` is a NUL-terminated UTF-16 string that outlives the call, and `available` is a valid
+    // out pointer for the whole call; the other two out parameters are optional and passed as None.
+    unsafe { GetDiskFreeSpaceExW(PCWSTR(path.as_ptr()), Some(&mut available), None, None) }
+        .ok()
+        .map(|()| available)
 }
 
 /// Replaces the folder's access list with "SYSTEM and Administrators: full control" and stops it

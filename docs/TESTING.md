@@ -212,6 +212,11 @@ Automated tests cover the pipeline, stats, recorder, blind detection, support bu
    addresses* none of the server's addresses or its name appear in any text file (search them), and `capture.pcapng` is absent.
    `pwctl support-bundle --capture-secs 10` produces the same zip from the command line.
 
+## F4b. Recording limits (2026-11-20)
+1. With less free space than recording size + 2 GiB (a small test disk, or a quota), *Start recording* is refused with "not enough free disk space"; nothing is written.
+2. Record three 500 MB timed captures in a row (or fill `%ProgramData%\PacketWard\captures` with large `.pcapng` files): the folder never exceeds 2 GiB, the oldest recordings disappear first, other files in the folder stay.
+3. Leave the live capture running for an hour under normal traffic: the agent's private memory stays flat (check with the Task Manager details tab) and `captures\` stays empty.
+
 ## F5. Alerts and notifications (M5)
 
 Automated tests cover every detector on its fixture and the quiet "normal traffic" fixture, the engine wiring (netstat, failed logons,

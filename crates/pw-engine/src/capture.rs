@@ -29,6 +29,13 @@ use tokio::task::JoinHandle;
 /// Recordings older than this are deleted when the agent starts and when a recording starts.
 pub const RETENTION: Duration = Duration::from_secs(7 * 24 * 60 * 60);
 const MAX_TIMED_SECS: u32 = 3600;
+const GIB: u64 = 1 << 30;
+/// All recordings together may take this much disk; the oldest finished ones are deleted to make room for a
+/// new one. (Each recording is also bounded on its own: a timed one by size and time, a ring by its total.)
+pub const RECORDINGS_MAX_TOTAL: u64 = 2 * GIB;
+/// A recording does not start unless the disk keeps at least this much free besides the recording's own
+/// maximum size: a capture must never be what fills the server's disk.
+pub const MIN_FREE_BYTES: u64 = 2 * GIB;
 const DEFAULT_TIMED_SECS: u32 = 60;
 const MAX_FILTER_LEN: usize = 512;
 /// Seconds of history the blind-capture check looks at.
@@ -356,6 +363,26 @@ impl CaptureManager {
         let removed = cleanup_old(&self.dir, RETENTION);
         if removed > 0 {
             tracing::info!(removed, "deleted old recordings");
+        }
+        // The most this recording can write, whatever the mode.
+        let planned = match request.mode {
+            RecordModeView::Timed => pw_capture::DEFAULT_TIMED_MAX_BYTES,
+            RecordModeView::Ring => pw_capture::DEFAULT_RING_TOTAL_BYTES,
+        };
+        let dir = self.dir.clone();
+        let dropped = make_room(
+            &self.dir,
+            planned,
+            RECORDINGS_MAX_TOTAL,
+            MIN_FREE_BYTES,
+            move || crate::sys::free_disk_bytes(&dir),
+        )
+        .map_err(bad_request)?;
+        if dropped > 0 {
+            tracing::info!(
+                dropped,
+                "deleted the oldest recordings to stay within the folder budget"
+            );
         }
         let payload = match request.payload {
             PayloadView::Headers => Payload::Headers {
@@ -775,6 +802,68 @@ pub fn cleanup_old(dir: &Path, max_age: Duration) -> usize {
         }
     }
     removed
+}
+
+/// Makes sure a recording of at most `planned` bytes fits: the oldest finished recordings are deleted until
+/// the folder (with the new one) stays within `cap`, then the disk must still have `planned + min_free` free
+/// (`free` is asked after the deletions, because they free space). Returns how many files were deleted.
+/// When the free space is unknown (`None`) only the folder cap applies. Only files this module made are
+/// touched (`*.pcapng` and `*.pcapng.partial`), never anything else in the folder.
+pub fn make_room(
+    dir: &Path,
+    planned: u64,
+    cap: u64,
+    min_free: u64,
+    free: impl Fn() -> Option<u64>,
+) -> Result<usize, String> {
+    if planned > cap {
+        return Err(format!(
+            "a recording can take up to {} MiB but the recordings folder is limited to {} MiB",
+            planned >> 20,
+            cap >> 20
+        ));
+    }
+    let mut files: Vec<(SystemTime, u64, PathBuf)> = fs::read_dir(dir)
+        .map(|entries| {
+            entries
+                .filter_map(Result::ok)
+                .filter(|e| {
+                    let name = e.file_name().to_string_lossy().into_owned();
+                    is_capture_name(&name) || name.ends_with(".pcapng.partial")
+                })
+                .filter_map(|e| {
+                    let meta = e.metadata().ok()?;
+                    meta.is_file()
+                        .then(|| (meta.modified().unwrap_or(UNIX_EPOCH), meta.len(), e.path()))
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    files.sort_by_key(|(modified, _, _)| *modified);
+    let mut total: u64 = files.iter().map(|(_, len, _)| len).sum();
+    let mut deleted = 0;
+    for (_, len, path) in &files {
+        if total + planned <= cap {
+            break;
+        }
+        if fs::remove_file(path).is_ok() {
+            total = total.saturating_sub(*len);
+            deleted += 1;
+        }
+    }
+    if total + planned > cap {
+        return Err("the recordings folder is full and its files could not be removed".to_owned());
+    }
+    if let Some(free) = free() {
+        if free < planned.saturating_add(min_free) {
+            return Err(format!(
+                "not enough free disk space for a recording: {} MiB free, at least {} MiB needed",
+                free >> 20,
+                planned.saturating_add(min_free) >> 20
+            ));
+        }
+    }
+    Ok(deleted)
 }
 
 /// Creates the folder and restricts it to administrators (and SYSTEM) where the OS supports it.
@@ -1218,6 +1307,90 @@ mod tests {
         assert_eq!(cleanup_old(dir.path(), Duration::ZERO), 3);
         assert!(dir.path().join("notes.txt").exists());
         assert_eq!(cleanup_old(&dir.path().join("missing"), Duration::ZERO), 0);
+    }
+
+    // ---- the disk budget -------------------------------------------------------------------
+
+    const MIB: u64 = 1 << 20;
+
+    fn file_of(dir: &Path, name: &str, mib: u64, age_secs: u64) {
+        let path = dir.join(name);
+        let file = fs::File::create(&path).unwrap();
+        file.set_len(mib * MIB).unwrap();
+        file.set_modified(SystemTime::now() - Duration::from_secs(age_secs))
+            .unwrap();
+    }
+
+    #[test]
+    fn the_oldest_recordings_go_first_until_the_new_one_fits_the_folder_budget() {
+        let dir = tempfile::tempdir().unwrap();
+        file_of(dir.path(), "old.pcapng", 400, 300);
+        file_of(dir.path(), "mid.pcapng", 400, 200);
+        file_of(dir.path(), "new.pcapng", 400, 100);
+        file_of(dir.path(), "notes.txt", 400, 1_000);
+        // Budget 1000 MiB, the new one may take 500: 1200 + 500 > 1000, so two files must go.
+        let deleted = make_room(dir.path(), 500 * MIB, 1000 * MIB, 0, || None).unwrap();
+        assert_eq!(deleted, 2);
+        assert!(!dir.path().join("old.pcapng").exists());
+        assert!(!dir.path().join("mid.pcapng").exists());
+        assert!(dir.path().join("new.pcapng").exists());
+        assert!(
+            dir.path().join("notes.txt").exists(),
+            "only recordings are ever deleted"
+        );
+    }
+
+    #[test]
+    fn a_recording_does_not_start_when_the_disk_would_be_left_too_full() {
+        let dir = tempfile::tempdir().unwrap();
+        let err = make_room(dir.path(), 500 * MIB, 2000 * MIB, 2000 * MIB, || {
+            Some(2200 * MIB)
+        })
+        .unwrap_err();
+        assert!(err.contains("not enough free disk space"), "{err}");
+        // Enough room: fine. Unknown free space: only the folder budget applies.
+        assert!(
+            make_room(dir.path(), 500 * MIB, 2000 * MIB, 2000 * MIB, || Some(
+                2600 * MIB
+            ))
+            .is_ok()
+        );
+        assert!(make_room(dir.path(), 500 * MIB, 2000 * MIB, 2000 * MIB, || None).is_ok());
+    }
+
+    #[test]
+    fn the_free_space_is_asked_after_old_recordings_were_deleted() {
+        let dir = tempfile::tempdir().unwrap();
+        file_of(dir.path(), "a.pcapng", 900, 100);
+        let path = dir.path().join("a.pcapng");
+        // The disk reports little free space only while the old file still exists.
+        let ok = make_room(dir.path(), 500 * MIB, 1000 * MIB, 100 * MIB, || {
+            Some(if path.exists() { 50 * MIB } else { 5000 * MIB })
+        });
+        assert_eq!(ok, Ok(1));
+    }
+
+    #[test]
+    fn a_recording_larger_than_the_whole_budget_is_refused() {
+        let dir = tempfile::tempdir().unwrap();
+        assert!(make_room(dir.path(), 3000 * MIB, 2000 * MIB, 0, || None).is_err());
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_reports_the_free_space_of_a_folder() {
+        let free = crate::sys::free_disk_bytes(&std::env::temp_dir());
+        assert!(free.is_some_and(|bytes| bytes > 0), "{free:?}");
+        assert_eq!(
+            crate::sys::free_disk_bytes(Path::new(r"Z:\no\such\folder")),
+            None
+        );
+    }
+
+    #[test]
+    fn the_real_default_budget_holds_the_largest_recording() {
+        const { assert!(RECORDINGS_MAX_TOTAL >= pw_capture::DEFAULT_TIMED_MAX_BYTES) };
+        const { assert!(RECORDINGS_MAX_TOTAL >= pw_capture::DEFAULT_RING_TOTAL_BYTES) };
     }
 }
 

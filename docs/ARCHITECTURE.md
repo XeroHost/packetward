@@ -163,6 +163,12 @@ user confirms full payload, one recording at a time, files older than 7 days are
 hand-written `libloading` binding (absolute path to `System32\Npcap\wpcap.dll`), not the `pcap` crate.
 Default adapter: the first one that is up, not loopback and has a routable IPv4 address.
 
+**Resource bounds (reviewed 2026-11-20).** The live capture never writes packets anywhere: they are decoded in the capture thread, handed through
+bounded channels (a full channel drops and counts the batch) and reduced to per-second aggregates and detector state (at most 50 000 tracked
+sources in each). Only a recording writes to disk: a timed one stops at 500 MiB or its duration (at most 1 hour), a ring keeps at most 200 MiB,
+all recordings together may take 2 GiB (`RECORDINGS_MAX_TOTAL`; the oldest finished ones are deleted first), files older than 7 days are removed,
+and a recording is refused unless the disk keeps `MIN_FREE_BYTES` (2 GiB) free besides its own maximum (`sys::free_disk_bytes`).
+
 ### 6.2 Detection (`pw-detect`) — pure, deterministic, heavily tested
 Per source IP, sliding windows (e.g. 1 s, 10 s, 60 s) tracking: packets, bytes, SYN count, SYN-ACK/ACK ratio,
 UDP packets, ICMP packets, distinct destination ports, new connections.

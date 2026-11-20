@@ -4,7 +4,14 @@
 #[cfg(windows)]
 mod windows;
 #[cfg(windows)]
-pub use windows::protect_dir;
+pub use windows::{free_disk_bytes, protect_dir};
+
+/// Free bytes on the disk that holds `dir` (what a non-elevated writer could still use). `None` when the
+/// system does not say; callers then rely on their own size limits only.
+#[cfg(not(windows))]
+pub fn free_disk_bytes(_dir: &std::path::Path) -> Option<u64> {
+    None
+}
 
 /// Restricts a directory to its owner (the agent's account). On Windows the real implementation
 /// grants SYSTEM and Administrators only.
