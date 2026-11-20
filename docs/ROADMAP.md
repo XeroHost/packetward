@@ -105,17 +105,16 @@ fresh install is in Monitor.
       per IP (threshold/window/TTL/escalation via the Guardian), change RDP port, force NLA, optional account lockout
       (off by default, DoS warning).
 - [x] Notification for a successful logon from a never-seen address (alert `rdp_new_logon`, Medium).
-- [ ] Optional country restriction (needs M8 GeoIP integration; off by default, never applied to trusted addresses).
+- [x] Optional country restriction (RS-2 A: reactive through the Guardian, off by default, never applied to protected addresses, fail closed; UI in the RDP Shield page). Live behaviour pending for a test VPS.
 - [x] `pwctl rdp reset` (also `--offline`); UI mentions the provider's VNC/console for recovery.
 **Accept:** tests (fakes) prove: unconfirmed change is reverted by the agent; revert survives restart; the current
 successful-logon IP is never excluded; reset restores factory state. Live checks are in TESTING.md (test VPS only).
 
 ## M8 — GeoIP map, threat intel & blocklists
 - [x] DB-IP Lite country + ASN lookup (local `.mmdb`), manual download/update from the Threat Intel page (no scheduled update check yet).
-- [ ] Attack map: origin points/arcs to the server, intensity by pps, country leaderboard, click → IP detail.
-      (Country leaderboard of the live remote addresses is built; the ECharts world map is **not** built.)
-- [ ] IP detail drawer: geo, ASN, connections, alerts, AbuseIPDB (if key), block/allow actions.
-      (AbuseIPDB check by address is on the Threat Intel page; the drawer is **not** built.)
+- [x] Attack map: ECharts world map shaded by addresses behind alerts and blocks, country leaderboard, zoom/drag/controls, flags next to every address.
+      (Arcs and pps intensity were not built: the map is by country, from the local GeoIP database.)
+- [x] IP detail drawer: geo, ASN, state (blocked / allowlisted / trusted RDP), blocks, alerts, live connections, AbuseIPDB (if key), block / unblock / allow actions; opens from any address.
 - [x] Blocklists: XeroHost shared list (minisign-verified, pinned key; fail-closed until a key is pinned) + opt-in public lists;
       scheduled refresh; applied through batched firewall rules and the protected set.
 **Accept:** map stays > 30 fps with 500 active sources (and static under reduce motion); a tampered blocklist
@@ -153,6 +152,6 @@ is rejected; works offline except AbuseIPDB and list refresh.
 ## M12 — Hardening & 1.0
 - [x] Threat-model review (`docs/THREAT-MODEL.md`).
 - [ ] Fuzz IPC decoder: seeded robustness tests run in CI and a `cargo fuzz` target exists (`crates/pw-ipc/fuzz`), but libFuzzer was **not run** (needs nightly).
-- [ ] CPU/RAM budget check on 1 vCPU / 2 GB VPS: measured on the dev VPS, RAM 27 MB (met), CPU 1.7–2.9 % of one core (**not met**); see PROGRESS.
+- [ ] CPU/RAM budget check on 1 vCPU / 2 GB VPS: met on the dev VPS (0.7–0.9 % of one core idle with the UI closed, RAM 39–45 MB, after the adaptive pace); still to confirm on a 1 vCPU test VPS; see PROGRESS.
 - [x] README (en, with es/pt summaries), SmartScreen note, CONTRIBUTING, SECURITY.md. (Screenshots: none yet, no release build was run.)
 **Accept:** agent idle < 1% CPU and < 60 MB RAM; under attack fixture replay it stays responsive.

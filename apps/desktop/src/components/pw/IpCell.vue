@@ -7,6 +7,7 @@ import Flag from '@/components/pw/Flag.vue'
 import { Badge } from '@/components/ui/badge'
 import { copyText } from '@/lib/clipboard'
 import { useDefenseStore } from '@/stores/defense'
+import { useIpDetailStore } from '@/stores/ipDetail'
 
 const props = defineProps<{
   addr: string
@@ -19,6 +20,7 @@ const props = defineProps<{
 
 const { t } = useI18n()
 const defense = useDefenseStore()
+const detail = useIpDetailStore()
 
 /** Only a single address (no CIDR) can be blocked from here, and never a private one. */
 const blockable = computed(() => props.addr !== '' && !props.addr.includes('/'))
@@ -48,7 +50,16 @@ onBeforeUnmount(() => {
 <template>
   <span v-if="addr" class="group inline-flex min-w-0 items-center gap-1.5">
     <Flag :addr="addr" />
-    <span class="truncate font-mono" :title="text">{{ text }}</span>
+    <button
+      type="button"
+      class="hover:text-brand-fg focus-visible:ring-brand min-w-0 truncate rounded text-left font-mono hover:underline focus-visible:ring-2 focus-visible:outline-none"
+      :title="text"
+      :aria-label="t('ipDetail.open', { addr })"
+      data-testid="ip-open"
+      @click.stop="detail.open(addr)"
+    >
+      {{ text }}
+    </button>
     <Badge
       v-if="rdp"
       variant="outline"

@@ -1097,5 +1097,37 @@
     "maximize": "Maximize",
     "restore": "Restore",
     "close": "Close"
+  },
+  "ipDetail": {
+    "title": "Details of {addr}",
+    "close": "Close",
+    "open": "Show details of {addr}",
+    "state": "State",
+    "reserved": "Private or reserved address",
+    "placeFailed": "Location unavailable",
+    "blocked": "Blocked",
+    "protected": {
+      "allowlist": "On the allowlist",
+      "rdpTrusted": "Trusted: successful RDP logon"
+    },
+    "rdpPeer": "Connected to Remote Desktop",
+    "ongoing": "Attack in progress",
+    "nothing": "Nothing noteworthy: not blocked, not protected, no alerts.",
+    "network": "Network",
+    "organization": "Organization",
+    "blocks": "Firewall blocks",
+    "permanent": "Until removed",
+    "until": "Until {when}",
+    "alerts": "Alerts ({count})",
+    "connections": "Open connections",
+    "reputation": "Reputation",
+    "abuseScore": "AbuseIPDB score",
+    "abuseReports": "{n} reports",
+    "abuseCheck": "Check on AbuseIPDB",
+    "abuseOff": "Add an AbuseIPDB key in Threat intelligence to look addresses up. Nothing is sent without it.",
+    "block": "Block",
+    "unblock": "Unblock",
+    "allow": "Add to allowlist",
+    "allowed": "Added to the allowlist"
   }
 }

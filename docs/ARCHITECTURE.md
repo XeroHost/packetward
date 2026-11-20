@@ -182,8 +182,10 @@ speed → Aggregate) and the **failed-logon feed** (Security 4625, LogonType 3/7
 live, no history). **Capture** (when the backend actually sees inbound packets) adds the SYN/UDP/ICMP flood and scan detectors through
 the capture `PacketSink`. The protected set (trusted RDP clients) only sets the alert's `protected` flag: alerts are always raised and
 nothing is blocked here. `AlertStore` keeps the 500 most recent incidents (one per id, merged across started/escalated/ended, peak
-severity kept), appends every change to `%ProgramData%\PacketWard\alerts.jsonl` (rotated at 10 MB; reloaded at start, incidents that were
-running are shown as ended) and pushes them on the `alerts` topic; `alerts.list` / `alerts.clear` (removes ended incidents). The
+severity kept), persists every change in the SQLite store (`alerts` table; retention 90 days / 10 000 rows, ended incidents only, applied at
+start and hourly; ids keep growing across restarts and after clearing through saved id marks; incidents that were running at stop are shown
+as ended; without the `store` feature, or if the database refuses a write, it appends to `alerts.jsonl` instead, and an `alerts.jsonl` left
+by an older agent is imported once and renamed `.imported`) and pushes them on the `alerts` topic; `alerts.list` / `alerts.clear` (removes ended incidents). The
 desktop app turns them into the inbox, the unread badge, the tray badge and Windows notifications (severities chosen in Settings; default
 critical + high).
 
@@ -350,9 +352,10 @@ The loop refreshes due lists 30 s after start and every 10 minutes. Protocol min
 - **Wired in (M11, feature `store` of `pw-engine`, enabled by the agent):** the defense state (blocks, Guardian policy, allowlist; one JSON
   value under the `kv` key `defense.state`) and the audit log. `StorePersistence` implements the engine's `Persistence` trait; a `defense.json`
   from an older agent is imported once (renamed `defense.json.imported`), an old `audit.jsonl` stays untouched. If the database cannot be
-  opened the agent falls back to the JSON files, so a broken database never stops the protection. **Still on JSON files:** alerts
-  (`alerts.jsonl`), the RDP Shield transaction (`rdp_shield.json`), the intel lists (`intel/`) and `settings.json`; `blocks`, `alerts`,
-  `rdp_logons` and `intel_cache` tables exist but are not used by the engine yet.
+  opened the agent falls back to the JSON files, so a broken database never stops the protection. The **alert inbox** is in the same database
+  (`alert_db.rs`, one shared `Store`, `Limits.alerts_keep` = the retention row cap). **Still on JSON files (on purpose: tiny, human-readable,
+  and the agent must start without the database):** the RDP Shield transaction (`rdp_shield.json`), the country policy (`rdp_country.json`),
+  the intel lists (`intel/`) and `settings.json`; the `blocks`, `rdp_logons` and `intel_cache` tables exist but are not used by the engine yet.
 - Text logs via `tracing-appender` daily rotation in `%ProgramData%\PacketWard\logs`.
 - Audit event categories: network, capture, detection, guardian, firewall, settings, update.
 
@@ -584,11 +587,27 @@ language (auto: `es-*`→es, `pt-*`→pt-BR, else en; or manual), Appearance (th
 density, text size, reduce motion), notification mutes/quiet hours, updates (`channel` stable|beta, `checkOnStart`).
 
 **As built (M11).** There is no `config.toml`: each area keeps its own file in `%ProgramData%\PacketWard` (`defense.json` Guardian policy,
-allowlist and blocks; `intel/intel.json` blocklists; `alerts.jsonl`; `rdp_shield.json`; `settings.json` the proxy), all restricted to SYSTEM and
+allowlist and blocks (now in `packetward.db`); `intel/intel.json` blocklists; `alerts.jsonl` only as the import source; `rdp_shield.json`; `rdp_country.json`; `settings.json` the proxy), all restricted to SYSTEM and
 Administrators when the agent starts. `settings.get` / `settings.set_proxy` read and write `settings.json`; the proxy (`http`, `https`, `socks5`,
-`socks5h`, host required, **no credentials**) is read once at agent start and passed to the HTTP clients of the speed test and of the intel
+`socks5h`, host required, **no credentials in the address**) is read once at agent start and passed to the HTTP clients of the speed test and of the intel
 downloads, so a change reports `restart_required` until the service restarts. `logs.audit` returns the newest audit entries (limit 1..2000,
 optional case-insensitive filter), newest first, read from `audit.jsonl` (+ the rotated `.1`). Protocol minor 11.
+
+**Proxy credentials, country restriction, idle pace (protocol minor 12).**
+- `settings.set_proxy` takes `{proxy?, username?, password?, clear_credentials?}`. The user name and password live **only** in the Windows
+  Credential Manager (`keyring`, entries `proxy-username` / `proxy-password`): never in the URL (an address with credentials is refused), a file,
+  a log, an audit entry, an error message or a `Debug` print (`ProxyRequest` has a redacting `Debug`). `settings.get` returns
+  `proxy_credentials` (bool) and `proxy_username`, never the password. They apply at the next agent start like the proxy (`restart_required`).
+- `rdp.country.get` / `rdp.country.set` (`country.rs`, `CountryGuard`): an optional policy (`rdp_country.json`: `enabled`, `mode` allow|deny,
+  ISO codes), **off by default**. It is *reactive*: every 5 s, while the policy is on, the public addresses connected to the RDP port (and the
+  sources of RDP brute-force incidents from the last hour) are looked up in the local GeoIP database and an address that breaks the policy is
+  handed to `Defense::guard_address`, i.e. the same protected set, Monitor report, TTL, circuit breaker and audit as every other automatic block
+  (summary key `rdp_country`). Fail closed: unknown country, missing or corrupt GeoIP database, a protected address, or Guardian not Active → nothing is
+  blocked (Monitor records "would block"). An allow-only policy with no country is refused. The reply carries the operator's own countries so the UI
+  can warn before an allow list would lock the operator out.
+- `Presence` (`presence.rs`): the engine counts the live `live.stats` subscribers. With none, the network poll and the detector tick run at
+  `idle_poll_interval` (5 s) / `idle_detect_interval` (2 s) instead of 1 s, and the first subscriber wakes them at once; the agent runtime has 2
+  worker threads. Protocol minor 12.
 
 ## 11. Testing strategy
 - `pw-detect`, `pw-core`, `pw-proto`, `pw-ipc` (in-memory), `pw-engine` (with fakes): unit + property tests on Linux CI.

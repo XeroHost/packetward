@@ -1097,5 +1097,37 @@
     "maximize": "Maximizar",
     "restore": "Restaurar",
     "close": "Fechar"
+  },
+  "ipDetail": {
+    "title": "Detalhes de {addr}",
+    "close": "Fechar",
+    "open": "Ver detalhes de {addr}",
+    "state": "Estado",
+    "reserved": "Endereço privado ou reservado",
+    "placeFailed": "Localização indisponível",
+    "blocked": "Bloqueado",
+    "protected": {
+      "allowlist": "Na lista permitida",
+      "rdpTrusted": "Confiável: logon RDP bem-sucedido"
+    },
+    "rdpPeer": "Conectado à Área de Trabalho Remota",
+    "ongoing": "Ataque em andamento",
+    "nothing": "Nada digno de nota: não está bloqueado nem protegido e não tem alertas.",
+    "network": "Rede",
+    "organization": "Organização",
+    "blocks": "Bloqueios do firewall",
+    "permanent": "Até ser removido",
+    "until": "Até {when}",
+    "alerts": "Alertas ({count})",
+    "connections": "Conexões abertas",
+    "reputation": "Reputação",
+    "abuseScore": "Pontuação do AbuseIPDB",
+    "abuseReports": "{n} relatórios",
+    "abuseCheck": "Consultar no AbuseIPDB",
+    "abuseOff": "Adicione uma chave do AbuseIPDB em Inteligência de ameaças para consultar endereços. Sem ela nada é enviado.",
+    "block": "Bloquear",
+    "unblock": "Desbloquear",
+    "allow": "Adicionar à lista permitida",
+    "allowed": "Adicionado à lista permitida"
   }
 }

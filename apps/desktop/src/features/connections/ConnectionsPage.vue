@@ -15,6 +15,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown, TriangleAlert } from '@/components/pw/
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Flag from '@/components/pw/Flag.vue'
+import { useIpDetailStore } from '@/stores/ipDetail'
 import { Button } from '@/components/ui/button'
 import { FIELD } from '@/features/diagnostics/fieldClass'
 import {
@@ -33,6 +34,7 @@ import { applyFilters, type ProtoFilter, type StateFilter } from './filters'
 
 const { t } = useI18n()
 const live = useLiveStore()
+const ipDetail = useIpDetailStore()
 const appearance = useAppearanceStore()
 const visible = useAppVisible()
 
@@ -472,7 +474,15 @@ const GRID = 'grid grid-cols-[4rem_minmax(0,1.4fr)_minmax(0,1.4fr)_8rem_minmax(0
             <div role="gridcell" class="group flex min-w-0 items-center gap-1.5">
               <template v-if="r.row.remote_addr">
                 <Flag :addr="r.row.remote_addr" />
-                <span class="truncate font-mono" :title="r.row.remote">{{ r.row.remote }}</span>
+                <button
+                  type="button"
+                  class="hover:text-brand-fg focus-visible:ring-brand min-w-0 truncate rounded text-left font-mono hover:underline focus-visible:ring-2 focus-visible:outline-none"
+                  :title="r.row.remote"
+                  :aria-label="t('ipDetail.open', { addr: r.row.remote_addr })"
+                  @click.stop="ipDetail.open(r.row.remote_addr)"
+                >
+                  {{ r.row.remote }}
+                </button>
                 <span
                   v-if="rdpPeers.has(r.row.remote_addr)"
                   class="shrink-0 rounded-full border px-1.5 text-[10px] leading-4"

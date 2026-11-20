@@ -7,6 +7,7 @@ import { useI18n } from 'vue-i18n'
 import { RouterView, useRoute } from 'vue-router'
 import AuditBanner from '@/components/pw/AuditBanner.vue'
 import BlockDialog from '@/components/pw/BlockDialog.vue'
+import IpDetailDrawer from '@/components/pw/IpDetailDrawer.vue'
 import RdpPendingBanner from '@/components/pw/RdpPendingBanner.vue'
 import SidebarNav from '@/components/pw/SidebarNav.vue'
 import TitleBar from '@/components/pw/TitleBar.vue'
@@ -45,6 +46,7 @@ const title = computed(() => t(String(route.meta.titleKey ?? 'app.name')))
         </main>
       </section>
       <BlockDialog />
+      <IpDetailDrawer />
     </div>
   </div>
 </template>
