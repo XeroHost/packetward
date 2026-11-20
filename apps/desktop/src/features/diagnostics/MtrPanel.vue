@@ -1,6 +1,5 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup lang="ts">
-import { onClickOutside } from '@vueuse/core'
 import { Check, ChevronDown, ClipboardCopy, Download, Play, Square } from '@/components/pw/icons'
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -15,6 +14,7 @@ import { useSpeedStore } from '@/stores/speed'
 import { formatLoss, formatMs, isIcmpRateLimited, lossLevel } from './diagFormat'
 import FailureNote from './FailureNote.vue'
 import { FIELD } from './fieldClass'
+import PwMenu from '@/components/pw/PwMenu.vue'
 import PwSelect from '@/components/pw/PwSelect.vue'
 
 const { t } = useI18n()
@@ -39,12 +39,8 @@ const preferIpv6 = ref(false)
 const copied = ref(false)
 const copyFailed = ref(false)
 let copiedTimer: ReturnType<typeof setTimeout> | null = null
-const exportOpen = ref(false)
-const exportMenu = ref<HTMLElement | null>(null)
 const exportNote = ref<{ kind: 'saved' | 'copied' | 'failed'; name?: string } | null>(null)
 let noteTimer: ReturnType<typeof setTimeout> | null = null
-
-onClickOutside(exportMenu, () => (exportOpen.value = false))
 
 const usesPort = computed(() => mode.value !== 'icmp')
 const canStart = computed(() => target.value.trim() !== '' && !diag.mtrRunning)
@@ -104,7 +100,6 @@ async function copyReport(): Promise<void> {
 
 /** Renders the current table in `format` on the agent, then saves it as a file or copies it. */
 async function exportAs(format: MtrExportFormat, action: 'save' | 'copy'): Promise<void> {
-  exportOpen.value = false
   const sourceIp = speed.results.find((r) => r.source_ip)?.source_ip
   const file = await diag.mtrExport(format, sourceIp)
   if (file === null) return
@@ -132,6 +127,18 @@ const EXPORT_ITEMS: { format: MtrExportFormat; action: 'save' | 'copy'; key: str
   { format: 'csv', action: 'copy', key: 'copyCsv' },
   { format: 'json', action: 'copy', key: 'copyJson' },
 ]
+
+const exportItems = computed(() =>
+  EXPORT_ITEMS.map((item) => ({
+    key: `${item.action}-${item.format}`,
+    label: t(`diagnostics.mtr.export.${item.key}`),
+  })),
+)
+
+function onExportSelect(key: string): void {
+  const item = EXPORT_ITEMS.find((i) => `${i.action}-${i.format}` === key)
+  if (item) void exportAs(item.format, item.action)
+}
 
 /** `echo-reply` -> the translated "ICMP echo reply" etc. */
 function reachLabel(reach: string): string {
@@ -186,36 +193,17 @@ const modeOptions = [
         <ClipboardCopy v-else aria-hidden="true" />
         {{ copied ? t('diagnostics.mtr.reportCopied') : t('diagnostics.mtr.copyReport') }}
       </Button>
-      <div v-if="advancedSupported" ref="exportMenu" class="relative">
-        <Button
-          type="button"
-          variant="outline"
-          :disabled="hops.length === 0"
-          aria-haspopup="menu"
-          :aria-expanded="exportOpen"
-          @click="exportOpen = !exportOpen"
-        >
+      <PwMenu
+        v-if="advancedSupported"
+        :items="exportItems"
+        :disabled="hops.length === 0"
+        @select="onExportSelect"
+      >
+        <Button type="button" variant="outline" :disabled="hops.length === 0">
           <Download aria-hidden="true" />{{ t('diagnostics.mtr.export.button') }}
           <ChevronDown aria-hidden="true" />
         </Button>
-        <ul
-          v-if="exportOpen"
-          class="bg-surface-3 absolute right-0 z-10 mt-1 flex w-56 flex-col rounded-[12px] p-1 text-sm shadow-lg"
-          role="menu"
-          @keydown.esc="exportOpen = false"
-        >
-          <li v-for="item in EXPORT_ITEMS" :key="`${item.action}-${item.format}`" role="none">
-            <button
-              type="button"
-              role="menuitem"
-              class="hover:bg-surface focus-visible:ring-brand w-full rounded px-3 py-1.5 text-left focus-visible:ring-2 focus-visible:outline-none"
-              @click="exportAs(item.format, item.action)"
-            >
-              {{ t(`diagnostics.mtr.export.${item.key}`) }}
-            </button>
-          </li>
-        </ul>
-      </div>
+      </PwMenu>
     </form>
 
     <fieldset class="flex flex-wrap items-end gap-3">
