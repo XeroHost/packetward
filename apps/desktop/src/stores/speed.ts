@@ -14,6 +14,9 @@ const PROVIDER_KEY = 'pw.speed.provider'
 export const PROVIDERS = ['auto', 'cloudflare', 'hetzner', 'ovh', 'xerohost', 'custom'] as const
 export type SpeedProvider = (typeof PROVIDERS)[number]
 
+/** Most parallel connections a provider tolerates from one address (the public mirrors rate-limit). */
+export const MAX_STREAMS: Partial<Record<SpeedProvider, number>> = { hetzner: 2, ovh: 3 }
+
 /** Largest bin test (in GB) each provider offers; 0 = none. Mirrors the agent's limits so the buttons say so. */
 export const BIN_LIMIT_GB: Record<SpeedProvider, number> = {
   auto: 50,

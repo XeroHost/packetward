@@ -121,7 +121,13 @@ panels, `springSnappy` (520/40) for the active-page pill and small controls, `sp
 Applied as attributes on `<html>` so CSS alone reacts:
 `data-theme="dark|light"` (System resolves via `prefers-color-scheme`), `data-density="comfortable|compact"`,
 `data-motion="full|reduced"` (set **only** by the "Reduce animations" setting, off by default; the OS preference is ignored on purpose, see Motion), `data-backdrop="mica|solid"` (set by the shell), `--font-mono`, root `font-size`.
-- Compact density: row height 28 px (vs 36), card padding 12 px (vs 16), table font 12 px.
+- Compact density tightens the whole app through tokens in `tokens.css` (components and pages read them, nothing hard-codes a height):
+  `--row-h` 28 px (36), `--control-h` 30 px (36: buttons, inputs, selects), `--control-sm-h` 26 px (32), `--nav-h` 30 px (36), `--card-p` 12 px (16),
+  `--table-fs` 12 px (13), page padding 24/20/24 px (36/32/40), page title 22 px (28) with a 16 px gap (28), `--section-gap` 32 px (56),
+  `--setting-py` 18 px (28), `--stack-gap` 10 px (16). New components must use these tokens instead of fixed `h-9`/`py-7`.
+- **Window theme.** With the Mica backdrop the system draws the window (title bar, sidebar) in the *window's* theme, which is the OS one unless
+  the app sets it. `appearance` calls `setWindowTheme(light|dark)` whenever the resolved theme changes (capability `core:window:allow-set-theme`),
+  so a light app on a dark system no longer keeps a black window behind the panel.
 - Reduced animations: no page, list or number animation, no icon drawing, no Guardian halo, no map arcs; the tray icon does not blink.
 
 ## Shape & spacing

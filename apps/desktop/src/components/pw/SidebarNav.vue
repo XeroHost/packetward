@@ -40,7 +40,7 @@ const isActive = (id: string): boolean => route.path === `/${id}`
             <li v-for="item in section.items" :key="item.id">
               <RouterLink
                 :to="`/${item.id}`"
-                class="group relative flex h-9 items-center gap-3 rounded-[10px] px-3 text-[13px] font-medium"
+                class="group relative flex h-(--nav-h) items-center gap-3 rounded-[10px] px-3 text-[13px] font-medium"
                 :class="isActive(item.id) ? 'text-text' : 'text-text-muted hover:text-text'"
                 @mouseenter="replay(item.id)"
                 @focus="replay(item.id)"
@@ -86,7 +86,7 @@ const isActive = (id: string): boolean => route.path === `/${id}`
         :class="route.path === '/about' && '!text-text'"
       >
         <HIcon :icon="InformationCircleIcon" :size="15" />
-        {{ t('app.byXeroHost') }}
+        {{ t('nav.about') }}
       </RouterLink>
     </footer>
   </aside>

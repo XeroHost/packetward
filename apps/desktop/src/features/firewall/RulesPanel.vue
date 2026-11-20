@@ -132,7 +132,7 @@ const protocolOptions = [
           :placeholder="t('firewall.rules.searchPlaceholder')"
         />
       </label>
-      <label class="flex h-9 items-center gap-2 text-sm">
+      <label class="flex h-(--control-h) items-center gap-2 text-sm">
         <input v-model="managedOnly" type="checkbox" />
         {{ t('firewall.rules.managedOnly') }}
       </label>

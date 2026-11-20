@@ -2,6 +2,7 @@
 import { useMediaQuery } from '@vueuse/core'
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
+import { setWindowTheme } from '@/api/window'
 import { applyAppearance, resolveTheme } from '@/app/appearance'
 import {
   DEFAULT_UI_PREFS,
@@ -27,6 +28,9 @@ export const useAppearanceStore = defineStore('appearance', () => {
       }),
     { deep: true, immediate: true },
   )
+
+  // The system window material follows the app's theme, not the OS one.
+  watch(resolvedTheme, (theme) => void setWindowTheme(theme), { immediate: true })
 
   function hydrate(next: AppearancePrefs): void {
     prefs.value = { ...next }

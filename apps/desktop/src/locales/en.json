@@ -994,7 +994,7 @@
     "errors": {
       "no_server": "No server answered. Check your connection, or choose another provider.",
       "confirmation_required": "The 50 GB test needs the confirmation box ticked.",
-      "rate_limited": "The server is limiting this machine. Try again in {retry} seconds.",
+      "rate_limited": "The server is limiting this machine. Try again in {retry} seconds, or choose another provider.",
       "budget_exceeded": "This test would exceed the server’s transfer limit for your address. Try a smaller test later.",
       "server": "The server refused the request.",
       "invalid": "A setting or a server address is not valid.",
@@ -1004,13 +1004,15 @@
       "unsupported": "This agent cannot run speed tests; update it.",
       "bad_request": "The request was refused.",
       "busy": "A speed test is already running.",
-      "not_connected": "The agent is not connected."
+      "not_connected": "The agent is not connected.",
+      "rate_limited_unknown": "The server is limiting this machine. Wait a minute and try again, or choose another provider.",
+      "rate_limited_minutes": "The server is limiting this machine. Try again in about {minutes} minutes, or choose another provider."
     },
     "provider": "Provider",
     "providers": {
       "auto": "Automatic (the fastest)",
       "cloudflare": "Cloudflare",
-      "hetzner": "Hetzner (Germany, Finland, USA, Singapore)",
+      "hetzner": "Hetzner (Europe, USA, Asia)",
       "ovh": "OVHcloud (France)",
       "xerohost": "XeroHost nodes",
       "custom": "My own servers"
@@ -1025,7 +1027,15 @@
     },
     "binUnavailable": "This provider does not offer a test this large.",
     "uploadOn": "measured on {server}",
-    "downloadOnly": "This provider only measures download."
+    "downloadOnly": "This provider only measures download.",
+    "streamCap": "This provider allows at most {n} connections.",
+    "steps": {
+      "picking_server": "Choose server",
+      "latency": "Latency",
+      "download": "Download",
+      "upload": "Upload"
+    },
+    "noAnswer": "no answer"
   },
   "intel": {
     "never": "never",

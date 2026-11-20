@@ -37,7 +37,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <section class="flex max-w-[64rem] flex-col gap-14">
+  <section class="flex max-w-[64rem] flex-col gap-(--section-gap)">
     <FailureNote v-if="capture.error" :failure="capture.error" />
 
     <div class="flex flex-col gap-7">

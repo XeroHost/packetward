@@ -42,9 +42,10 @@ src/
   confirmation dialog that states the consequence.
 - Empty/error states explain the cause and the fix (e.g. "Npcap not installed — basic capture active. Install
   Npcap for full capture.").
-- Branding stays discreet: "by XeroHost" footer, About page, "Contact XeroHost support" link. No promotions.
+- Branding stays discreet: an "About" link in the sidebar footer (the About page carries "by XeroHost"), "Contact XeroHost support" link. No promotions.
 - Accessibility: keyboard navigation for nav and tables, visible focus ring (`--brand`), AA contrast,
   respect Appearance → reduce motion.
+- Density: never hard-code control heights or page paddings; use the density tokens (`--control-h`, `--nav-h`, `--page-px`, `--section-gap`, …, see DESIGN.md) so Compact works everywhere.
 - Window: min 1100×700; must work at 1280×720 inside an RDP session (test with Compact density too).
 
 ## Notes from M0

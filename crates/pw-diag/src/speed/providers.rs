@@ -9,6 +9,11 @@
 //! | `hetzner` | static files `100MB.bin`, `1GB.bin`, `10GB.bin` read with `Range` | yes | no | 10 GiB |
 //! | `ovh` | static files `100Mb.dat`, `1Gb.dat` read with `Range` | yes | no | 1 GiB |
 //!
+//! Observed limits (2026-11-20, from the dev VPS): Hetzner answers 429 to a third simultaneous connection and
+//! to more than a few requests in quick succession; OVHcloud answers 429 to almost any second request within a
+//! couple of seconds. So a mirror gets at most `max_streams` connections, its requests are spaced at least a
+//! second apart (see `HttpTransport`), and a 429 on a transfer is retried with a pause instead of ending the run.
+//!
 //! The list is code, not downloaded data: nothing is fetched to learn it, and a hostname can only come from
 //! here (or from the XeroHost node list / the user's own custom servers). Endpoints were checked on
 //! 2026-11-20; a dead one simply loses the latency pick and is reported as dead.
@@ -75,6 +80,8 @@ pub struct Builtin {
     pub kind: ServerKind,
     /// Static files of a mirror (empty for Cloudflare).
     pub files: &'static [MirrorFile],
+    /// Most parallel connections the provider tolerates from one address; 0 = no limit known.
+    pub max_streams: u32,
 }
 
 /// Every built-in server. Order is the display order.
@@ -87,6 +94,7 @@ pub const BUILTIN: &[Builtin] = &[
         host: "speed.cloudflare.com",
         kind: ServerKind::Cloudflare,
         files: &[],
+        max_streams: 0,
     },
     Builtin {
         group: "hetzner",
@@ -96,6 +104,7 @@ pub const BUILTIN: &[Builtin] = &[
         host: "fsn1-speed.hetzner.com",
         kind: ServerKind::Mirror,
         files: HETZNER_FILES,
+        max_streams: 2,
     },
     Builtin {
         group: "hetzner",
@@ -105,6 +114,7 @@ pub const BUILTIN: &[Builtin] = &[
         host: "nbg1-speed.hetzner.com",
         kind: ServerKind::Mirror,
         files: HETZNER_FILES,
+        max_streams: 2,
     },
     Builtin {
         group: "hetzner",
@@ -114,6 +124,7 @@ pub const BUILTIN: &[Builtin] = &[
         host: "hel1-speed.hetzner.com",
         kind: ServerKind::Mirror,
         files: HETZNER_FILES,
+        max_streams: 2,
     },
     Builtin {
         group: "hetzner",
@@ -123,6 +134,7 @@ pub const BUILTIN: &[Builtin] = &[
         host: "ash-speed.hetzner.com",
         kind: ServerKind::Mirror,
         files: HETZNER_FILES,
+        max_streams: 2,
     },
     Builtin {
         group: "hetzner",
@@ -132,6 +144,7 @@ pub const BUILTIN: &[Builtin] = &[
         host: "hil-speed.hetzner.com",
         kind: ServerKind::Mirror,
         files: HETZNER_FILES,
+        max_streams: 2,
     },
     Builtin {
         group: "hetzner",
@@ -141,6 +154,7 @@ pub const BUILTIN: &[Builtin] = &[
         host: "sin-speed.hetzner.com",
         kind: ServerKind::Mirror,
         files: HETZNER_FILES,
+        max_streams: 2,
     },
     Builtin {
         group: "ovh",
@@ -150,6 +164,7 @@ pub const BUILTIN: &[Builtin] = &[
         host: "proof.ovh.net",
         kind: ServerKind::Mirror,
         files: OVH_FILES,
+        max_streams: 3,
     },
 ];
 

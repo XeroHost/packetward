@@ -88,7 +88,7 @@ const sectionTitle = 'text-[0.95rem] font-semibold'
 </script>
 
 <template>
-  <section class="flex max-w-[72rem] flex-col gap-10">
+  <section class="flex max-w-[72rem] flex-col gap-(--section-gap)">
     <p v-if="blind" class="pw-note" data-tone="warning" role="alert">
       <TriangleAlert class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
       <span>{{ t('traffic.blind') }}</span>

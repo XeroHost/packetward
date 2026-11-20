@@ -17,6 +17,20 @@ export async function windowBackdrop(): Promise<Backdrop> {
   }
 }
 
+/**
+ * Tells Windows which theme this window is in. The Mica material and the system caption colours follow
+ * the window theme, not the page: without this, the light theme on a dark system keeps a black window
+ * (title bar, sidebar) behind the light panel.
+ */
+export async function setWindowTheme(theme: 'light' | 'dark'): Promise<void> {
+  if (!isTauri()) return
+  try {
+    await getCurrentWindow().setTheme(theme)
+  } catch {
+    // The page theme still applies; only the system material keeps the OS colours.
+  }
+}
+
 export async function minimizeWindow(): Promise<void> {
   if (isTauri()) await getCurrentWindow().minimize()
 }

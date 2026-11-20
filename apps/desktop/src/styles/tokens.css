@@ -75,16 +75,39 @@
   --titlebar-h: 2.5rem; /* 40 px */
   --sidebar-w: 13.5rem; /* 216 px */
 
-  /* Density: comfortable (default). */
-  --row-h: 2.25rem; /* 36 px */
+  /* Density: comfortable (default). Every page, control and list reads these, so Compact tightens the
+     whole app, not only the tables. */
+  --row-h: 2.25rem; /* 36 px: list and table rows */
   --card-p: 1rem; /* 16 px */
   --table-fs: 0.8125rem; /* 13 px */
+  --control-h: 2.25rem; /* 36 px: buttons, inputs, selects */
+  --control-sm-h: 2rem; /* 32 px */
+  --nav-h: 2.25rem; /* 36 px: sidebar items */
+  --page-px: 2.25rem; /* page side padding */
+  --page-pt: 2rem;
+  --page-pb: 2.5rem;
+  --title-mb: 1.75rem; /* gap under the page title */
+  --title-fs: 1.75rem;
+  --section-gap: 3.5rem; /* between the sections of a page */
+  --setting-py: 1.75rem; /* vertical padding of a settings row */
+  --stack-gap: 1rem; /* between the controls of a row */
 }
 
 :root[data-density='compact'] {
   --row-h: 1.75rem; /* 28 px */
   --card-p: 0.75rem; /* 12 px */
   --table-fs: 0.75rem; /* 12 px */
+  --control-h: 1.875rem; /* 30 px */
+  --control-sm-h: 1.625rem; /* 26 px */
+  --nav-h: 1.875rem; /* 30 px */
+  --page-px: 1.5rem;
+  --page-pt: 1.25rem;
+  --page-pb: 1.5rem;
+  --title-mb: 1rem;
+  --title-fs: 1.375rem;
+  --section-gap: 2rem;
+  --setting-py: 1.125rem;
+  --stack-gap: 0.625rem;
 }
 
 /* Reduced motion: no pulses, arcs or transitions. Set by the Appearance store (setting only). */

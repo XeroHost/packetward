@@ -63,7 +63,7 @@ const sectionTitle = 'text-[0.95rem] font-semibold'
 </script>
 
 <template>
-  <div class="flex max-w-[72rem] flex-col gap-12">
+  <div class="flex max-w-[72rem] flex-col gap-(--section-gap)">
     <p v-if="agentTooOld" class="text-warning text-sm" role="status">
       {{ t('dashboard.oldAgent') }}
     </p>

@@ -56,13 +56,48 @@ describe('SpeedTestPage providers', () => {
   it('says which tests a provider does not offer instead of failing later', async () => {
     useSpeedStore().setProvider('cloudflare')
     const wrapper = await page()
-    for (const id of ['run-bin1', 'run-bin10', 'run-bin50']) {
+    for (const id of ['run-bin1', 'run-bin10']) {
       expect(wrapper.find(`[data-testid="${id}"]`).attributes('disabled')).toBeDefined()
     }
+    // The 50 GB test and its confirmation are not even offered.
+    expect(wrapper.find('[data-testid="run-bin50"]').exists()).toBe(false)
+    expect(wrapper.find('input[type="checkbox"]').exists()).toBe(false)
     useSpeedStore().setProvider('ovh')
     await flushPromises()
     expect(wrapper.find('[data-testid="run-bin1"]').attributes('disabled')).toBeUndefined()
     expect(wrapper.find('[data-testid="run-bin10"]').attributes('disabled')).toBeDefined()
+  })
+
+  it('tells the connection limit of a rate-limited provider and caps the streams field', async () => {
+    useSpeedStore().setProvider('hetzner')
+    const wrapper = await page()
+    expect(wrapper.find('[data-testid="provider-hint"]').text()).toContain('at most 2 connections')
+    expect(wrapper.find('input[type="number"]').attributes('max')).toBe('2')
+  })
+
+  it('shows the steps while a test runs and says what to do when the server limits us', async () => {
+    const speed = useSpeedStore()
+    speed.running = true
+    speed.kind = 'quick'
+    speed.phase = 'download'
+    const wrapper = await page()
+    const steps = wrapper.find('[data-testid="steps"]').text()
+    expect(steps).toContain('Latency')
+    expect(steps).toContain('Upload')
+    expect(wrapper.find('[aria-current="step"]').text()).toContain('Download')
+    speed.running = false
+    speed.failure = { code: 'rate_limited', message: 'the server is rate limiting this client' }
+    await flushPromises()
+    const text = wrapper.find('[data-testid="failure"]').text()
+    expect(text).toContain('Wait a minute')
+    expect(text).not.toContain('0 seconds')
+    speed.failure = {
+      code: 'rate_limited',
+      message: 'the server is rate limiting this client',
+      retryAfterSecs: 3463,
+    }
+    await flushPromises()
+    expect(wrapper.find('[data-testid="failure"]').text()).toContain('about 58 minutes')
   })
 
   it('shows the own-server box only when it can be used', async () => {

@@ -59,7 +59,12 @@ impl<T: SpeedTransport> SpeedClient<T> {
         cancel: &CancelToken,
         sink: &mut S,
     ) -> Result<LatencyResult, SpeedError> {
-        let options = options.normalized();
+        let mut options = options.normalized();
+        if server.kind == super::server::ServerKind::Mirror {
+            // Each ping is a request to a rate-limited public file server (and the transport spaces them out).
+            options.count = options.count.min(4);
+            options.timeout = options.timeout.max(Duration::from_secs(3));
+        }
         emit(
             sink,
             SpeedProgress::Phase {

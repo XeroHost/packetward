@@ -994,7 +994,7 @@
     "errors": {
       "no_server": "Nenhum servidor respondeu. Verifique sua conexão ou escolha outro provedor.",
       "confirmation_required": "O teste de 50 GB precisa da caixa de confirmação marcada.",
-      "rate_limited": "O servidor está limitando esta máquina. Tente novamente em {retry} segundos.",
+      "rate_limited": "O servidor está limitando esta máquina. Tente novamente em {retry} segundos, ou escolha outro provedor.",
       "budget_exceeded": "Este teste excederia o limite de transferência do servidor para o seu endereço. Tente um menor depois.",
       "server": "O servidor recusou a solicitação.",
       "invalid": "Uma configuração ou um endereço de servidor não é válido.",
@@ -1004,13 +1004,15 @@
       "unsupported": "Este agente não consegue fazer testes de velocidade; atualize-o.",
       "bad_request": "A solicitação foi recusada.",
       "busy": "Já há um teste de velocidade em andamento.",
-      "not_connected": "O agente não está conectado."
+      "not_connected": "O agente não está conectado.",
+      "rate_limited_unknown": "O servidor está limitando esta máquina. Aguarde um minuto e tente novamente, ou escolha outro provedor.",
+      "rate_limited_minutes": "O servidor está limitando esta máquina. Tente novamente em cerca de {minutes} minutos, ou escolha outro provedor."
     },
     "provider": "Provedor",
     "providers": {
       "auto": "Automático (o mais rápido)",
       "cloudflare": "Cloudflare",
-      "hetzner": "Hetzner (Alemanha, Finlândia, EUA, Singapura)",
+      "hetzner": "Hetzner (Europa, EUA, Ásia)",
       "ovh": "OVHcloud (França)",
       "xerohost": "Nós da XeroHost",
       "custom": "Meus próprios servidores"
@@ -1025,7 +1027,15 @@
     },
     "binUnavailable": "Este provedor não oferece um teste tão grande.",
     "uploadOn": "medido em {server}",
-    "downloadOnly": "Este provedor mede apenas o download."
+    "downloadOnly": "Este provedor mede apenas o download.",
+    "streamCap": "Este provedor aceita no máximo {n} conexões.",
+    "steps": {
+      "picking_server": "Escolher servidor",
+      "latency": "Latência",
+      "download": "Download",
+      "upload": "Upload"
+    },
+    "noAnswer": "sem resposta"
   },
   "intel": {
     "never": "nunca",

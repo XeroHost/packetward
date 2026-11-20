@@ -10,7 +10,9 @@
 //! * Redirects are not followed.
 //! * Errors are reduced to a short text without URLs (`without_url`), so no query string or proxy address leaks.
 
+use std::collections::HashMap;
 use std::io;
+use std::sync::{Arc, Mutex, PoisonError};
 use std::time::{Duration, Instant};
 
 use bytes::Bytes;
@@ -23,6 +25,11 @@ use super::transport::{ByteMeter, DownloadRequest, SpeedTransport, UploadRequest
 
 /// Size of the reusable upload buffer; the body is sent as slices of it (no per-chunk allocation).
 const UPLOAD_BUFFER: usize = 256 * 1024;
+/// Least time between two requests to the same mirror host. Hetzner and OVHcloud answer 429 to bursts.
+const MIRROR_MIN_GAP: Duration = Duration::from_millis(1100);
+/// How often a transfer that got a 429 from a mirror is tried again, and the first pause (it doubles).
+const MIRROR_RETRIES: u32 = 3;
+const MIRROR_RETRY_PAUSE: Duration = Duration::from_secs(3);
 /// `/info` and error bodies are small; refuse anything larger.
 const SMALL_BODY_LIMIT: usize = 64 * 1024;
 
@@ -61,6 +68,8 @@ pub struct HttpTransport {
     /// Never uses a proxy; for loopback servers.
     direct: reqwest::Client,
     upload_buffer: Bytes,
+    /// When the next request to each mirror host may start (see [`MIRROR_MIN_GAP`]).
+    pacer: Arc<Mutex<HashMap<String, Instant>>>,
 }
 
 /// reqwest is built with `rustls-no-provider`; install the `ring` provider once. If something else already
@@ -111,7 +120,30 @@ impl HttpTransport {
             client,
             direct,
             upload_buffer: make_buffer(),
+            pacer: Arc::default(),
         })
+    }
+
+    /// Waits until a request to `server` may start. Only mirrors are paced; the slots are reserved up front,
+    /// so callers that arrive together queue one gap apart instead of all firing at once.
+    async fn pace(&self, server: &ServerEndpoint) {
+        if server.kind != ServerKind::Mirror {
+            return;
+        }
+        let wait = {
+            let mut next = self.pacer.lock().unwrap_or_else(PoisonError::into_inner);
+            let now = Instant::now();
+            let start = next
+                .get(&server.host)
+                .copied()
+                .filter(|at| *at > now)
+                .unwrap_or(now);
+            next.insert(server.host.clone(), start + MIRROR_MIN_GAP);
+            start.saturating_duration_since(now)
+        };
+        if !wait.is_zero() {
+            tokio::time::sleep(wait).await;
+        }
     }
 
     fn client_for(&self, server: &ServerEndpoint) -> &reqwest::Client {
@@ -206,6 +238,10 @@ fn mirror_info(server: &ServerEndpoint) -> ServerInfo {
         node_name: server.name.clone(),
         location: builtin.map(|b| b.location.to_owned()).unwrap_or_default(),
         max_download_bytes: server.max_request_bytes().unwrap_or(0),
+        limits: super::server::ServerLimits {
+            max_streams_per_test: builtin.map_or(0, |b| u64::from(b.max_streams)),
+            ..super::server::ServerLimits::default()
+        },
         ..ServerInfo::default()
     }
 }
@@ -245,6 +281,7 @@ impl SpeedTransport for HttpTransport {
         server: &ServerEndpoint,
         timeout: Duration,
     ) -> Result<Duration, TransportError> {
+        self.pace(server).await;
         let started = Instant::now();
         let request = match server.kind {
             ServerKind::Native => self.client_for(server).get(server.url("/ping")),
@@ -260,6 +297,10 @@ impl SpeedTransport for HttpTransport {
             }
         };
         let response = request.timeout(timeout).send().await.map_err(map_error)?;
+        if server.kind == ServerKind::Mirror && response.status().as_u16() == 429 {
+            // The mirror is limiting probes: this ping is lost, the transfers are not affected.
+            return Err(TransportError::Io("the mirror limits probes".to_owned()));
+        }
         if !response.status().is_success() {
             return Err(status_error(response).await);
         }
@@ -346,7 +387,34 @@ impl SpeedTransport for HttpTransport {
         };
         // A mirror that ignores `Range` answers 200 with the whole file: stop after the bytes asked for.
         let limit = (server.kind == ServerKind::Mirror).then_some(request.bytes);
-        let mut response = builder.send().await.map_err(map_error)?;
+        let mut attempt = 0;
+        let mut response = loop {
+            self.pace(server).await;
+            let this = builder
+                .try_clone()
+                .ok_or_else(|| TransportError::Protocol("request cannot be repeated".to_owned()))?;
+            let response = this.send().await.map_err(map_error)?;
+            if server.kind == ServerKind::Mirror
+                && response.status().as_u16() == 429
+                && attempt < MIRROR_RETRIES
+            {
+                // A free mirror limiting its clients: wait (or the server's own Retry-After) and try again.
+                let asked = response
+                    .headers()
+                    .get(reqwest::header::RETRY_AFTER)
+                    .and_then(|v| v.to_str().ok())
+                    .and_then(|v| v.trim().parse::<u64>().ok())
+                    .map(Duration::from_secs);
+                let pause = asked
+                    .unwrap_or(MIRROR_RETRY_PAUSE * 2u32.pow(attempt))
+                    .min(Duration::from_secs(30));
+                attempt += 1;
+                tracing::debug!(attempt, ?pause, "speed mirror answered 429; waiting");
+                tokio::time::sleep(pause).await;
+                continue;
+            }
+            break response;
+        };
         if !response.status().is_success() {
             return Err(status_error(response).await);
         }
@@ -552,6 +620,30 @@ mod tests {
                 assert!(refused.is_err(), "a mirror takes no uploads");
             }
         }
+    }
+
+    #[tokio::test]
+    async fn requests_to_one_mirror_host_are_spaced_but_other_servers_are_not_held_back() {
+        let transport = HttpTransport::new(&HttpTransportConfig::default()).unwrap();
+        let hetzner = providers::builtin_servers(Some("hetzner"));
+        let (a, b) = (&hetzner[0], &hetzner[1]);
+        let started = Instant::now();
+        transport.pace(a).await; // free
+        transport.pace(b).await; // another host: free
+        assert!(started.elapsed() < Duration::from_millis(300));
+        let again = Instant::now();
+        transport.pace(a).await; // same host: one gap after the first
+        assert!(
+            again.elapsed() >= MIRROR_MIN_GAP - Duration::from_millis(150),
+            "{:?}",
+            again.elapsed()
+        );
+        // Our own servers and Cloudflare are never paced.
+        let own = ServerEndpoint::custom("https://speed.example.com").unwrap();
+        let free = Instant::now();
+        transport.pace(&own).await;
+        transport.pace(&own).await;
+        assert!(free.elapsed() < Duration::from_millis(100));
     }
 
     #[test]

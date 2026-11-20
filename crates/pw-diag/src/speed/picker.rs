@@ -29,7 +29,8 @@ impl Default for PickOptions {
     fn default() -> Self {
         Self {
             probes: 3,
-            timeout: Duration::from_millis(1500),
+            // A first request opens TCP and TLS: a mirror on another continent needs over a second.
+            timeout: Duration::from_millis(3000),
         }
     }
 }
@@ -92,11 +93,18 @@ impl<T: SpeedTransport> SpeedClient<T> {
             set.spawn(async move {
                 let mut best: Option<f64> = None;
                 let mut last_error = None;
-                for _ in 0..options.probes {
+                // A mirror rate-limits quick repeats (and drops connections when it is annoyed): one answer
+                // is enough to rank it, a second try only after a failure.
+                let mirror = server.kind == super::server::ServerKind::Mirror;
+                let probes = if mirror { 2 } else { options.probes };
+                for _ in 0..probes {
                     match transport.ping(&server, options.timeout).await {
                         Ok(rtt) => {
                             let ms = rtt.as_secs_f64() * 1000.0;
                             best = Some(best.map_or(ms, |b| b.min(ms)));
+                            if mirror {
+                                break;
+                            }
                         }
                         Err(error) => last_error = Some(error.to_string()),
                     }

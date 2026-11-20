@@ -111,7 +111,7 @@ const sectionTitle = 'text-[1.0625rem] font-semibold'
 </script>
 
 <template>
-  <section class="flex max-w-[64rem] flex-col gap-14">
+  <section class="flex max-w-[64rem] flex-col gap-(--section-gap)">
     <FailureNote v-if="rdp.error" :failure="rdp.error" />
 
     <div class="flex flex-col gap-6">

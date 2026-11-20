@@ -640,6 +640,60 @@ mod tests {
         );
     }
 
+    /// Each public provider on its own, with the real transport: the rate limits of the free mirrors must not
+    /// end a quick test. About 15 s per provider. Run on purpose:
+    /// cargo test -p pw-engine --features net-http --lib live_each_provider -- --ignored --nocapture
+    #[cfg(feature = "net-http")]
+    #[tokio::test]
+    #[ignore = "uses the public internet"]
+    async fn live_each_provider_completes_a_quick_test() {
+        use pw_diag::speed::{HttpTransport, HttpTransportConfig};
+        for group in ["cloudflare", "hetzner", "ovh"] {
+            let transport = HttpTransport::new(&HttpTransportConfig::default()).unwrap();
+            let service = SpeedService::new(transport, Vec::new());
+            let mut events = service.events();
+            let started = service
+                .start(SpeedRequest {
+                    kind: SpeedKind::Quick,
+                    servers: vec![],
+                    provider: Some(group.into()),
+                    streams: Some(4),
+                    duration_secs: Some(4),
+                    confirm_large: false,
+                })
+                .unwrap();
+            let outcome = loop {
+                match tokio::time::timeout(Duration::from_secs(120), events.recv())
+                    .await
+                    .unwrap()
+                    .unwrap()
+                {
+                    SpeedEvent::Done { job_id, result } if job_id == started.job_id => {
+                        break Ok(result)
+                    }
+                    SpeedEvent::Failed {
+                        job_id, message, ..
+                    } if job_id == started.job_id => break Err(message),
+                    _ => {}
+                }
+            };
+            match outcome {
+                Ok(done) => println!(
+                    "{group}: {} down {:?} Mbps ({} streams), up {:?} on {:?}, latency {:?} ms",
+                    done.server.name,
+                    done.download.as_ref().map(|d| d.avg_mbps),
+                    done.download.as_ref().map_or(0, |d| d.streams),
+                    done.upload.as_ref().map(|u| u.avg_mbps),
+                    done.upload_server.as_ref().map(|s| s.name.clone()),
+                    done.latency.as_ref().map(|l| l.avg_ms),
+                ),
+                Err(message) => panic!("{group} failed: {message}"),
+            }
+            // Be kind to the free services between providers.
+            tokio::time::sleep(Duration::from_secs(5)).await;
+        }
+    }
+
     #[tokio::test]
     async fn the_public_providers_make_the_test_work_with_no_server_configured() {
         let (service, _fake) = service(false);

@@ -178,7 +178,7 @@ const modeOptions = [
           :disabled="diag.mtrRunning"
         />
       </label>
-      <label class="flex h-9 items-center gap-2 text-sm">
+      <label class="flex h-(--control-h) items-center gap-2 text-sm">
         <input v-model="resolveNames" type="checkbox" :disabled="diag.mtrRunning" />
         {{ t('diagnostics.mtr.resolveNames') }}
       </label>
@@ -262,7 +262,7 @@ const modeOptions = [
           :disabled="diag.mtrRunning"
         />
       </label>
-      <label v-if="advancedSupported" class="flex h-9 items-center gap-2 text-sm">
+      <label v-if="advancedSupported" class="flex h-(--control-h) items-center gap-2 text-sm">
         <input v-model="preferIpv6" type="checkbox" :disabled="diag.mtrRunning" />
         {{ t('diagnostics.mtr.preferIpv6') }}
       </label>

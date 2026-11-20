@@ -28,8 +28,12 @@ const title = computed(() => t(String(route.meta.titleKey ?? 'app.name')))
       >
         <RdpPendingBanner />
         <AuditBanner />
-        <main class="flex min-h-0 flex-1 flex-col overflow-y-auto px-9 pt-8 pb-10">
-          <h1 class="mb-7 shrink-0 text-[1.75rem] leading-none font-semibold tracking-tight">
+        <main
+          class="flex min-h-0 flex-1 flex-col overflow-y-auto px-(--page-px) pt-(--page-pt) pb-(--page-pb)"
+        >
+          <h1
+            class="mb-(--title-mb) shrink-0 text-(length:--title-fs) leading-none font-semibold tracking-tight"
+          >
             {{ title }}
           </h1>
           <RouterView v-slot="{ Component }">

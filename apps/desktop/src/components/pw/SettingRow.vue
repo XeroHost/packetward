@@ -7,7 +7,7 @@ defineProps<{ title: string; description?: string }>()
 
 <template>
   <div
-    class="border-hairline grid gap-x-12 gap-y-4 border-t py-7 first:border-t-0 first:pt-0 md:grid-cols-[16rem_minmax(0,1fr)]"
+    class="border-hairline grid gap-x-12 gap-y-4 border-t py-(--setting-py) first:border-t-0 first:pt-0 md:grid-cols-[16rem_minmax(0,1fr)]"
   >
     <div class="min-w-0">
       <h3 class="text-[0.9375rem] font-semibold">{{ title }}</h3>
@@ -16,7 +16,7 @@ defineProps<{ title: string; description?: string }>()
       </p>
       <slot name="aside" />
     </div>
-    <div class="flex min-w-0 flex-col gap-4">
+    <div class="flex min-w-0 flex-col gap-(--stack-gap)">
       <slot />
     </div>
   </div>

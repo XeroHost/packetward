@@ -994,7 +994,7 @@
     "errors": {
       "no_server": "Ningún servidor respondió. Compruebe su conexión o elija otro proveedor.",
       "confirmation_required": "La prueba de 50 GB necesita marcar la casilla de confirmación.",
-      "rate_limited": "El servidor está limitando esta máquina. Inténtelo de nuevo en {retry} segundos.",
+      "rate_limited": "El servidor está limitando esta máquina. Inténtelo de nuevo en {retry} segundos, o elija otro proveedor.",
       "budget_exceeded": "Esta prueba superaría el límite de transferencia del servidor para su dirección. Pruebe una más pequeña más tarde.",
       "server": "El servidor rechazó la petición.",
       "invalid": "Un ajuste o una dirección de servidor no es válido.",
@@ -1004,13 +1004,15 @@
       "unsupported": "Este agente no puede hacer pruebas de velocidad; actualícelo.",
       "bad_request": "Se rechazó la petición.",
       "busy": "Ya hay una prueba de velocidad en curso.",
-      "not_connected": "El agente no está conectado."
+      "not_connected": "El agente no está conectado.",
+      "rate_limited_unknown": "El servidor está limitando esta máquina. Espere un minuto e inténtelo de nuevo, o elija otro proveedor.",
+      "rate_limited_minutes": "El servidor está limitando esta máquina. Inténtelo de nuevo en unos {minutes} minutos, o elija otro proveedor."
     },
     "provider": "Proveedor",
     "providers": {
       "auto": "Automático (el más rápido)",
       "cloudflare": "Cloudflare",
-      "hetzner": "Hetzner (Alemania, Finlandia, EE. UU., Singapur)",
+      "hetzner": "Hetzner (Europa, EE. UU., Asia)",
       "ovh": "OVHcloud (Francia)",
       "xerohost": "Nodos de XeroHost",
       "custom": "Mis propios servidores"
@@ -1025,7 +1027,15 @@
     },
     "binUnavailable": "Este proveedor no ofrece una prueba tan grande.",
     "uploadOn": "medida en {server}",
-    "downloadOnly": "Este proveedor solo mide la descarga."
+    "downloadOnly": "Este proveedor solo mide la descarga.",
+    "streamCap": "Este proveedor admite como máximo {n} conexiones.",
+    "steps": {
+      "picking_server": "Elegir servidor",
+      "latency": "Latencia",
+      "download": "Descarga",
+      "upload": "Subida"
+    },
+    "noAnswer": "sin respuesta"
   },
   "intel": {
     "never": "nunca",

@@ -115,7 +115,7 @@ async function save(): Promise<void> {
         <input
           id="rdp-country-search"
           v-model="query"
-          class="bg-surface-2 text-text focus-visible:ring-brand h-9 max-w-xs rounded-[10px] px-3 text-sm focus-visible:ring-2 focus-visible:outline-none"
+          class="bg-surface-2 text-text focus-visible:ring-brand h-(--control-h) max-w-xs rounded-[10px] px-3 text-sm focus-visible:ring-2 focus-visible:outline-none"
           autocomplete="off"
           spellcheck="false"
           :placeholder="t('rdp.country.searchPlaceholder')"
