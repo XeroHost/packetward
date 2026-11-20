@@ -41,6 +41,15 @@ export function mix(from: string, to: string, t: number): string {
   return `#${c.map((v) => v.toString(16).padStart(2, '0')).join('')}`
 }
 
+/** Where the camera is: the zoom and the centre the user left it at (the map's own until moved). */
+export interface MapView {
+  zoom: number
+  center?: [number, number]
+}
+
+export const DEFAULT_VIEW: MapView = { zoom: 1.12 }
+export const MAP_ZOOM_LIMITS = { min: 1, max: 12 } as const
+
 /** Countries shaded from "a little" to "the most addresses" in the threat colour. */
 export function buildMapOption(
   rows: readonly AttackerCountry[],
@@ -51,6 +60,7 @@ export function buildMapOption(
     alerts: (n: number) => string
     blocked: (n: number) => string
   },
+  view: MapView = DEFAULT_VIEW,
 ): EChartsCoreOption {
   const most = Math.max(1, ...rows.map((r) => r.addrs))
   const byCode = new Map(rows.map((r) => [r.code, r]))
@@ -79,8 +89,11 @@ export function buildMapOption(
       {
         type: 'map',
         map: 'world',
-        roam: false,
-        zoom: 1.12,
+        // Wheel and pinch zoom, drag to move; new data keeps the camera where the user left it.
+        roam: true,
+        scaleLimit: MAP_ZOOM_LIMITS,
+        zoom: view.zoom,
+        ...(view.center ? { center: view.center } : {}),
         selectedMode: false,
         silent: false,
         label: { show: false },

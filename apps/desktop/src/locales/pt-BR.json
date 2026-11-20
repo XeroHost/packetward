@@ -1042,7 +1042,12 @@
       "top": "Principais países",
       "addresses": "{n} endereços",
       "alerts": "{n} alertas",
-      "blocked": "{n} bloqueados"
+      "blocked": "{n} bloqueados",
+      "controls": "Controles do mapa",
+      "zoomIn": "Aproximar",
+      "zoomOut": "Afastar",
+      "reset": "Restaurar a vista",
+      "gestures": "Role para aproximar, arraste para mover"
     }
   },
   "logs": {
