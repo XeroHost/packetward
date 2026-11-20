@@ -8,6 +8,21 @@ import type { SpeedKind } from '@/types/generated/SpeedKind'
 import type { SpeedResultView } from '@/types/generated/SpeedResultView'
 
 const STORAGE_KEY = 'pw.speed.servers'
+const PROVIDER_KEY = 'pw.speed.provider'
+
+/** The provider groups the agent understands (`speed.start` `provider`). */
+export const PROVIDERS = ['auto', 'cloudflare', 'hetzner', 'ovh', 'xerohost', 'custom'] as const
+export type SpeedProvider = (typeof PROVIDERS)[number]
+
+/** Largest bin test (in GB) each provider offers; 0 = none. Mirrors the agent's limits so the buttons say so. */
+export const BIN_LIMIT_GB: Record<SpeedProvider, number> = {
+  auto: 50,
+  cloudflare: 0,
+  hetzner: 10,
+  ovh: 1,
+  xerohost: 50,
+  custom: 50,
+}
 /** Results kept on the page (newest first). */
 export const KEEP_RESULTS = 10
 /** Live rate samples kept for the running test (one per second). */
@@ -17,6 +32,17 @@ export interface SpeedFailure {
   code: string
   message: string
   retryAfterSecs?: number
+}
+
+function loadProvider(): SpeedProvider {
+  try {
+    const saved = localStorage.getItem(PROVIDER_KEY)
+    return (PROVIDERS as readonly string[]).includes(saved ?? '')
+      ? (saved as SpeedProvider)
+      : 'auto'
+  } catch {
+    return 'auto'
+  }
 }
 
 function loadServers(): string {
@@ -33,6 +59,7 @@ function loadServers(): string {
  */
 export const useSpeedStore = defineStore('speed', () => {
   const servers = ref(loadServers())
+  const provider = ref<SpeedProvider>(loadProvider())
   const jobId = ref<number | null>(null)
   const running = ref(false)
   const phase = ref('')
@@ -55,6 +82,15 @@ export const useSpeedStore = defineStore('speed', () => {
       localStorage.setItem(STORAGE_KEY, text)
     } catch {
       // The list simply is not remembered.
+    }
+  }
+
+  function setProvider(value: SpeedProvider): void {
+    provider.value = value
+    try {
+      localStorage.setItem(PROVIDER_KEY, value)
+    } catch {
+      // The choice simply is not remembered.
     }
   }
 
@@ -138,6 +174,7 @@ export const useSpeedStore = defineStore('speed', () => {
     try {
       const started = await api.startSpeedTest({
         kind: request.kind,
+        provider: provider.value,
         servers: list(),
         streams: request.streams,
         duration_secs: request.durationSecs,
@@ -170,6 +207,8 @@ export const useSpeedStore = defineStore('speed', () => {
 
   return {
     servers,
+    provider,
+    setProvider,
     jobId,
     running,
     phase,

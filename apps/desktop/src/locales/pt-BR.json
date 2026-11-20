@@ -951,9 +951,9 @@
   },
   "speed": {
     "title": "Teste de velocidade",
-    "hint": "Mede latência, jitter e velocidade de download/upload contra um servidor de velocidade. Os testes nunca gravam em disco.",
+    "hint": "Mede latência, jitter e velocidade de download e upload contra provedores públicos gratuitos, nós da XeroHost ou o seu próprio servidor de velocidade. Os testes nunca gravam em disco.",
     "servers": "Servidores (um por linha)",
-    "serversHint": "Seu próprio speed-server, como https://host:porta (http:// só para seu laboratório). Os nós da XeroHost aparecerão aqui automaticamente quando forem publicados.",
+    "serversHint": "Seu próprio speed-server, como https://host:porta (http:// somente para o seu laboratório).",
     "streams": "Fluxos",
     "streamsShort": "fluxos",
     "kinds": {
@@ -982,9 +982,9 @@
     "jitter": "jitter",
     "sourceIp": "Seu endereço público",
     "candidates": "Servidores testados:",
-    "empty": "Ainda não há resultados. Adicione um servidor e faça um teste rápido.",
+    "empty": "Ainda não há resultados. Pressione Teste rápido.",
     "errors": {
-      "no_server": "Nenhum servidor respondeu. Verifique o endereço ou adicione outro servidor.",
+      "no_server": "Nenhum servidor respondeu. Verifique sua conexão ou escolha outro provedor.",
       "confirmation_required": "O teste de 50 GB precisa da caixa de confirmação marcada.",
       "rate_limited": "O servidor está limitando esta máquina. Tente novamente em {retry} segundos.",
       "budget_exceeded": "Este teste excederia o limite de transferência do servidor para o seu endereço. Tente um menor depois.",
@@ -997,7 +997,27 @@
       "bad_request": "A solicitação foi recusada.",
       "busy": "Já há um teste de velocidade em andamento.",
       "not_connected": "O agente não está conectado."
-    }
+    },
+    "provider": "Provedor",
+    "providers": {
+      "auto": "Automático (o mais rápido)",
+      "cloudflare": "Cloudflare",
+      "hetzner": "Hetzner (Alemanha, Finlândia, EUA, Singapura)",
+      "ovh": "OVHcloud (França)",
+      "xerohost": "Nós da XeroHost",
+      "custom": "Meus próprios servidores"
+    },
+    "providerHints": {
+      "auto": "Testa todos os provedores e usa o de menor latência. Se ele só baixa (Hetzner, OVHcloud), o upload é medido no melhor servidor que o aceite.",
+      "cloudflare": "O nó da Cloudflare mais próximo: download e upload. Sem testes de gigabytes: o serviço não foi feito para isso.",
+      "hetzner": "Arquivos de teste públicos da Hetzner: só download, até 10 GB. Seis locais; o mais próximo é escolhido.",
+      "ovh": "Arquivos de teste públicos da OVHcloud: só download, até 1 GB.",
+      "xerohost": "Os nós próprios da XeroHost. Aparecerão aqui quando forem publicados.",
+      "custom": "Somente os servidores que você listar abaixo."
+    },
+    "binUnavailable": "Este provedor não oferece um teste tão grande.",
+    "uploadOn": "medido em {server}",
+    "downloadOnly": "Este provedor mede apenas o download."
   },
   "intel": {
     "never": "nunca",

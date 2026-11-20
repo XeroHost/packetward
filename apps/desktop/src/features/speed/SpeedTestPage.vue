@@ -8,7 +8,8 @@ import { Square, TriangleAlert } from '@/components/pw/icons'
 import IpCell from '@/components/pw/IpCell.vue'
 import { Button } from '@/components/ui/button'
 import { FIELD } from '@/features/diagnostics/fieldClass'
-import { useSpeedStore } from '@/stores/speed'
+import PwSelect from '@/components/pw/PwSelect.vue'
+import { BIN_LIMIT_GB, PROVIDERS, useSpeedStore, type SpeedProvider } from '@/stores/speed'
 import type { SpeedKind } from '@/types/generated/SpeedKind'
 import type { SpeedResultView } from '@/types/generated/SpeedResultView'
 
@@ -17,6 +18,17 @@ const speed = useSpeedStore()
 
 const streams = ref(4)
 const confirm50 = ref(false)
+
+const providerModel = computed({
+  get: () => speed.provider,
+  set: (value: SpeedProvider) => speed.setProvider(value),
+})
+const providerOptions = computed(() =>
+  PROVIDERS.map((value) => ({ value, label: t(`speed.providers.${value}`) })),
+)
+/** Your own servers are only used when the provider is automatic or "my servers". */
+const showServers = computed(() => speed.provider === 'auto' || speed.provider === 'custom')
+const binLimit = computed(() => BIN_LIMIT_GB[speed.provider])
 
 const serversText = computed({
   get: () => speed.servers,
@@ -76,15 +88,9 @@ const sectionTitle = 'text-[1.0625rem] font-semibold'
       </div>
 
       <div class="flex flex-wrap items-end gap-3">
-        <label class="flex min-w-72 flex-1 flex-col gap-1.5 text-sm">
-          <span class="text-text-muted text-xs">{{ t('speed.servers') }}</span>
-          <textarea
-            v-model="serversText"
-            :class="[FIELD, 'h-16 py-2 font-mono']"
-            spellcheck="false"
-            :disabled="speed.running"
-            placeholder="https://speed.example.com:443"
-          />
+        <label class="flex w-80 max-w-full flex-col gap-1.5 text-sm">
+          <span class="text-text-muted text-xs">{{ t('speed.provider') }}</span>
+          <PwSelect v-model="providerModel" :options="providerOptions" :disabled="speed.running" />
         </label>
         <label class="flex w-24 flex-col gap-1.5 text-sm">
           <span class="text-text-muted text-xs">{{ t('speed.streams') }}</span>
@@ -98,20 +104,49 @@ const sectionTitle = 'text-[1.0625rem] font-semibold'
           />
         </label>
       </div>
-      <p class="text-text-muted -mt-2 text-xs">{{ t('speed.serversHint') }}</p>
+      <p class="text-text-muted -mt-2 max-w-prose text-xs" data-testid="provider-hint">
+        {{ t(`speed.providerHints.${speed.provider}`) }}
+      </p>
+      <div v-if="showServers" class="flex flex-col gap-1.5">
+        <label class="flex max-w-3xl flex-col gap-1.5 text-sm">
+          <span class="text-text-muted text-xs">{{ t('speed.servers') }}</span>
+          <textarea
+            v-model="serversText"
+            :class="[FIELD, 'h-16 py-2 font-mono']"
+            spellcheck="false"
+            :disabled="speed.running"
+            placeholder="https://speed.example.com:443"
+          />
+        </label>
+        <p class="text-text-muted text-xs">{{ t('speed.serversHint') }}</p>
+      </div>
 
       <div class="flex flex-wrap items-center gap-2">
         <Button v-if="!speed.running" @click="run('quick')">{{ t('speed.kinds.quick') }}</Button>
-        <Button v-if="!speed.running" variant="outline" @click="run('bin1')">{{
-          t('speed.kinds.bin1')
-        }}</Button>
-        <Button v-if="!speed.running" variant="outline" @click="run('bin10')">{{
-          t('speed.kinds.bin10')
-        }}</Button>
         <Button
           v-if="!speed.running"
           variant="outline"
-          :disabled="!confirm50"
+          :disabled="binLimit < 1"
+          :title="binLimit < 1 ? t('speed.binUnavailable') : undefined"
+          data-testid="run-bin1"
+          @click="run('bin1')"
+          >{{ t('speed.kinds.bin1') }}</Button
+        >
+        <Button
+          v-if="!speed.running"
+          variant="outline"
+          :disabled="binLimit < 10"
+          :title="binLimit < 10 ? t('speed.binUnavailable') : undefined"
+          data-testid="run-bin10"
+          @click="run('bin10')"
+          >{{ t('speed.kinds.bin10') }}</Button
+        >
+        <Button
+          v-if="!speed.running"
+          variant="outline"
+          :disabled="!confirm50 || binLimit < 50"
+          :title="binLimit < 50 ? t('speed.binUnavailable') : undefined"
+          data-testid="run-bin50"
           @click="run('bin50')"
         >
           {{ t('speed.kinds.bin50') }}
@@ -224,6 +259,19 @@ const sectionTitle = 'text-[1.0625rem] font-semibold'
           </dd>
           <dd class="text-text-muted mt-2 text-xs">
             {{ t('speed.peak') }} {{ mbps(latest.upload.peak_mbps) }}
+          </dd>
+          <dd
+            v-if="latest.upload_server"
+            class="text-text-muted mt-1 text-xs"
+            data-testid="upload-server"
+          >
+            {{ t('speed.uploadOn', { server: latest.upload_server.name }) }}
+          </dd>
+        </div>
+        <div v-else-if="latest.download && latest.kind === 'quick'">
+          <dt class="text-text-muted text-xs">{{ t('speed.upload') }}</dt>
+          <dd class="text-text-muted mt-2 text-sm" data-testid="download-only">
+            {{ t('speed.downloadOnly') }}
           </dd>
         </div>
         <div v-if="latest.latency">

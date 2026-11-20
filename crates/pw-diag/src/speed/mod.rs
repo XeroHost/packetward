@@ -35,6 +35,7 @@ mod latency;
 mod ledger;
 pub mod math;
 mod picker;
+pub mod providers;
 mod result;
 mod server;
 mod throughput;
@@ -54,7 +55,7 @@ pub use result::{
 };
 pub use server::{
     new_test_id, valid_test_id, Candidates, RejectedServer, Scheme, ServerEndpoint, ServerInfo,
-    ServerLimits, SpeedNode,
+    ServerKind, ServerLimits, SpeedNode,
 };
 pub use throughput::ThroughputOptions;
 pub use transport::{ByteMeter, DownloadRequest, SpeedTransport, UploadRequest};

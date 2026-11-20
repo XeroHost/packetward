@@ -7,9 +7,9 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
 use pw_diag::speed::{
-    BinOptions, BinResult, BinSize, Candidates, Direction, PickOptions, RunOptions, ServerEndpoint,
-    SpeedClient, SpeedError, SpeedNode, SpeedPhase, SpeedProgress, SpeedResult, SpeedTransport,
-    ThroughputOptions, ThroughputResult, UsageLedger,
+    providers, BinOptions, BinResult, BinSize, Candidates, Direction, PickOptions, RunOptions,
+    ServerEndpoint, SpeedClient, SpeedError, SpeedNode, SpeedPhase, SpeedProgress, SpeedResult,
+    SpeedTransport, ThroughputOptions, ThroughputResult, UsageLedger,
 };
 use pw_diag::{CancelToken, FnSink};
 use pw_proto::{
@@ -89,7 +89,49 @@ impl<T: SpeedTransport + 'static> SpeedApi for SpeedService<T> {
         if request.servers.len() > 16 {
             return Err(bad_request("at most 16 custom servers"));
         }
-        let candidates = Candidates::from_lists(&self.nodes, &request.servers);
+        let provider = request.provider.as_deref().unwrap_or("auto");
+        if !["auto", "xerohost", "custom"].contains(&provider)
+            && !providers::GROUPS.contains(&provider)
+        {
+            return Err(bad_request("unknown speed-test provider"));
+        }
+        let mut candidates = match provider {
+            "auto" => {
+                let mut c = Candidates::from_lists(&self.nodes, &request.servers);
+                // The public providers come last, so a tie in latency keeps XeroHost and the user's own.
+                for server in providers::builtin_servers(None) {
+                    if !c.servers.iter().any(|s| s.host == server.host) {
+                        c.servers.push(server);
+                    }
+                }
+                c
+            }
+            "xerohost" => Candidates::from_lists(&self.nodes, &[]),
+            "custom" => Candidates::from_lists(&[], &request.servers),
+            group => Candidates {
+                servers: providers::builtin_servers(Some(group)),
+                rejected: Vec::new(),
+            },
+        };
+        // A bin test only goes to servers that offer that size (the public providers are limited so the
+        // app does not hammer a free service).
+        let bin_size = match request.kind {
+            SpeedKind::Quick => None,
+            SpeedKind::Bin1 => Some(BinSize::OneGib.bytes()),
+            SpeedKind::Bin10 => Some(BinSize::TenGib.bytes()),
+            SpeedKind::Bin50 => Some(BinSize::FiftyGib.bytes()),
+        };
+        if let Some(size) = bin_size {
+            let before = candidates.servers.len();
+            candidates
+                .servers
+                .retain(|s| s.bin_limit_bytes().is_none_or(|limit| limit >= size));
+            if candidates.servers.is_empty() && before > 0 {
+                return Err(bad_request(
+                    "no server of this provider offers a test this large: use Hetzner for up to 10 GB, or XeroHost / your own server",
+                ));
+            }
+        }
         let rejected: Vec<String> = candidates
             .rejected
             .iter()
@@ -97,7 +139,7 @@ impl<T: SpeedTransport + 'static> SpeedApi for SpeedService<T> {
             .collect();
         if candidates.servers.is_empty() {
             return Err(bad_request(
-                "no speed-test server: add the address of a server (your own speed-server) or wait for the XeroHost nodes",
+                "no speed-test server for this choice: pick a public provider, add your own speed-server, or wait for the XeroHost nodes",
             ));
         }
         let cancel = CancelToken::new();
@@ -337,6 +379,7 @@ fn server_view(
         location: location.map(str::to_owned),
         latency_ms,
         custom: endpoint.custom,
+        provider: providers::builtin_of(endpoint).map(|b| b.group.to_owned()),
     }
 }
 
@@ -365,6 +408,7 @@ fn quick_view(kind: SpeedKind, result: &SpeedResult) -> SpeedResultView {
                 .find(|p| p.server.id == result.server.id)
                 .and_then(|p| p.latency_ms),
             custom: result.server.custom,
+            provider: result.server.provider.clone(),
         },
         candidates: result
             .servers_probed
@@ -383,6 +427,18 @@ fn quick_view(kind: SpeedKind, result: &SpeedResult) -> SpeedResultView {
         }),
         download: result.download.as_ref().map(transfer_view),
         upload: result.upload.as_ref().map(transfer_view),
+        upload_server: result.upload_server.as_ref().map(|s| SpeedServerView {
+            id: s.id.clone(),
+            name: s.name.clone(),
+            location: s.location.clone(),
+            latency_ms: result
+                .servers_probed
+                .iter()
+                .find(|p| p.server.id == s.id)
+                .and_then(|p| p.latency_ms),
+            custom: s.custom,
+            provider: s.provider.clone(),
+        }),
     }
 }
 
@@ -422,6 +478,7 @@ fn bin_view(
             buckets_mbps: bin.buckets_mbps.clone(),
         }),
         upload: None,
+        upload_server: None,
     }
 }
 
@@ -460,6 +517,7 @@ mod tests {
         SpeedRequest {
             kind,
             servers: vec!["speed.example.test".into()],
+            provider: Some("custom".into()),
             streams: Some(2),
             duration_secs: Some(1),
             confirm_large: false,
@@ -527,6 +585,151 @@ mod tests {
         let started = service.start(bad).unwrap();
         assert_eq!(started.rejected.len(), 1);
         service.cancel(started.job_id);
+        assert!(fake.bytes_moved() < 5_000_000);
+    }
+
+    /// The whole path with the real transport and no configured server: the automatic choice picks a public
+    /// provider and measures it. A few seconds of traffic. Run on purpose:
+    /// `cargo test -p pw-engine --features net-http --lib live_automatic -- --ignored --nocapture`.
+    #[cfg(feature = "net-http")]
+    #[tokio::test]
+    #[ignore = "uses the public internet"]
+    async fn live_automatic_quick_test_with_no_server_configured() {
+        use pw_diag::speed::{HttpTransport, HttpTransportConfig};
+        let transport = HttpTransport::new(&HttpTransportConfig::default()).unwrap();
+        let service = SpeedService::new(transport, Vec::new());
+        let mut events = service.events();
+        let started = service
+            .start(SpeedRequest {
+                kind: SpeedKind::Quick,
+                servers: vec![],
+                provider: None,
+                streams: Some(2),
+                duration_secs: Some(3),
+                confirm_large: false,
+            })
+            .unwrap();
+        let done = loop {
+            match tokio::time::timeout(Duration::from_secs(90), events.recv())
+                .await
+                .unwrap()
+                .unwrap()
+            {
+                SpeedEvent::Done { job_id, result } if job_id == started.job_id => break result,
+                SpeedEvent::Failed {
+                    job_id, message, ..
+                } if job_id == started.job_id => {
+                    panic!("failed: {message}")
+                }
+                _ => {}
+            }
+        };
+        println!(
+            "server {} ({:?}), download {:?}, upload {:?} on {:?}, latency {:?}",
+            done.server.name,
+            done.server.provider,
+            done.download.as_ref().map(|d| d.avg_mbps),
+            done.upload.as_ref().map(|u| u.avg_mbps),
+            done.upload_server.as_ref().map(|s| s.name.clone()),
+            done.latency.as_ref().map(|l| l.avg_ms),
+        );
+        assert!(done.download.is_some_and(|d| d.avg_mbps > 0.0));
+        assert!(
+            done.upload.is_some(),
+            "an upload-capable provider exists in the candidates"
+        );
+    }
+
+    #[tokio::test]
+    async fn the_public_providers_make_the_test_work_with_no_server_configured() {
+        let (service, _fake) = service(false);
+        // No custom server, no XeroHost node: the default choice still has somewhere to go.
+        let auto = SpeedRequest {
+            servers: vec![],
+            provider: None,
+            ..request(SpeedKind::Quick)
+        };
+        let started = service.start(auto).unwrap();
+        service.cancel(started.job_id);
+        // A provider can be chosen by name.
+        for group in ["cloudflare", "hetzner", "ovh"] {
+            // Wait for the previous job's slot (the fake has no such host: the run fails fast).
+            let mut events = service.events();
+            let request = SpeedRequest {
+                servers: vec![],
+                provider: Some(group.into()),
+                ..request(SpeedKind::Quick)
+            };
+            let started = loop {
+                match service.start(request.clone()) {
+                    Ok(started) => break started,
+                    Err(err) if err.code == ErrorCode::Busy => {
+                        let _ = tokio::time::timeout(Duration::from_secs(5), events.recv()).await;
+                    }
+                    Err(err) => panic!("{group}: {err:?}"),
+                }
+            };
+            service.cancel(started.job_id);
+        }
+    }
+
+    #[tokio::test]
+    async fn an_unknown_provider_and_empty_choices_are_explained() {
+        let (service, _fake) = service(false);
+        let unknown = SpeedRequest {
+            provider: Some("nope".into()),
+            ..request(SpeedKind::Quick)
+        };
+        assert!(service
+            .start(unknown)
+            .unwrap_err()
+            .message
+            .contains("unknown speed-test provider"));
+        // XeroHost has no node yet and custom has no address: nothing to run against.
+        for (provider, servers) in [("xerohost", vec![]), ("custom", vec![])] {
+            let request = SpeedRequest {
+                provider: Some(provider.into()),
+                servers,
+                ..request(SpeedKind::Quick)
+            };
+            assert!(service
+                .start(request)
+                .unwrap_err()
+                .message
+                .contains("no speed-test server"));
+        }
+    }
+
+    #[tokio::test]
+    async fn bin_tests_only_go_to_providers_that_offer_the_size() {
+        let (service, fake) = service(false);
+        for (provider, kind, allowed) in [
+            ("cloudflare", SpeedKind::Bin1, false),
+            ("ovh", SpeedKind::Bin1, true),
+            ("ovh", SpeedKind::Bin10, false),
+            ("hetzner", SpeedKind::Bin10, true),
+        ] {
+            let request = SpeedRequest {
+                servers: vec![],
+                provider: Some(provider.into()),
+                ..request(kind)
+            };
+            let outcome = service.start(request);
+            if allowed {
+                let started = outcome.unwrap_or_else(|e| panic!("{provider}: {e:?}"));
+                service.cancel(started.job_id);
+                // Let the slot free up before the next case.
+                tokio::time::sleep(Duration::from_millis(200)).await;
+            } else {
+                assert!(
+                    outcome
+                        .unwrap_err()
+                        .message
+                        .contains("offers a test this large"),
+                    "{provider} must refuse {kind:?}"
+                );
+            }
+        }
         assert!(fake.bytes_moved() < 5_000_000);
     }
 

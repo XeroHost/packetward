@@ -288,6 +288,12 @@ Every step below can cut Remote Desktop. Keep the provider's console open and a 
    The 50 GB test stays disabled until its checkbox is ticked. On the dev VPS never run more than 1 GB per test.
 3. Exceed the server's per-address budget: the page shows the *budget exceeded* message with no retry loop.
 
+## F9b. Public speed-test providers (2026-11-20)
+1. With **no** server typed and no XeroHost node, Speed Test → *Automatic* → *Quick test*: a server is chosen (the page lists the candidates with their latency), download, upload and latency are shown. When the winner is Hetzner or OVHcloud the upload line says "measured on …" (another server).
+2. Choose each provider in turn: *Cloudflare* (quick test only: the 1/10/50 GB buttons are disabled), *Hetzner* (1 and 10 GB enabled, 50 GB disabled), *OVHcloud* (1 GB only), *My own servers* with a `speed-server` (everything enabled, textarea visible). A download-only provider shows "only measures download" if no upload server was probed.
+3. Developer check without the UI (a few MB each): `cargo test -p pw-diag --features speed --lib live_public_providers -- --ignored --nocapture` and `cargo test -p pw-engine --features net-http --lib live_automatic -- --ignored --nocapture`.
+4. Behind a proxy (Settings → Network) the same tests go through it. If a provider changed its endpoints it shows as dead in the candidate list; report it.
+
 ## F10. Advanced MTR (M10) — TEST VPS
 
 Needs a Windows VPS with the agent running elevated, plus WinMTR (or `mtr`/`tracert`) for comparison. Nothing here changes firewall rules.

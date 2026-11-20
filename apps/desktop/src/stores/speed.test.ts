@@ -122,6 +122,25 @@ describe('a run', () => {
     expect(speed.failure?.message).toBe('no speed-test server')
   })
 
+  it('remembers the chosen provider and sends it with the test', async () => {
+    const speed = useSpeedStore()
+    expect(speed.provider).toBe('auto')
+    speed.setProvider('hetzner')
+    expect(localStorage.getItem('pw.speed.provider')).toBe('hetzner')
+    api.startSpeedTest.mockResolvedValue({ job_id: 1, rejected: [] })
+    await speed.start({ kind: 'quick' })
+    expect(api.startSpeedTest).toHaveBeenCalledWith(
+      expect.objectContaining({ provider: 'hetzner' }),
+    )
+    setActivePinia(createPinia())
+    expect(useSpeedStore().provider).toBe('hetzner')
+  })
+
+  it('falls back to automatic when the saved provider is unknown', () => {
+    localStorage.setItem('pw.speed.provider', 'nonsense')
+    expect(useSpeedStore().provider).toBe('auto')
+  })
+
   it('sends the saved servers and the confirmation, and keeps a bounded history', async () => {
     const speed = useSpeedStore()
     speed.setServers('https://a.example:443\nb.example')
@@ -129,6 +148,7 @@ describe('a run', () => {
     await speed.start({ kind: 'bin50', confirmLarge: true, streams: 8 })
     expect(api.startSpeedTest).toHaveBeenCalledWith({
       kind: 'bin50',
+      provider: 'auto',
       servers: ['https://a.example:443', 'b.example'],
       streams: 8,
       duration_secs: undefined,

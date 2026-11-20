@@ -951,9 +951,9 @@
   },
   "speed": {
     "title": "Prueba de velocidad",
-    "hint": "Mide latencia, jitter y velocidad de descarga/subida contra un servidor de velocidad. Las pruebas nunca escriben en disco.",
+    "hint": "Mide latencia, jitter y velocidad de descarga y subida contra proveedores públicos gratuitos, nodos de XeroHost o su propio servidor de velocidad. Las pruebas nunca escriben en disco.",
     "servers": "Servidores (uno por línea)",
-    "serversHint": "Su propio speed-server, como https://host:puerto (http:// solo para su laboratorio). Los nodos de XeroHost aparecerán aquí automáticamente cuando se publiquen.",
+    "serversHint": "Su propio speed-server, como https://host:puerto (http:// solo para su laboratorio).",
     "streams": "Flujos",
     "streamsShort": "flujos",
     "kinds": {
@@ -982,9 +982,9 @@
     "jitter": "jitter",
     "sourceIp": "Su dirección pública",
     "candidates": "Servidores probados:",
-    "empty": "Aún no hay resultados. Añada un servidor y haga una prueba rápida.",
+    "empty": "Aún no hay resultados. Pulse Prueba rápida.",
     "errors": {
-      "no_server": "Ningún servidor respondió. Compruebe la dirección o añada otro servidor.",
+      "no_server": "Ningún servidor respondió. Compruebe su conexión o elija otro proveedor.",
       "confirmation_required": "La prueba de 50 GB necesita marcar la casilla de confirmación.",
       "rate_limited": "El servidor está limitando esta máquina. Inténtelo de nuevo en {retry} segundos.",
       "budget_exceeded": "Esta prueba superaría el límite de transferencia del servidor para su dirección. Pruebe una más pequeña más tarde.",
@@ -997,7 +997,27 @@
       "bad_request": "Se rechazó la petición.",
       "busy": "Ya hay una prueba de velocidad en curso.",
       "not_connected": "El agente no está conectado."
-    }
+    },
+    "provider": "Proveedor",
+    "providers": {
+      "auto": "Automático (el más rápido)",
+      "cloudflare": "Cloudflare",
+      "hetzner": "Hetzner (Alemania, Finlandia, EE. UU., Singapur)",
+      "ovh": "OVHcloud (Francia)",
+      "xerohost": "Nodos de XeroHost",
+      "custom": "Mis propios servidores"
+    },
+    "providerHints": {
+      "auto": "Prueba todos los proveedores y usa el de menor latencia. Si solo descarga (Hetzner, OVHcloud), la subida se mide contra el mejor servidor que la admita.",
+      "cloudflare": "El nodo de Cloudflare más cercano: descarga y subida. Sin pruebas de gigabytes: el servicio no está pensado para ello.",
+      "hetzner": "Archivos de prueba públicos de Hetzner: solo descarga, hasta 10 GB. Seis ubicaciones; se elige la más cercana.",
+      "ovh": "Archivos de prueba públicos de OVHcloud: solo descarga, hasta 1 GB.",
+      "xerohost": "Los nodos propios de XeroHost. Aparecerán aquí cuando se publiquen.",
+      "custom": "Solo los servidores que escriba abajo."
+    },
+    "binUnavailable": "Este proveedor no ofrece una prueba tan grande.",
+    "uploadOn": "medida en {server}",
+    "downloadOnly": "Este proveedor solo mide la descarga."
   },
   "intel": {
     "never": "nunca",

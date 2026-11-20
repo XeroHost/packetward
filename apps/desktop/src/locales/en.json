@@ -951,9 +951,9 @@
   },
   "speed": {
     "title": "Speed test",
-    "hint": "Measures latency, jitter and download/upload speed against a speed server. Tests never write to disk.",
+    "hint": "Measures latency, jitter and download/upload speed against free public providers, XeroHost nodes or your own speed server. Tests never write to disk.",
     "servers": "Servers (one per line)",
-    "serversHint": "Your own speed-server, as https://host:port (http:// only for your own lab). XeroHost nodes appear here automatically once published.",
+    "serversHint": "Your own speed-server, as https://host:port (http:// only for your own lab).",
     "streams": "Streams",
     "streamsShort": "streams",
     "kinds": {
@@ -982,9 +982,9 @@
     "jitter": "jitter",
     "sourceIp": "Your public address",
     "candidates": "Servers tried:",
-    "empty": "No results yet. Add a server and run a quick test.",
+    "empty": "No results yet. Press Quick test.",
     "errors": {
-      "no_server": "No server answered. Check the address, or add another server.",
+      "no_server": "No server answered. Check your connection, or choose another provider.",
       "confirmation_required": "The 50 GB test needs the confirmation box ticked.",
       "rate_limited": "The server is limiting this machine. Try again in {retry} seconds.",
       "budget_exceeded": "This test would exceed the server’s transfer limit for your address. Try a smaller test later.",
@@ -997,7 +997,27 @@
       "bad_request": "The request was refused.",
       "busy": "A speed test is already running.",
       "not_connected": "The agent is not connected."
-    }
+    },
+    "provider": "Provider",
+    "providers": {
+      "auto": "Automatic (the fastest)",
+      "cloudflare": "Cloudflare",
+      "hetzner": "Hetzner (Germany, Finland, USA, Singapore)",
+      "ovh": "OVHcloud (France)",
+      "xerohost": "XeroHost nodes",
+      "custom": "My own servers"
+    },
+    "providerHints": {
+      "auto": "Tries every provider and uses the one with the lowest latency. If it only downloads (Hetzner, OVHcloud), the upload is measured against the best server that takes one.",
+      "cloudflare": "Nearest Cloudflare edge: download and upload. No gigabyte tests: the service is not meant for them.",
+      "hetzner": "Public Hetzner test files: download only, up to 10 GB. Six locations; the closest one is chosen.",
+      "ovh": "Public OVHcloud test files: download only, up to 1 GB.",
+      "xerohost": "XeroHost's own nodes. They appear here once published.",
+      "custom": "Only the servers you list below."
+    },
+    "binUnavailable": "This provider does not offer a test this large.",
+    "uploadOn": "measured on {server}",
+    "downloadOnly": "This provider only measures download."
   },
   "intel": {
     "never": "never",

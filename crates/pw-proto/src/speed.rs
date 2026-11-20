@@ -30,6 +30,11 @@ pub struct SpeedRequest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[cfg_attr(feature = "ts-export", ts(optional))]
     pub streams: Option<u32>,
+    /// Which provider to use: `auto` (the default: the fastest of everything available), `xerohost`,
+    /// `custom` (only the servers in `servers`), `cloudflare`, `hetzner` or `ovh`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-export", ts(optional))]
+    pub provider: Option<String>,
     /// Seconds each of download and upload run for (quick test); absent = 10.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[cfg_attr(feature = "ts-export", ts(optional))]
@@ -95,6 +100,10 @@ pub struct SpeedServerView {
     #[cfg_attr(feature = "ts-export", ts(optional))]
     pub latency_ms: Option<f64>,
     pub custom: bool,
+    /// The built-in provider (`cloudflare`, `hetzner`, `ovh`); absent for XeroHost nodes and custom servers.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-export", ts(optional))]
+    pub provider: Option<String>,
 }
 
 /// The report of a finished run.
@@ -120,6 +129,11 @@ pub struct SpeedResultView {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[cfg_attr(feature = "ts-export", ts(optional))]
     pub upload: Option<SpeedTransferView>,
+    /// The server the upload was measured against when it is not `server` (the chosen provider only
+    /// downloads, like a static mirror).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-export", ts(optional))]
+    pub upload_server: Option<SpeedServerView>,
 }
 
 /// One message of the `speed.progress` topic.

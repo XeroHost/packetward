@@ -4,4 +4,8 @@ export type SpeedServerView = { id: string, name: string, location?: string,
 /**
  * Round trip to it while choosing; absent when it did not answer.
  */
-latency_ms?: number, custom: boolean, };
+latency_ms?: number, custom: boolean, 
+/**
+ * The built-in provider (`cloudflare`, `hetzner`, `ovh`); absent for XeroHost nodes and custom servers.
+ */
+provider?: string, };

@@ -124,6 +124,7 @@ is rejected; works offline except AbuseIPDB and list refresh.
 - [x] `tools/speed-server` (axum) with limits + Dockerfile + deploy notes for XeroHost nodes.
 - [x] Client: latency/jitter, multi-stream download/upload, server picker (auto by latency), custom servers.
 - [x] Bin tests 1 GB / 10 GB / 50 GB with confirmation for 50 GB, progress, cancel.
+- [x] Public providers (2026-11-20): the test works with no XeroHost node and no server configured. Built-in Cloudflare, Hetzner (6 locations) and OVHcloud, provider selector (automatic / each provider / XeroHost / my servers), upload moved to a server that takes it when the winner only downloads, per-provider limits for bin tests (protocol 1.13).
 **Accept:** results within ~10% of a reference tool on the same link (**not measured**: needs a test VPS and a XeroHost node, see TESTING §F9); cancel stops traffic immediately (fake-tested).
 
 ## M10 — MTR advanced
@@ -137,7 +138,7 @@ Design: ARCHITECTURE §6.14. Decisions: DECISIONS "MCP server". Nothing of this 
 - [ ] `crates/pw-mcp` (new): tool catalog, JSON schemas, result envelope with untrusted-field marking, prompts; `rmcp` (official Rust SDK),
       stdio transport, launched as `pwctl mcp`. No network transport in v1.
 - [ ] Agent: `ClientKind::Mcp`, MCP policy (master switch off by default, one level per tool: disabled / automatic / approval), pending-action
-      queue with a 5-minute expiry, write rate limit, `AuditActor::Mcp`, protocol 1.13 (`mcp.*` methods and the `mcp.pending` topic).
+      queue with a 5-minute expiry, write rate limit, `AuditActor::Mcp`, protocol 1.14 (`mcp.*` methods and the `mcp.pending` topic; 1.13 is the speed-test providers).
       Enforcement lives in the agent, not only in `pwctl mcp`: an `Mcp` connection can only call the methods of the catalog.
 - [ ] Read tools (always available once the switch is on): live stats, connections, top remote IPs, alerts, Guardian decisions, capture summary,
       MTR / ping / DNS / port check, IP lookup (GeoIP/ASN, AbuseIPDB only with the user's key), firewall rules, RDP Shield audit, audit log.

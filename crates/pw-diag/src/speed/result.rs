@@ -167,6 +167,8 @@ pub struct ServerSummary {
     pub location: Option<String>,
     /// A server the user added.
     pub custom: bool,
+    /// The built-in provider group (`cloudflare`, `hetzner`, `ovh`), if it is one.
+    pub provider: Option<String>,
 }
 
 impl ServerSummary {
@@ -181,6 +183,7 @@ impl ServerSummary {
             scheme: server.scheme.as_str().to_owned(),
             location: info.and_then(|i| from_info(&i.location)),
             custom: server.custom,
+            provider: super::providers::builtin_of(server).map(|b| b.group.to_owned()),
         }
     }
 }
@@ -214,6 +217,9 @@ pub struct SpeedResult {
     pub download: Option<ThroughputResult>,
     /// Upload, when requested.
     pub upload: Option<ThroughputResult>,
+    /// The server the upload was measured against, when it is not the one of the download (the chosen
+    /// provider is download-only).
+    pub upload_server: Option<ServerSummary>,
 }
 
 #[cfg(test)]

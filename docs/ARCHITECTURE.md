@@ -317,6 +317,19 @@ for default jobs and the advanced one (mode, ASN, country) otherwise, and the ne
 `csv|json|text`, optional `source_ip`) returns `{ format, filename, content }` with a Windows-safe file name. The desktop saves
 it with a browser download (no new Tauri command) or copies it. All new fields are optional/serde-defaulted. Protocol minor is 10.
 
+**Public providers (protocol minor 13).** The speed test no longer depends on XeroHost nodes. `pw-diag::speed::providers` has a built-in,
+https-only catalog (code, nothing is downloaded to learn it) and `ServerEndpoint` carries a `kind`: `Native` (our `speed-server` protocol: the
+XeroHost nodes and the user's own servers), `Cloudflare` (`GET /__down?bytes=N` with N < 100 MB, `POST /__up`, `/cdn-cgi/trace` for the address
+and the data center) and `Mirror` (public static files read with `Range`, download only: Hetzner Falkenstein, Nuremberg, Helsinki, Ashburn,
+Hillsboro and Singapore with `100MB.bin`, `1GB.bin`, `10GB.bin`; OVHcloud Gravelines with `100Mb.dat`, `1Gb.dat`). `HttpTransport` dispatches by kind;
+the engine gives each kind a synthesized `ServerInfo` (request-size limits), so the existing chunk clamping applies. `speed.start` takes
+`provider`: `auto` (default: the user's servers, XeroHost nodes and every public provider; the lowest latency wins), `xerohost`, `custom`,
+`cloudflare`, `hetzner` or `ovh`. A download-only winner has its **upload measured on the fastest probed server that takes one** (the result
+carries `upload_server`); with none, the upload is skipped, not failed. Public providers are limited so the app does not hammer a free service:
+Cloudflare takes quick tests only, OVHcloud bin tests up to 1 GiB, Hetzner up to 10 GiB; 50 GiB only goes to XeroHost or the user's servers.
+Nothing is sent besides the requests themselves (no account, no key); the only identifier is `PacketWard/<version>` as User-Agent, and
+Cloudflare's trace returns the machine's own public address to the machine.
+
 ### 6.7 Speed server (`tools/speed-server`)
 axum service deployable on XeroHost nodes (Miami, Brazil, …):
 `GET /ping`, `GET /download?bytes=N` (streams generated data, no files on disk), `POST /upload` (discards, returns
@@ -508,7 +521,7 @@ approval), the write limit, and **Copy configuration** buttons that put on the c
 `pwctl.exe` path (the installer already ships it): Claude Desktop (`mcpServers` entry for `claude_desktop_config.json`), Claude Code (the
 `claude mcp add` command), OpenCode (`mcp` entry with `type: "local"` in `opencode.json`) and Cursor (`mcpServers` entry for `mcp.json`).
 
-**IPC (protocol minor 13).** Methods `mcp.settings.get`, `mcp.settings.set`, `mcp.pending.list`, `mcp.approve`, `mcp.reject`, `mcp.action.status`
+**IPC (protocol minor 14; 13 is the speed-test providers).** Methods `mcp.settings.get`, `mcp.settings.set`, `mcp.pending.list`, `mcp.approve`, `mcp.reject`, `mcp.action.status`
 (the three that change state are desktop/`Pwctl` only) and the topic `mcp.pending`; `ClientKind::Mcp`. Existing methods are reused for the
 tools; a one-shot getter missing for a read tool is added in the same bump.
 

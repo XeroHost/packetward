@@ -48,6 +48,20 @@ impl Scheme {
     }
 }
 
+/// Which protocol a server speaks.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ServerKind {
+    /// PacketWard's own speed server (`/ping`, `/info`, `/download`, `/upload`): XeroHost nodes and the
+    /// user's own servers.
+    #[default]
+    Native,
+    /// Cloudflare's public speed endpoints (`/__down`, `/__up`, `/cdn-cgi/trace`).
+    Cloudflare,
+    /// A public static-file mirror read with `Range` requests (download only).
+    Mirror,
+}
+
 /// A validated server address plus how to show it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ServerEndpoint {
@@ -63,6 +77,9 @@ pub struct ServerEndpoint {
     pub port: u16,
     /// `true` for a server the user added.
     pub custom: bool,
+    /// The protocol it speaks; only the built-in providers use anything but `Native`.
+    #[serde(default)]
+    pub kind: ServerKind,
 }
 
 impl ServerEndpoint {
@@ -87,6 +104,7 @@ impl ServerEndpoint {
             host,
             port: node.port,
             custom: false,
+            kind: ServerKind::Native,
         })
     }
 
@@ -130,6 +148,7 @@ impl ServerEndpoint {
             host,
             port,
             custom: true,
+            kind: ServerKind::Native,
         };
         let authority = endpoint.authority();
         endpoint.id = authority.clone();

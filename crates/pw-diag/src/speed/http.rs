@@ -17,7 +17,8 @@ use bytes::Bytes;
 use futures_util::stream;
 
 use super::error::{sanitize_message, TransportError};
-use super::server::{ServerEndpoint, ServerInfo};
+use super::providers::{self, CLOUDFLARE_MAX_DOWNLOAD, CLOUDFLARE_MAX_UPLOAD};
+use super::server::{ServerEndpoint, ServerInfo, ServerKind};
 use super::transport::{ByteMeter, DownloadRequest, SpeedTransport, UploadRequest};
 
 /// Size of the reusable upload buffer; the body is sent as slices of it (no per-chunk allocation).
@@ -197,6 +198,47 @@ async fn read_small(mut response: reqwest::Response) -> Result<Vec<u8>, Transpor
     Ok(body)
 }
 
+/// What a static mirror tells without any request: its name, place and the size of its largest file.
+fn mirror_info(server: &ServerEndpoint) -> ServerInfo {
+    let builtin = providers::builtin_of(server);
+    ServerInfo {
+        node_id: server.id.clone(),
+        node_name: server.name.clone(),
+        location: builtin.map(|b| b.location.to_owned()).unwrap_or_default(),
+        max_download_bytes: server.max_request_bytes().unwrap_or(0),
+        ..ServerInfo::default()
+    }
+}
+
+/// Cloudflare's `/cdn-cgi/trace` is plain `key=value` lines: the client address (`ip`), the data center (`colo`)
+/// and the country (`loc`).
+fn cloudflare_info(trace: &str) -> ServerInfo {
+    let field = |key: &str| {
+        trace
+            .lines()
+            .find_map(|line| line.strip_prefix(key)?.strip_prefix('='))
+            .map(|v| sanitize_message(v.trim()))
+            .unwrap_or_default()
+    };
+    let colo = field("colo");
+    let country = field("loc");
+    let place = match (colo.is_empty(), country.is_empty()) {
+        (false, false) => format!("{colo}, {country}"),
+        (false, true) => colo.clone(),
+        (true, false) => country,
+        (true, true) => String::new(),
+    };
+    ServerInfo {
+        node_id: colo,
+        node_name: "Cloudflare".to_owned(),
+        location: place,
+        client_ip: field("ip"),
+        max_download_bytes: CLOUDFLARE_MAX_DOWNLOAD,
+        max_upload_bytes: CLOUDFLARE_MAX_UPLOAD,
+        ..ServerInfo::default()
+    }
+}
+
 impl SpeedTransport for HttpTransport {
     async fn ping(
         &self,
@@ -204,13 +246,20 @@ impl SpeedTransport for HttpTransport {
         timeout: Duration,
     ) -> Result<Duration, TransportError> {
         let started = Instant::now();
-        let response = self
-            .client_for(server)
-            .get(server.url("/ping"))
-            .timeout(timeout)
-            .send()
-            .await
-            .map_err(map_error)?;
+        let request = match server.kind {
+            ServerKind::Native => self.client_for(server).get(server.url("/ping")),
+            // A zero-byte download: the cheapest round trip the endpoint offers.
+            ServerKind::Cloudflare => self.client_for(server).get(server.url("/__down?bytes=0")),
+            // The first byte of the smallest file.
+            ServerKind::Mirror => {
+                let file = providers::pick_mirror_file(providers::mirror_files(server), 1)
+                    .ok_or_else(|| TransportError::Protocol("mirror without files".to_owned()))?;
+                self.client_for(server)
+                    .get(server.url(file.path))
+                    .header(reqwest::header::RANGE, "bytes=0-0")
+            }
+        };
+        let response = request.timeout(timeout).send().await.map_err(map_error)?;
         if !response.status().is_success() {
             return Err(status_error(response).await);
         }
@@ -223,6 +272,30 @@ impl SpeedTransport for HttpTransport {
         server: &ServerEndpoint,
         timeout: Duration,
     ) -> Result<ServerInfo, TransportError> {
+        match server.kind {
+            ServerKind::Native => {}
+            ServerKind::Mirror => return Ok(mirror_info(server)),
+            ServerKind::Cloudflare => {
+                // The trace only adds the client address and the place. The size limits matter more
+                // (without them a request could exceed what Cloudflare answers), so they are given even
+                // when the trace cannot be read.
+                let trace = async {
+                    let response = self
+                        .client_for(server)
+                        .get(server.url("/cdn-cgi/trace"))
+                        .timeout(timeout)
+                        .send()
+                        .await
+                        .map_err(map_error)?;
+                    if !response.status().is_success() {
+                        return Err(status_error(response).await);
+                    }
+                    read_small(response).await
+                };
+                let body = trace.await.unwrap_or_default();
+                return Ok(cloudflare_info(&String::from_utf8_lossy(&body)));
+            }
+        }
         let response = self
             .client_for(server)
             .get(server.url("/info"))
@@ -245,25 +318,50 @@ impl SpeedTransport for HttpTransport {
         request: &DownloadRequest<'_>,
         meter: &ByteMeter,
     ) -> Result<u64, TransportError> {
-        let url = server.url(&format!(
-            "/download?bytes={}&test={}",
-            request.bytes, request.test_id
-        ));
-        let mut response = self
-            .client_for(server)
-            .get(url)
-            .send()
-            .await
-            .map_err(map_error)?;
+        let builder = match server.kind {
+            ServerKind::Native => self.client_for(server).get(server.url(&format!(
+                "/download?bytes={}&test={}",
+                request.bytes, request.test_id
+            ))),
+            ServerKind::Cloudflare => {
+                if request.bytes > CLOUDFLARE_MAX_DOWNLOAD {
+                    return Err(TransportError::Protocol(
+                        "request larger than this provider answers".to_owned(),
+                    ));
+                }
+                self.client_for(server)
+                    .get(server.url(&format!("/__down?bytes={}", request.bytes)))
+            }
+            ServerKind::Mirror => {
+                let file =
+                    providers::pick_mirror_file(providers::mirror_files(server), request.bytes)
+                        .ok_or_else(|| {
+                            TransportError::Protocol("mirror without files".to_owned())
+                        })?;
+                let wanted = request.bytes.min(file.bytes).max(1);
+                self.client_for(server)
+                    .get(server.url(file.path))
+                    .header(reqwest::header::RANGE, format!("bytes=0-{}", wanted - 1))
+            }
+        };
+        // A mirror that ignores `Range` answers 200 with the whole file: stop after the bytes asked for.
+        let limit = (server.kind == ServerKind::Mirror).then_some(request.bytes);
+        let mut response = builder.send().await.map_err(map_error)?;
         if !response.status().is_success() {
             return Err(status_error(response).await);
         }
         let mut received = 0u64;
         // The data goes nowhere: counted, then dropped.
         while let Some(chunk) = response.chunk().await.map_err(map_error)? {
-            let n = chunk.len() as u64;
+            let mut n = chunk.len() as u64;
+            if let Some(limit) = limit {
+                n = n.min(limit - received);
+            }
             received += n;
             meter.add(n);
+            if limit.is_some_and(|l| received >= l) {
+                break;
+            }
         }
         Ok(received)
     }
@@ -274,7 +372,22 @@ impl SpeedTransport for HttpTransport {
         request: &UploadRequest<'_>,
         meter: &ByteMeter,
     ) -> Result<u64, TransportError> {
-        let url = server.url(&format!("/upload?test={}", request.test_id));
+        let url = match server.kind {
+            ServerKind::Native => server.url(&format!("/upload?test={}", request.test_id)),
+            ServerKind::Cloudflare => {
+                if request.bytes > CLOUDFLARE_MAX_UPLOAD {
+                    return Err(TransportError::Protocol(
+                        "upload larger than this provider takes".to_owned(),
+                    ));
+                }
+                server.url("/__up")
+            }
+            ServerKind::Mirror => {
+                return Err(TransportError::Protocol(
+                    "this provider does not take uploads".to_owned(),
+                ))
+            }
+        };
         let buffer = self.upload_buffer.clone();
         let meter = meter.clone();
         let body = stream::unfold(request.bytes, move |left| {
@@ -304,6 +417,10 @@ impl SpeedTransport for HttpTransport {
             return Err(status_error(response).await);
         }
         let body = read_small(response).await?;
+        if server.kind == ServerKind::Cloudflare {
+            // Its answer carries no byte count: a 2xx means the whole body was taken.
+            return Ok(request.bytes);
+        }
         let value: serde_json::Value = serde_json::from_slice(&body)
             .map_err(|_| TransportError::Protocol("/upload answer is not JSON".to_owned()))?;
         value
@@ -353,6 +470,88 @@ mod tests {
             ..HttpTransportConfig::default()
         };
         assert!(HttpTransport::new(&no_proxy).is_ok());
+    }
+
+    #[test]
+    fn the_cloudflare_trace_gives_the_address_and_the_place() {
+        let info =
+            cloudflare_info("fl=1\nh=speed.cloudflare.com\nip=203.0.113.7\ncolo=MIA\nloc=US\n");
+        assert_eq!(info.client_ip, "203.0.113.7");
+        assert_eq!(info.location, "MIA, US");
+        assert_eq!(info.max_download_bytes, CLOUDFLARE_MAX_DOWNLOAD);
+        assert_eq!(cloudflare_info("").location, "");
+    }
+
+    #[test]
+    fn a_mirror_describes_itself_without_a_request() {
+        let server = &providers::builtin_servers(Some("ovh"))[0];
+        let info = mirror_info(server);
+        assert_eq!(info.location, "Gravelines, FR");
+        assert_eq!(info.max_download_bytes, 1 << 30);
+    }
+
+    /// Talks to the real public providers with a few megabytes each. Run on purpose:
+    /// `cargo test -p pw-diag --features speed --lib live_public_providers -- --ignored --nocapture`.
+    #[tokio::test]
+    #[ignore = "uses the public internet"]
+    async fn live_public_providers() {
+        let transport = HttpTransport::new(&HttpTransportConfig::default()).unwrap();
+        for group in providers::GROUPS {
+            let server = providers::builtin_servers(Some(group)).remove(0);
+            let rtt = transport.ping(&server, Duration::from_secs(8)).await;
+            let info = transport
+                .info(&server, Duration::from_secs(8))
+                .await
+                .unwrap();
+            let meter = ByteMeter::new();
+            let wanted = 4 << 20;
+            let got = transport
+                .download(
+                    &server,
+                    &DownloadRequest {
+                        bytes: wanted,
+                        test_id: "t",
+                    },
+                    &meter,
+                )
+                .await;
+            println!(
+                "{group}: ping {rtt:?}, place {:?}, ip {:?}, download {got:?}",
+                info.location, info.client_ip
+            );
+            assert_eq!(
+                got.unwrap(),
+                wanted,
+                "{group} must return exactly the bytes asked"
+            );
+            assert_eq!(meter.total(), wanted);
+            if server.supports_upload() {
+                let sent = transport
+                    .upload(
+                        &server,
+                        &UploadRequest {
+                            bytes: 2 << 20,
+                            test_id: "t",
+                        },
+                        &meter,
+                    )
+                    .await;
+                println!("{group}: upload {sent:?}");
+                assert_eq!(sent.unwrap(), 2 << 20);
+            } else {
+                let refused = transport
+                    .upload(
+                        &server,
+                        &UploadRequest {
+                            bytes: 1,
+                            test_id: "t",
+                        },
+                        &meter,
+                    )
+                    .await;
+                assert!(refused.is_err(), "a mirror takes no uploads");
+            }
+        }
     }
 
     #[test]

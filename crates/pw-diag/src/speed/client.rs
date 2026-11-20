@@ -137,11 +137,35 @@ impl<T: SpeedTransport> SpeedClient<T> {
             ),
             None => None,
         };
+        // A download-only provider (a static mirror) cannot take the upload: it is measured against the
+        // fastest probed server that can, and the result says which one that was.
+        let mut upload_server = None;
         let upload = match &options.upload {
-            Some(opts) => Some(
-                self.upload(&server, info.as_ref(), opts, cancel, sink)
-                    .await?,
-            ),
+            Some(opts) => {
+                let target = if server.supports_upload() {
+                    Some((server.clone(), info.clone()))
+                } else {
+                    match best_upload_capable(&pick.probes) {
+                        Some(other) => {
+                            let other_info = match self.server_info(&other, cancel).await {
+                                Ok(info) => Some(info),
+                                Err(SpeedError::Cancelled) => return Err(SpeedError::Cancelled),
+                                Err(_) => None,
+                            };
+                            upload_server = Some(ServerSummary::new(&other, other_info.as_ref()));
+                            Some((other, other_info))
+                        }
+                        None => None,
+                    }
+                };
+                match target {
+                    Some((target, target_info)) => Some(
+                        self.upload(&target, target_info.as_ref(), opts, cancel, sink)
+                            .await?,
+                    ),
+                    None => None,
+                }
+            }
             None => None,
         };
         Ok(SpeedResult {
@@ -152,8 +176,19 @@ impl<T: SpeedTransport> SpeedClient<T> {
             latency,
             download,
             upload,
+            upload_server,
         })
     }
+}
+
+/// The lowest-latency live probe that takes uploads.
+fn best_upload_capable(probes: &[super::result::ServerProbe]) -> Option<ServerEndpoint> {
+    probes
+        .iter()
+        .filter(|p| p.server.supports_upload())
+        .filter_map(|p| p.latency_ms.map(|ms| (ms, &p.server)))
+        .min_by(|a, b| a.0.total_cmp(&b.0))
+        .map(|(_, server)| server.clone())
 }
 
 /// Deliver a progress event; a vanished receiver cancels the run.

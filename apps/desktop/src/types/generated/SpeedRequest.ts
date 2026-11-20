@@ -15,6 +15,11 @@ servers: Array<string>,
  */
 streams?: number, 
 /**
+ * Which provider to use: `auto` (the default: the fastest of everything available), `xerohost`,
+ * `custom` (only the servers in `servers`), `cloudflare`, `hetzner` or `ovh`.
+ */
+provider?: string, 
+/**
  * Seconds each of download and upload run for (quick test); absent = 10.
  */
 duration_secs?: number, 

@@ -944,3 +944,95 @@ async fn the_future_of_a_run_is_send() {
     ));
     assert_send(&c.pick_server(&candidates, &PickOptions::default(), &cancel));
 }
+
+// ---------------------------------------------------------------- providers
+
+fn mirror_and_upload_capable() -> (Vec<ServerEndpoint>, FakeTransport) {
+    let mirror = providers::builtin_servers(Some("hetzner"))
+        .into_iter()
+        .next()
+        .unwrap();
+    let own = server("own.example:443");
+    let fake = FakeTransport::new();
+    fake.set_latency(&mirror.authority(), Duration::from_millis(5));
+    fake.set_latency("own.example:443", Duration::from_millis(40));
+    fake.set_info(&mirror.authority(), Ok(info(8, 100 << 30)));
+    fake.set_info("own.example:443", Ok(info(8, 100 << 30)));
+    (vec![mirror, own], fake)
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_download_only_winner_has_its_upload_measured_on_the_best_server_that_takes_one() {
+    let (servers, fake) = mirror_and_upload_capable();
+    let options = RunOptions {
+        download: Some(ThroughputOptions {
+            max_bytes: Some(2 * MIB),
+            ..quick(2, 2, 0)
+        }),
+        upload: Some(ThroughputOptions {
+            max_bytes: Some(2 * MIB),
+            ..quick(2, 2, 0)
+        }),
+        ..RunOptions::default()
+    };
+    let result = client(&fake)
+        .run(&servers, &options, &CancelToken::new(), &mut NullSink)
+        .await
+        .unwrap();
+    assert!(
+        result.server.authority.contains("hetzner.com"),
+        "the closest server downloads"
+    );
+    assert!(result.download.is_some());
+    let upload_server = result
+        .upload_server
+        .expect("the upload moved to another server");
+    assert_eq!(upload_server.authority, "own.example:443");
+    assert!(result.upload.is_some());
+    let uploads = fake.calls_of(CallKind::Upload);
+    assert!(!uploads.is_empty() && uploads.iter().all(|c| c.server == "own.example:443"));
+}
+
+#[tokio::test(start_paused = true)]
+async fn with_only_download_only_servers_the_upload_is_skipped_not_failed() {
+    let (mut servers, fake) = mirror_and_upload_capable();
+    servers.truncate(1);
+    let options = RunOptions {
+        download: Some(ThroughputOptions {
+            max_bytes: Some(2 * MIB),
+            ..quick(2, 2, 0)
+        }),
+        upload: Some(quick(2, 2, 0)),
+        ..RunOptions::default()
+    };
+    let result = client(&fake)
+        .run(&servers, &options, &CancelToken::new(), &mut NullSink)
+        .await
+        .unwrap();
+    assert!(result.download.is_some());
+    assert!(result.upload.is_none() && result.upload_server.is_none());
+    assert!(fake.calls_of(CallKind::Upload).is_empty());
+}
+
+#[tokio::test(start_paused = true)]
+async fn an_own_server_keeps_its_upload_and_reports_no_second_server() {
+    let (servers, fake) = mirror_and_upload_capable();
+    let own_only = vec![servers[1].clone()];
+    let options = RunOptions {
+        download: Some(ThroughputOptions {
+            max_bytes: Some(2 * MIB),
+            ..quick(2, 2, 0)
+        }),
+        upload: Some(ThroughputOptions {
+            max_bytes: Some(2 * MIB),
+            ..quick(2, 2, 0)
+        }),
+        ..RunOptions::default()
+    };
+    let result = client(&fake)
+        .run(&own_only, &options, &CancelToken::new(), &mut NullSink)
+        .await
+        .unwrap();
+    assert!(result.upload.is_some());
+    assert!(result.upload_server.is_none());
+}

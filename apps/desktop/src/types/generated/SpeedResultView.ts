@@ -15,4 +15,9 @@ candidates: Array<SpeedServerView>,
 /**
  * This machine's public address as the server sees it; absent when the server did not say.
  */
-source_ip?: string, latency?: SpeedLatencyView, download?: SpeedTransferView, upload?: SpeedTransferView, };
+source_ip?: string, latency?: SpeedLatencyView, download?: SpeedTransferView, upload?: SpeedTransferView, 
+/**
+ * The server the upload was measured against when it is not `server` (the chosen provider only
+ * downloads, like a static mirror).
+ */
+upload_server?: SpeedServerView, };
