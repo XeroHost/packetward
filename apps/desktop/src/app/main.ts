@@ -2,6 +2,7 @@
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 import '@/styles/main.css'
+import { windowBackdrop } from '@/api/window'
 import { startWindowVisibility } from '@/lib/visibility'
 import { useAgentStore } from '@/stores/agent'
 import { useSettingsStore } from '@/stores/settings'
@@ -21,6 +22,10 @@ async function bootstrap(): Promise<void> {
   app.mount('#app')
 
   void startWindowVisibility()
+  // Mica on Windows 11, the solid token background everywhere else (Server 2019/2022, Windows 10).
+  void windowBackdrop().then((backdrop) => {
+    document.documentElement.dataset.backdrop = backdrop
+  })
 
   // Follow the agent for the whole life of the window; the shell reconnects on its own.
   useAgentStore(pinia).start()

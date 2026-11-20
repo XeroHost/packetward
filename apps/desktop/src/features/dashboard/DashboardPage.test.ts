@@ -29,7 +29,9 @@ function connect(minor = 1) {
 
 // The chart needs a canvas, which jsdom does not have; it has its own option-builder tests.
 const mountPage = () =>
-  mount(DashboardPage, { global: { plugins: [i18n], stubs: { TrafficChart: true } } })
+  mount(DashboardPage, {
+    global: { plugins: [i18n], stubs: { TrafficChart: true, RouterLink: true } },
+  })
 
 describe('DashboardPage', () => {
   it('shows the heartbeat from the agent', async () => {

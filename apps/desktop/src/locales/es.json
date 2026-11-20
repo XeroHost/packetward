@@ -19,7 +19,13 @@
     "settings": "Ajustes",
     "about": "Acerca de",
     "alerts": "Alertas",
-    "rdpShield": "Escudo RDP"
+    "rdpShield": "Escudo RDP",
+    "groups": {
+      "observe": "Observar",
+      "defend": "Defender",
+      "tools": "Herramientas",
+      "system": "Sistema"
+    }
   },
   "topbar": {
     "agent": {
@@ -59,8 +65,8 @@
       "densityComfortable": "Cómoda",
       "densityCompact": "Compacta",
       "textSize": "Tamaño del texto",
-      "reduceMotion": "Reducir movimiento",
-      "reduceMotionHint": "Desactiva pulsos, arcos y transiciones. También se activa cuando Windows pide reducir el movimiento."
+      "reduceMotion": "Reducir animaciones",
+      "reduceMotionHint": "Desactiva transiciones, números que cuentan y pulsos. Apagado por defecto e independiente de Windows: Windows Server trae los efectos visuales apagados y PacketWard lo ignora."
     },
     "startup": {
       "title": "Inicio",
@@ -120,7 +126,16 @@
     "version": "Versión",
     "license": "Licencia",
     "licenseValue": "GPL-3.0-or-later",
-    "madeBy": "Creado por XeroHost y publicado como código abierto."
+    "madeBy": "Creado por XeroHost y publicado como código abierto.",
+    "credits": {
+      "title": "Créditos y licencias",
+      "geoip": "Datos GeoIP: DB-IP Lite, CC BY 4.0 (db-ip.com).",
+      "motion": "Animación: Motion for Vue, MIT.",
+      "icons": "Iconos: el conjunto gratuito de Hugeicons, MIT.",
+      "fonts": "Tipografías: Bricolage Grotesque, Geist y JetBrains Mono, SIL OFL 1.1.",
+      "ui": "Componentes: Reka UI y shadcn-vue, MIT. Gráficos: Apache ECharts, Apache-2.0.",
+      "note": "Cada dependencia se revisa para que sea compatible con la licencia GPL-3.0 de PacketWard. No se usó Animate UI: su licencia con Commons Clause no es compatible."
+    }
   },
   "agent": {
     "connecting": "Conectando con el agente de PacketWard…",
@@ -240,6 +255,18 @@
       "trustedLoading": "Leyendo los logons recientes del registro de eventos…",
       "trustedUnavailable": "No se puede leer el registro de eventos de seguridad: no se puede aprender ninguna dirección.",
       "trustedEmpty": "No hay ningún logon RDP correcto en el registro de eventos para este periodo."
+    },
+    "protection": {
+      "title": "Protección",
+      "off": "El Guardian está apagado. PacketWard observa pero nunca bloquea.",
+      "monitor": "Vigilando: avisa de lo que bloquearía y no bloquea nada.",
+      "active": "Activo: los atacantes se bloquean automáticamente, por un tiempo limitado.",
+      "incidentsNone": "Sin incidentes en curso",
+      "incidents": "{n} en curso",
+      "open": "Abrir el Guardian"
+    },
+    "now": {
+      "title": "Ahora mismo"
     }
   },
   "common": {
@@ -1020,5 +1047,11 @@
     "target": "Objetivo",
     "detail": "Detalle",
     "result": "Resultado"
+  },
+  "window": {
+    "minimize": "Minimizar",
+    "maximize": "Maximizar",
+    "restore": "Restaurar",
+    "close": "Cerrar"
   }
 }

@@ -28,6 +28,16 @@ const { t } = useI18n()
 
     <p class="text-text-muted">{{ t('about.madeBy') }}</p>
 
+    <div class="border-border flex flex-col gap-1.5 border-t pt-4 text-xs">
+      <h3 class="text-sm font-medium">{{ t('about.credits.title') }}</h3>
+      <p class="text-text-muted">{{ t('about.credits.geoip') }}</p>
+      <p class="text-text-muted">{{ t('about.credits.motion') }}</p>
+      <p class="text-text-muted">{{ t('about.credits.icons') }}</p>
+      <p class="text-text-muted">{{ t('about.credits.fonts') }}</p>
+      <p class="text-text-muted">{{ t('about.credits.ui') }}</p>
+      <p class="text-text-muted">{{ t('about.credits.note') }}</p>
+    </div>
+
     <div>
       <Button variant="outline" size="sm" @click="openExternal(XEROHOST_URL)">
         <ExternalLink aria-hidden="true" />

@@ -15,17 +15,15 @@ import {
 export const useAppearanceStore = defineStore('appearance', () => {
   const prefs = ref<AppearancePrefs>({ ...DEFAULT_UI_PREFS.appearance })
   const osPrefersDark = useMediaQuery('(prefers-color-scheme: dark)')
-  const osReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
 
   const resolvedTheme = computed(() => resolveTheme(prefs.value.theme, osPrefersDark.value))
 
   // Live: any change (setting or OS preference) re-applies the attributes on <html>.
   watch(
-    [prefs, osPrefersDark, osReducedMotion],
+    [prefs, osPrefersDark],
     () =>
       applyAppearance(prefs.value, {
         osPrefersDark: osPrefersDark.value,
-        osReducedMotion: osReducedMotion.value,
       }),
     { deep: true, immediate: true },
   )

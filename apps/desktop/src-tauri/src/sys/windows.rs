@@ -72,3 +72,27 @@ pub fn run_elevated_and_wait(exe: &Path, args: &str) -> io::Result<Elevated> {
     }
     result
 }
+
+/// Whether Windows draws transparency effects (Settings > Personalization > Colors). Mica is only
+/// worth asking for when it is on; a missing value means the Windows default, which is on.
+pub fn transparency_enabled() -> bool {
+    use std::ffi::c_void;
+    use windows::Win32::System::Registry::{RegGetValueW, HKEY_CURRENT_USER, RRF_RT_REG_DWORD};
+
+    let mut data = 1u32;
+    let mut size = size_of::<u32>() as u32;
+    // SAFETY: `data` and `size` are valid for writes and `size` is the byte size of `data`; both key
+    // names are NUL-terminated literals.
+    let status = unsafe {
+        RegGetValueW(
+            HKEY_CURRENT_USER,
+            w!("Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize"),
+            w!("EnableTransparency"),
+            RRF_RT_REG_DWORD,
+            None,
+            Some(std::ptr::from_mut(&mut data).cast::<c_void>()),
+            Some(&mut size),
+        )
+    };
+    status.is_err() || data != 0
+}

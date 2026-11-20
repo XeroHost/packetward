@@ -18,12 +18,14 @@ export function resolveTheme(
 
 export function applyAppearance(
   prefs: AppearancePrefs,
-  env: { osPrefersDark: boolean; osReducedMotion: boolean },
+  env: { osPrefersDark: boolean },
   root: HTMLElement = document.documentElement,
 ): void {
   root.dataset.theme = resolveTheme(prefs.theme, env.osPrefersDark)
   root.dataset.density = prefs.density
-  root.dataset.motion = prefs.reduceMotion || env.osReducedMotion ? 'reduced' : 'full'
+  // Only the app setting reduces motion. The OS preference is ignored on purpose: Windows Server
+  // ships with visual effects off, which would turn every animation off for everyone.
+  root.dataset.motion = prefs.reduceMotion ? 'reduced' : 'full'
   root.style.setProperty('--font-mono', MONO_STACKS[prefs.monoFont])
   root.style.fontSize = `${prefs.textSize}%`
 }

@@ -25,6 +25,8 @@
   --info: #22d3ee;
   --glow: rgb(232 23 63 / 0.35);
   --shadow-card: none;
+  --hairline: rgb(232 234 240 / 0.07);
+  --hairline-strong: rgb(232 234 240 / 0.14);
 }
 
 :root[data-theme='light'] {
@@ -46,6 +48,8 @@
   --info: #0e7490;
   --glow: rgb(196 14 52 / 0.18);
   --shadow-card: 0 1px 2px rgb(18 21 28 / 0.06);
+  --hairline: rgb(18 21 28 / 0.08);
+  --hairline-strong: rgb(18 21 28 / 0.16);
 }
 
 /* Chart palette (DESIGN.md). Meaning is never carried by colour alone. */
@@ -58,6 +62,12 @@
   --chart-udp: #a78bfa;
   --chart-icmp: #f5a524;
   --chart-other: #8a93a6;
+
+  /* Floating-panel layout (docs/DESIGN.md "Layout"). */
+  --radius-panel: 0.875rem; /* 14 px */
+  --gutter: 0.5rem; /* 8 px between the panel and the window edge */
+  --titlebar-h: 2.5rem; /* 40 px */
+  --sidebar-w: 13.5rem; /* 216 px */
 
   /* Density: comfortable (default). */
   --row-h: 2.25rem; /* 36 px */

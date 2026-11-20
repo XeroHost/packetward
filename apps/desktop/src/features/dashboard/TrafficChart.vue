@@ -3,6 +3,7 @@
 import { LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
 import { use, type EChartsCoreOption } from 'echarts/core'
+import { LegacyGridContainLabel } from 'echarts/features'
 import { CanvasRenderer } from 'echarts/renderers'
 import { computed, shallowRef, watch } from 'vue'
 import VChart from 'vue-echarts'
@@ -14,7 +15,7 @@ import { useLiveStore } from '@/stores/live'
 import { buildChartOption, readChartColors } from './chartOption'
 
 // Tree-shaken: only what the traffic chart uses.
-use([LineChart, GridComponent, TooltipComponent, CanvasRenderer])
+use([LineChart, GridComponent, TooltipComponent, LegacyGridContainLabel, CanvasRenderer])
 
 const { t } = useI18n()
 const live = useLiveStore()

@@ -19,7 +19,13 @@
     "settings": "Settings",
     "about": "About",
     "alerts": "Alerts",
-    "rdpShield": "RDP Shield"
+    "rdpShield": "RDP Shield",
+    "groups": {
+      "observe": "Observe",
+      "defend": "Defend",
+      "tools": "Tools",
+      "system": "System"
+    }
   },
   "topbar": {
     "agent": {
@@ -59,8 +65,8 @@
       "densityComfortable": "Comfortable",
       "densityCompact": "Compact",
       "textSize": "Text size",
-      "reduceMotion": "Reduce motion",
-      "reduceMotionHint": "Turns off pulses, arcs and transitions. Also enabled when Windows asks for reduced motion."
+      "reduceMotion": "Reduce animations",
+      "reduceMotionHint": "Turns off transitions, counting numbers and pulses. Off by default and independent of Windows: Windows Server ships with visual effects off, and PacketWard ignores that."
     },
     "startup": {
       "title": "Startup",
@@ -120,7 +126,16 @@
     "version": "Version",
     "license": "License",
     "licenseValue": "GPL-3.0-or-later",
-    "madeBy": "Built by XeroHost and released as open source."
+    "madeBy": "Built by XeroHost and released as open source.",
+    "credits": {
+      "title": "Credits and licenses",
+      "geoip": "GeoIP data: DB-IP Lite, CC BY 4.0 (db-ip.com).",
+      "motion": "Animation: Motion for Vue, MIT.",
+      "icons": "Icons: the free Hugeicons set, MIT.",
+      "fonts": "Fonts: Bricolage Grotesque, Geist and JetBrains Mono, SIL OFL 1.1.",
+      "ui": "Components: Reka UI and shadcn-vue, MIT. Charts: Apache ECharts, Apache-2.0.",
+      "note": "Every dependency is checked for compatibility with the GPL-3.0 license of PacketWard. Animate UI was not used: its Commons Clause license is not compatible."
+    }
   },
   "agent": {
     "connecting": "Connecting to the PacketWard agent…",
@@ -240,6 +255,18 @@
       "trustedLoading": "Reading recent logons from the event log…",
       "trustedUnavailable": "Cannot read the Security event log: no address can be learned.",
       "trustedEmpty": "No successful RDP logon found in the event log for this period."
+    },
+    "protection": {
+      "title": "Protection",
+      "off": "The Guardian is off. PacketWard watches but never blocks.",
+      "monitor": "Monitoring: it reports what it would block and blocks nothing.",
+      "active": "Active: attackers are blocked automatically, for a limited time.",
+      "incidentsNone": "No incidents in progress",
+      "incidents": "{n} in progress",
+      "open": "Open the Guardian"
+    },
+    "now": {
+      "title": "Right now"
     }
   },
   "common": {
@@ -1020,5 +1047,11 @@
     "target": "Target",
     "detail": "Detail",
     "result": "Result"
+  },
+  "window": {
+    "minimize": "Minimize",
+    "maximize": "Maximize",
+    "restore": "Restore",
+    "close": "Close"
   }
 }

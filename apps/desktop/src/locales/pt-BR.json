@@ -19,7 +19,13 @@
     "settings": "Configurações",
     "about": "Sobre",
     "alerts": "Alertas",
-    "rdpShield": "Escudo RDP"
+    "rdpShield": "Escudo RDP",
+    "groups": {
+      "observe": "Observar",
+      "defend": "Defender",
+      "tools": "Ferramentas",
+      "system": "Sistema"
+    }
   },
   "topbar": {
     "agent": {
@@ -59,8 +65,8 @@
       "densityComfortable": "Confortável",
       "densityCompact": "Compacta",
       "textSize": "Tamanho do texto",
-      "reduceMotion": "Reduzir movimento",
-      "reduceMotionHint": "Desativa pulsos, arcos e transições. Também é ativado quando o Windows pede movimento reduzido."
+      "reduceMotion": "Reduzir animações",
+      "reduceMotionHint": "Desativa transições, números que contam e pulsos. Desligado por padrão e independente do Windows: o Windows Server vem com os efeitos visuais desligados e o PacketWard ignora isso."
     },
     "startup": {
       "title": "Inicialização",
@@ -120,7 +126,16 @@
     "version": "Versão",
     "license": "Licença",
     "licenseValue": "GPL-3.0-or-later",
-    "madeBy": "Criado pela XeroHost e publicado como código aberto."
+    "madeBy": "Criado pela XeroHost e publicado como código aberto.",
+    "credits": {
+      "title": "Créditos e licenças",
+      "geoip": "Dados GeoIP: DB-IP Lite, CC BY 4.0 (db-ip.com).",
+      "motion": "Animação: Motion for Vue, MIT.",
+      "icons": "Ícones: o conjunto gratuito do Hugeicons, MIT.",
+      "fonts": "Fontes: Bricolage Grotesque, Geist e JetBrains Mono, SIL OFL 1.1.",
+      "ui": "Componentes: Reka UI e shadcn-vue, MIT. Gráficos: Apache ECharts, Apache-2.0.",
+      "note": "Cada dependência é verificada quanto à compatibilidade com a licença GPL-3.0 do PacketWard. O Animate UI não foi usado: sua licença com Commons Clause não é compatível."
+    }
   },
   "agent": {
     "connecting": "Conectando ao agente do PacketWard…",
@@ -240,6 +255,18 @@
       "trustedLoading": "Lendo os logons recentes do log de eventos…",
       "trustedUnavailable": "Não é possível ler o log de eventos de segurança: nenhum endereço pode ser aprendido.",
       "trustedEmpty": "Nenhum logon RDP bem-sucedido encontrado no log de eventos neste período."
+    },
+    "protection": {
+      "title": "Proteção",
+      "off": "O Guardian está desligado. O PacketWard observa, mas nunca bloqueia.",
+      "monitor": "Monitorando: avisa o que bloquearia e não bloqueia nada.",
+      "active": "Ativo: os atacantes são bloqueados automaticamente, por tempo limitado.",
+      "incidentsNone": "Nenhum incidente em andamento",
+      "incidents": "{n} em andamento",
+      "open": "Abrir o Guardian"
+    },
+    "now": {
+      "title": "Agora"
     }
   },
   "common": {
@@ -1020,5 +1047,11 @@
     "target": "Alvo",
     "detail": "Detalhe",
     "result": "Resultado"
+  },
+  "window": {
+    "minimize": "Minimizar",
+    "maximize": "Maximizar",
+    "restore": "Restaurar",
+    "close": "Fechar"
   }
 }

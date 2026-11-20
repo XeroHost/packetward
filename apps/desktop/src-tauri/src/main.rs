@@ -61,6 +61,33 @@ fn autostart_set(app: tauri::AppHandle, enabled: bool) -> Result<(), String> {
     .map_err(|err| err.to_string())
 }
 
+/// Whether the window got the Mica backdrop. Mica needs Windows 11 (build 22000+) with transparency
+/// effects switched on; Windows Server 2019/2022 and Windows 10 keep the solid token background.
+struct Backdrop(bool);
+
+/// "mica" when the window backdrop is the system material, "solid" otherwise.
+#[tauri::command]
+fn window_backdrop(state: tauri::State<'_, Backdrop>) -> &'static str {
+    if state.0 {
+        "mica"
+    } else {
+        "solid"
+    }
+}
+
+fn apply_backdrop(app: &tauri::App) -> bool {
+    use tauri::window::{Effect, EffectsBuilder};
+    if !sys::windows::transparency_enabled() {
+        return false;
+    }
+    let Some(window) = app.get_webview_window("main") else {
+        return false;
+    };
+    window
+        .set_effects(EffectsBuilder::new().effect(Effect::Mica).build())
+        .is_ok()
+}
+
 /// Whether the window can currently be seen (not hidden to the tray, not minimized).
 #[tauri::command]
 fn window_visible() -> bool {
@@ -135,6 +162,7 @@ fn main() -> anyhow::Result<()> {
             autostart_set,
             tray_set_locale,
             window_visible,
+            window_backdrop,
             bridge::agent_watch,
             bridge::agent_connections,
             bridge::agent_call,
@@ -148,6 +176,7 @@ fn main() -> anyhow::Result<()> {
         ])
         .setup(|app| {
             let handle = app.handle();
+            app.manage(Backdrop(apply_backdrop(app)));
             tray::init(handle, startup_locale(handle))?;
             // The window is created hidden (see tauri.conf.json) so a minimized start never flashes.
             if std::env::args().any(|arg| arg == MINIMIZED_FLAG) {

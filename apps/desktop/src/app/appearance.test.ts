@@ -4,7 +4,7 @@ import { DEFAULT_UI_PREFS, type AppearancePrefs } from '@/api/uiPrefs'
 import { applyAppearance, MONO_STACKS, resolveTheme } from './appearance'
 
 const light: AppearancePrefs = DEFAULT_UI_PREFS.appearance
-const env = { osPrefersDark: true, osReducedMotion: false }
+const env = { osPrefersDark: true }
 
 describe('resolveTheme', () => {
   it('resolves system through the OS preference', () => {
@@ -38,10 +38,12 @@ describe('applyAppearance', () => {
     expect(root.style.getPropertyValue('--font-mono')).toBe(MONO_STACKS.system)
   })
 
-  it('reduces motion from the setting or from the OS', () => {
+  it('reduces motion only from the app setting, never from the OS', () => {
     applyAppearance({ ...light, reduceMotion: true }, env, root)
     expect(root.dataset.motion).toBe('reduced')
-    applyAppearance(light, { ...env, osReducedMotion: true }, root)
-    expect(root.dataset.motion).toBe('reduced')
+    // The OS preference is not an input at all: Windows Server ships with visual effects off,
+    // which browsers report as reduced motion.
+    applyAppearance({ ...light, reduceMotion: false }, env, root)
+    expect(root.dataset.motion).toBe('full')
   })
 })

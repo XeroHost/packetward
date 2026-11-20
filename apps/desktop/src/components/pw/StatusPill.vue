@@ -1,14 +1,22 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup lang="ts">
-import type { LucideIcon } from 'lucide-vue-next'
 import { computed } from 'vue'
+import HIcon from '@/components/pw/HIcon.vue'
+import type { IconData } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
 export type PillTone = 'neutral' | 'success' | 'warning' | 'danger'
 
-const props = defineProps<{ label: string; value: string; tone: PillTone; icon: LucideIcon }>()
+const props = defineProps<{
+  label: string
+  value: string
+  tone: PillTone
+  icon: IconData
+  /** A state that is live right now (Guardian active): the icon carries a slow halo. */
+  pulse?: boolean
+}>()
 
-// Meaning is never carried by colour alone: every pill also has an icon and a text value.
+// Meaning is never carried by colour alone: every status has an icon and a text value.
 const toneClass = computed(
   () =>
     ({
@@ -21,13 +29,12 @@ const toneClass = computed(
 </script>
 
 <template>
-  <div
-    class="bg-surface-2 border-border inline-flex h-7 items-center gap-2 rounded-md border px-2.5 text-xs"
-    role="status"
-  >
+  <div class="inline-flex items-center gap-2 text-xs" role="status">
     <span class="text-text-muted">{{ label }}</span>
     <span :class="cn('inline-flex items-center gap-1.5 font-medium', toneClass)">
-      <component :is="icon" class="size-3.5" aria-hidden="true" />
+      <span :class="cn('inline-flex rounded-full', pulse && 'pw-pulse')">
+        <HIcon :icon="icon" :size="15" />
+      </span>
       {{ value }}
     </span>
   </div>

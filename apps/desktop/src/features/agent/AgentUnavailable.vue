@@ -72,7 +72,7 @@ const notice = computed(() => {
 </script>
 
 <template>
-  <main class="bg-bg text-text flex h-screen items-center justify-center p-6">
+  <main class="text-text flex items-center justify-center p-6">
     <section
       class="bg-surface border-border flex w-full max-w-lg flex-col gap-4 rounded-lg border p-6"
       style="box-shadow: var(--shadow-card)"
