@@ -8,6 +8,7 @@ import { useI18n } from 'vue-i18n'
 import { LOCKOUT_PHRASE } from '@/api/defense'
 import { LifeBuoy } from '@/components/pw/icons'
 import SettingRow from '@/components/pw/SettingRow.vue'
+import CountryRestriction from './CountryRestriction.vue'
 import { Button } from '@/components/ui/button'
 import FailureNote from '@/features/diagnostics/FailureNote.vue'
 import { FIELD } from '@/features/diagnostics/fieldClass'
@@ -210,6 +211,8 @@ const sectionTitle = 'text-[1.0625rem] font-semibold'
           </Button>
         </div>
       </SettingRow>
+
+      <CountryRestriction />
 
       <SettingRow :title="t('rdp.port.title')" :description="t('rdp.port.hint')">
         <div class="flex flex-wrap items-end gap-3">

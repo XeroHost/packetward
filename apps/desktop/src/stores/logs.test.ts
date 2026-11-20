@@ -60,15 +60,30 @@ describe('the store', () => {
     api.setProxy.mockResolvedValue({ proxy: 'http://p:1', restart_required: true })
     const logs = useLogsStore()
     expect(await logs.saveProxy(' http://p:1 ')).toBe(true)
-    expect(api.setProxy).toHaveBeenCalledWith('http://p:1')
+    expect(api.setProxy).toHaveBeenCalledWith({ proxy: 'http://p:1' })
     await logs.saveProxy('  ')
-    expect(api.setProxy).toHaveBeenLastCalledWith(null)
+    expect(api.setProxy).toHaveBeenLastCalledWith({ proxy: null })
+  })
+
+  it('sends the credentials next to the address, never inside it', async () => {
+    api.setProxy.mockResolvedValue({ proxy: 'http://p:1', restart_required: true })
+    const logs = useLogsStore()
+    await logs.saveProxy('http://p:1', { username: 'alice', password: 'hunter2' })
+    expect(api.setProxy).toHaveBeenCalledWith({
+      proxy: 'http://p:1',
+      username: 'alice',
+      password: 'hunter2',
+    })
+    await logs.saveProxy('http://p:1', { clearCredentials: true })
+    expect(api.setProxy).toHaveBeenLastCalledWith({ proxy: 'http://p:1', clearCredentials: true })
   })
 
   it('keeps the error of a refused proxy', async () => {
-    api.setProxy.mockRejectedValue(new Error('proxy credentials are not supported'))
+    api.setProxy.mockRejectedValue(
+      new Error('the proxy address must not contain a user name or password'),
+    )
     const logs = useLogsStore()
     expect(await logs.saveProxy('http://u:p@h:1')).toBe(false)
-    expect(logs.settingsError).toContain('credentials')
+    expect(logs.settingsError).toContain('password')
   })
 })

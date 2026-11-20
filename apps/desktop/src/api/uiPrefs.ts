@@ -28,8 +28,9 @@ export interface NotificationPrefs {
 export type UpdateChannel = 'stable' | 'beta'
 
 /**
- * Update preferences. Nothing is requested from the network unless the user presses the button or
- * switched `checkOnStart` on, which is why it defaults to off.
+ * Update preferences. `checkOnStart` (on by default) looks for a new version when the app opens and
+ * every 24 hours; it only looks, nothing is ever downloaded or installed without the user pressing the
+ * button. The switch in Settings turns it off.
  */
 export interface UpdatePrefs {
   channel: UpdateChannel
@@ -51,7 +52,7 @@ export const DEFAULT_NOTIFICATIONS: NotificationPrefs = {
   low: false,
 }
 
-export const DEFAULT_UPDATES: UpdatePrefs = { channel: 'stable', checkOnStart: false }
+export const DEFAULT_UPDATES: UpdatePrefs = { channel: 'stable', checkOnStart: true }
 
 export const DEFAULT_UI_PREFS: UiPrefs = {
   version: 1,

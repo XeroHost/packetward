@@ -7,7 +7,22 @@ import { callAgent } from './call'
 export type { AgentSettingsView, AuditView }
 
 export const getAgentSettings = () => callAgent<AgentSettingsView>('settings.get')
-export const setProxy = (proxy: string | null) =>
-  callAgent<AgentSettingsView>('settings.set_proxy', proxy === null ? {} : { proxy })
+/** What the user typed in the proxy form. The credentials travel separately from the address. */
+export interface ProxyUpdate {
+  /** The proxy address; null goes back to the Windows proxy (and removes the credentials). */
+  proxy: string | null
+  username?: string
+  /** Empty or absent keeps the saved password. */
+  password?: string
+  clearCredentials?: boolean
+}
+
+export const setProxy = (update: ProxyUpdate) =>
+  callAgent<AgentSettingsView>('settings.set_proxy', {
+    ...(update.proxy === null ? {} : { proxy: update.proxy }),
+    ...(update.username ? { username: update.username } : {}),
+    ...(update.password ? { password: update.password } : {}),
+    ...(update.clearCredentials ? { clear_credentials: true } : {}),
+  })
 export const auditLog = (limit?: number, search?: string) =>
   callAgent<AuditView>('logs.audit', { limit, search: search || undefined })

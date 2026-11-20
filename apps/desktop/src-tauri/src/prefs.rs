@@ -116,8 +116,9 @@ impl Default for Notifications {
     }
 }
 
-/// Update preferences. Nothing is requested from the network unless the user asks (button) or
-/// switched `check_on_start` on, so the default is off: no connection without consent.
+/// Update preferences. `check_on_start` (on by default; the Settings switch turns it off) looks for a new
+/// version when the app opens and every 24 hours. It only looks: nothing is downloaded or installed
+/// without the user pressing the button.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Updates {
@@ -129,7 +130,7 @@ impl Default for Updates {
     fn default() -> Self {
         Self {
             channel: UpdateChannel::Stable,
-            check_on_start: false,
+            check_on_start: true,
         }
     }
 }
@@ -265,7 +266,7 @@ mod tests {
         assert_eq!(json["notifications"]["critical"], true);
         assert_eq!(json["notifications"]["medium"], false);
         assert_eq!(json["updates"]["channel"], "stable");
-        assert_eq!(json["updates"]["checkOnStart"], false);
+        assert_eq!(json["updates"]["checkOnStart"], true);
     }
 
     #[test]
@@ -281,7 +282,7 @@ mod tests {
         assert_eq!(prefs.language, Language::Es);
         assert_eq!(prefs.appearance.text_size, 110);
         assert_eq!(prefs.updates, Updates::default());
-        assert!(!prefs.updates.check_on_start);
+        assert!(prefs.updates.check_on_start);
         let _ = fs::remove_dir_all(path.parent().unwrap());
     }
 

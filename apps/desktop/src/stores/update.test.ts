@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { UiPrefs } from '@/api/uiPrefs'
 import { DEFAULT_UI_PREFS } from '@/api/uiPrefs'
 import { useSettingsStore } from './settings'
-import { START_CHECK_DELAY_MS, useUpdateStore } from './update'
+import { AUTO_CHECK_INTERVAL_MS, START_CHECK_DELAY_MS, useUpdateStore } from './update'
 
 const api = vi.hoisted(() => ({
   getUpdateInfo: vi.fn(),
@@ -173,9 +173,10 @@ describe('installing', () => {
 })
 
 describe('check at start', () => {
-  it('is off by default: no request at all', async () => {
+  it('is on by default, and switched off it makes no request at all', async () => {
     vi.useFakeTimers()
-    expect(DEFAULT_UI_PREFS.updates.checkOnStart).toBe(false)
+    expect(DEFAULT_UI_PREFS.updates.checkOnStart).toBe(true)
+    await useSettingsStore().setCheckOnStart(false)
     const update = useUpdateStore()
     const done = update.checkAtStart()
     await vi.runAllTimersAsync()
@@ -196,6 +197,26 @@ describe('check at start', () => {
     await vi.advanceTimersByTimeAsync(2)
     await done
     expect(api.checkForUpdate).toHaveBeenCalledTimes(1)
+  })
+
+  it('repeats every 24 hours, stops when switched off and never installs by itself', async () => {
+    vi.useFakeTimers()
+    api.getUpdateInfo.mockResolvedValue(configured)
+    api.checkForUpdate.mockResolvedValue({ state: 'upToDate', currentVersion: '0.1.0' })
+    const settings = useSettingsStore()
+    await settings.setCheckOnStart(true)
+    const update = useUpdateStore()
+    const done = update.checkAtStart()
+    await vi.advanceTimersByTimeAsync(START_CHECK_DELAY_MS + 1)
+    await done
+    expect(api.checkForUpdate).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(AUTO_CHECK_INTERVAL_MS)
+    expect(api.checkForUpdate).toHaveBeenCalledTimes(2)
+    await settings.setCheckOnStart(false)
+    await vi.advanceTimersByTimeAsync(AUTO_CHECK_INTERVAL_MS)
+    expect(api.checkForUpdate).toHaveBeenCalledTimes(2)
+    expect(api.installUpdate).not.toHaveBeenCalled()
+    update.stopAutoCheck()
   })
 
   it('stays quiet when the build has no updater key', async () => {
@@ -222,8 +243,8 @@ describe('persistence through the settings store', () => {
     expect(prefsApi.saved.at(-1)?.updates).toEqual({ channel: 'beta', checkOnStart: true })
   })
 
-  it('defaults to the stable channel with no start-up check', () => {
+  it('defaults to the stable channel with the automatic check on', () => {
     const settings = useSettingsStore()
-    expect(settings.updates).toEqual({ channel: 'stable', checkOnStart: false })
+    expect(settings.updates).toEqual({ channel: 'stable', checkOnStart: true })
   })
 })

@@ -4,6 +4,8 @@ import { computed, ref, shallowRef } from 'vue'
 import * as api from '@/api/rdp'
 import { AgentCallError, type CallErrorKind } from '@/api/call'
 import type { RdpAudit } from '@/types/generated/RdpAudit'
+import type { RdpCountryPolicy } from '@/types/generated/RdpCountryPolicy'
+import type { RdpCountryStatus } from '@/types/generated/RdpCountryStatus'
 
 export type RdpFailure = { kind: CallErrorKind; message: string }
 
@@ -21,6 +23,8 @@ export const useRdpStore = defineStore('rdp', () => {
   const audit = shallowRef<RdpAudit | null>(null)
   const error = ref<RdpFailure | null>(null)
   const busy = ref(false)
+  const country = shallowRef<RdpCountryStatus | null>(null)
+  const countryError = ref<RdpFailure | null>(null)
   const now = ref(Date.now())
 
   const pending = computed(() => audit.value?.pending ?? null)
@@ -86,6 +90,29 @@ export const useRdpStore = defineStore('rdp', () => {
     pending.value ? run(() => api.cancelRdp(pending.value!.id)) : Promise.resolve(false)
   const reset = () => run(() => api.resetRdp())
 
+  async function loadCountry(): Promise<void> {
+    try {
+      country.value = await api.fetchRdpCountry()
+      countryError.value = null
+    } catch (err) {
+      const f = failure(err)
+      // An older agent without the restriction just has no such row.
+      if (f.kind !== 'unsupported') countryError.value = f
+    }
+  }
+
+  /** Saves the country policy; false when the agent refused it (the reason is in `countryError`). */
+  async function saveCountry(policy: RdpCountryPolicy): Promise<boolean> {
+    countryError.value = null
+    try {
+      country.value = await api.setRdpCountry(policy)
+      return true
+    } catch (err) {
+      countryError.value = failure(err)
+      return false
+    }
+  }
+
   async function endSession(sessionId: number, logoff: boolean): Promise<boolean> {
     try {
       await api.endRdpSession(sessionId, logoff)
@@ -105,9 +132,13 @@ export const useRdpStore = defineStore('rdp', () => {
     audit,
     error,
     busy,
+    country,
+    countryError,
     pending,
     secondsLeft,
     load,
+    loadCountry,
+    saveCountry,
     startWatch,
     stopWatch,
     restrict,

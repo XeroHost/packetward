@@ -60,10 +60,16 @@ export const useLogsStore = defineStore('logs', () => {
     }
   }
 
-  async function saveProxy(proxy: string): Promise<boolean> {
+  async function saveProxy(
+    proxy: string,
+    credentials: Omit<api.ProxyUpdate, 'proxy'> = {},
+  ): Promise<boolean> {
     settingsError.value = null
     try {
-      settings.value = await api.setProxy(proxy.trim() === '' ? null : proxy.trim())
+      settings.value = await api.setProxy({
+        proxy: proxy.trim() === '' ? null : proxy.trim(),
+        ...credentials,
+      })
       return true
     } catch (err) {
       settingsError.value = message(err)

@@ -14,15 +14,18 @@ import { useSettingsStore } from './settings'
 export type UpdateStatus =
   'idle' | 'checking' | 'notConfigured' | 'upToDate' | 'available' | 'installing' | 'error'
 
-/** Wait before the optional start-up check so it never competes with the first paint. */
+/** Wait before the start-up check so it never competes with the first paint. */
 export const START_CHECK_DELAY_MS = 5000
+/** How often the automatic check repeats while the app stays open. */
+export const AUTO_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000
 
 type Available = Extract<UpdateCheck, { state: 'available' }>
 
 /**
  * Update state. The channel and "check at start" live in the settings store (persisted in ui.json);
- * this store only runs checks and installs. A check never starts by itself: the user presses the
- * button, or switched "check at start" on.
+ * this store only runs checks and installs. Checks run when the user presses the button and, while
+ * "check automatically" is on (the default), at start and every 24 hours. An install only ever starts
+ * from the button.
  */
 export const useUpdateStore = defineStore('update', () => {
   const settings = useSettingsStore()
@@ -111,9 +114,18 @@ export const useUpdateStore = defineStore('update', () => {
     }
   }
 
+  let timer: ReturnType<typeof setInterval> | null = null
+
+  /** Stops the 24-hour repetition (the window is going away, or tests). */
+  function stopAutoCheck(): void {
+    if (timer !== null) clearInterval(timer)
+    timer = null
+  }
+
   /**
-   * The optional start-up check: only when the user enabled it and this build can update at all.
-   * Failures stay silent (the Settings page shows them when the user looks).
+   * The automatic check: one a few seconds after start and then every 24 hours, while the user keeps
+   * the switch on and this build can update at all. It only looks; failures stay silent (the Settings
+   * page shows them when the user looks) and nothing is ever installed from here.
    */
   async function checkAtStart(): Promise<void> {
     if (!settings.updates.checkOnStart) return
@@ -121,6 +133,12 @@ export const useUpdateStore = defineStore('update', () => {
     if (!configured.value) return
     await new Promise((resolve) => setTimeout(resolve, START_CHECK_DELAY_MS))
     await check()
+    stopAutoCheck()
+    timer = setInterval(() => {
+      // The switch may have been turned off since: it applies at once.
+      if (!settings.updates.checkOnStart || busy.value || status.value === 'available') return
+      void check()
+    }, AUTO_CHECK_INTERVAL_MS)
   }
 
   return {
@@ -137,5 +155,6 @@ export const useUpdateStore = defineStore('update', () => {
     check,
     install,
     checkAtStart,
+    stopAutoCheck,
   }
 })

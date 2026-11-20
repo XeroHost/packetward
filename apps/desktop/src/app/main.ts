@@ -30,7 +30,7 @@ async function bootstrap(): Promise<void> {
   // Follow the agent for the whole life of the window; the shell reconnects on its own.
   useAgentStore(pinia).start()
 
-  // Only when the user switched it on in Settings (default off): no connection without consent.
+  // On by default (Settings turns it off): at start and every 24 h; it only looks, never installs.
   void useUpdateStore(pinia).checkAtStart()
 }
 
