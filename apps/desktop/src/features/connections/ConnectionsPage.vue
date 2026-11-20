@@ -11,10 +11,11 @@ import {
 } from '@tanstack/vue-table'
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import { refDebounced, useIntervalFn } from '@vueuse/core'
-import { ArrowDown, ArrowUp, ArrowUpDown, TriangleAlert } from 'lucide-vue-next'
+import { ArrowDown, ArrowUp, ArrowUpDown, TriangleAlert } from '@/components/pw/icons'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
+import { FIELD } from '@/features/diagnostics/fieldClass'
 import {
   Select,
   SelectContent,
@@ -274,7 +275,7 @@ const GRID = 'grid grid-cols-[4rem_minmax(0,1.4fr)_minmax(0,1.4fr)_8rem_minmax(0
 </script>
 
 <template>
-  <div class="flex h-full min-h-0 flex-col gap-3">
+  <div class="flex min-h-[24rem] flex-1 flex-col gap-4">
     <!-- Filters -->
     <div class="flex flex-wrap items-end gap-3">
       <label class="flex flex-col gap-1 text-xs">
@@ -310,7 +311,7 @@ const GRID = 'grid grid-cols-[4rem_minmax(0,1.4fr)_minmax(0,1.4fr)_8rem_minmax(0
           v-model="search"
           type="search"
           :placeholder="t('connections.filters.searchPlaceholder')"
-          class="border-border bg-surface-2 text-text placeholder:text-text-muted focus-visible:ring-brand h-9 rounded-md border px-3 text-sm focus-visible:ring-2 focus-visible:outline-none"
+          :class="FIELD"
           data-testid="connections-search"
         />
       </label>
@@ -337,22 +338,31 @@ const GRID = 'grid grid-cols-[4rem_minmax(0,1.4fr)_minmax(0,1.4fr)_8rem_minmax(0
       </span>
     </div>
 
-    <p v-if="live.connectionsError === 'unsupported'" class="text-warning text-sm" role="alert">
+    <p
+      v-if="live.connectionsError === 'unsupported'"
+      class="pw-note"
+      data-tone="warning"
+      role="alert"
+    >
       {{ t('connections.unsupported') }}
     </p>
-    <p v-else-if="live.connectionsError === 'failed'" class="text-warning text-sm" role="alert">
+    <p
+      v-else-if="live.connectionsError === 'failed'"
+      class="pw-note"
+      data-tone="warning"
+      role="alert"
+    >
       {{ t('connections.failed') }}
     </p>
 
     <!-- Table -->
     <div
-      class="border-border bg-surface pw-table flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border"
-      style="box-shadow: var(--shadow-card)"
+      class="bg-surface-2/50 pw-table flex min-h-0 flex-1 flex-col overflow-hidden rounded-[14px]"
     >
       <div
         :class="[
           GRID,
-          'border-border bg-surface-2 text-text-muted border-b px-3 py-1.5 text-xs font-medium',
+          'border-hairline text-text-muted border-b px-4 py-2.5 text-[11px] font-medium tracking-wide uppercase',
         ]"
         role="row"
       >
@@ -425,7 +435,7 @@ const GRID = 'grid grid-cols-[4rem_minmax(0,1.4fr)_minmax(0,1.4fr)_8rem_minmax(0
             :aria-selected="r.index === active"
             :class="[
               GRID,
-              'border-border absolute top-0 left-0 w-full items-center border-b px-3',
+              'border-hairline absolute top-0 left-0 w-full items-center border-b px-4',
               r.index === active ? 'bg-surface-3' : 'hover:bg-surface-2',
             ]"
             :style="{ height: `${r.size}px`, transform: `translateY(${r.start}px)` }"

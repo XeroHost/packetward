@@ -64,6 +64,25 @@ Inspired by the structure of Zen Browser's UI, not its functions.
   plain rows below. Other pages are recomposed for their task.
 - **Forbidden:** decorative gradients, emojis, everything centered, crimson as decoration, animated backgrounds.
 
+### Page vocabulary (shared by every page)
+Pages are composed from a few primitives instead of boxed cards. Each page still has its own composition.
+| Piece | What it is |
+|---|---|
+| `.pw-note` (`data-tone` warning / danger / success / info) | A notice inside a page: tinted rounded block, no border. Replaces every bordered alert. |
+| `.pw-well` | A soft `--surface-2` block (12 px radius) for code, grouped controls and result summaries. |
+| `.pw-rows` | Tables: quiet uppercase headers, hairline rows, no zebra, no outer border. |
+| `.pw-dialog` | Native dialog: 18 px radius, hairline outline, veil behind; opens with `springDialog`. |
+| `.pw-appear` | One short rise for something that appears inside a page (a result, a confirmation). |
+| `SettingRow` | "What it is and why" on the left (16 rem), its controls on the right; rows split by hairlines. Used by Settings, RDP Shield, Threat Intel. |
+| `TabBar` | Tabs over a hairline with an underline that slides on a spring (Firewall, Diagnostics). WAI-ARIA tabs. |
+| `SegmentedControl` | Exclusive choices in a soft well with a sliding raised pill (Alerts filter). Radio-group semantics. |
+| `CountingValue` | A live number that eases to its new value on a spring; the first value is shown as is. |
+| `HIcon` / `components/pw/icons.ts` | Hugeicons (MIT) drawn as SVG; the stroke draws itself once on hover/focus. `icons.ts` keeps the names pages already use. |
+- **Readout, not tiles:** key numbers sit on one line separated by hairlines (Traffic, Capture, Guardian, RDP Shield) or inside a hero (Dashboard, Speed test).
+- **Fields:** `FIELD` is a soft `--surface-2` well with a crimson focus ring and no border; buttons are 10 px with a press scale (`active:scale-[0.97]`); "outline" buttons are soft wells.
+- **Severity** is a rail *and* a word (Alerts, RDP findings), never colour alone; crimson only for what is going on now at high/critical.
+- Page transitions use Vue `<Transition :css="false">` with motion hooks (`panelTransition`) and a safety timer: the page always ends visible even if the window gets no animation frames (hidden or throttled).
+
 ### Layout tokens
 | Token | Value | Use |
 |---|---|---|

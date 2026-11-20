@@ -1,9 +1,11 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup lang="ts">
+import { animate } from 'motion-v'
 import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
 import { FIELD } from '@/features/diagnostics/fieldClass'
+import { springDialog } from '@/lib/motion'
 import { useDefenseStore } from '@/stores/defense'
 
 const { t } = useI18n()
@@ -30,6 +32,10 @@ watch(target, async (addr) => {
     done.value = false
     reason.value = ''
     dialog.value?.showModal()
+    // The dialog grows out of the page with a spring (unless animations are off).
+    if (dialog.value && document.documentElement.dataset.motion !== 'reduced') {
+      animate(dialog.value, { opacity: [0, 1], scale: [0.95, 1], y: [10, 0] }, springDialog)
+    }
   } else {
     dialog.value?.close()
   }
@@ -60,12 +66,12 @@ async function allow(): Promise<void> {
 <template>
   <dialog
     ref="dialog"
-    class="bg-surface text-text border-border m-auto w-[28rem] max-w-[90vw] rounded-lg border p-5 backdrop:bg-black/50"
+    class="pw-dialog m-auto w-[28rem] max-w-[90vw]"
     @close="defense.closeBlock()"
   >
     <form v-if="target" class="flex flex-col gap-3" method="dialog" @submit.prevent="confirm">
-      <h2 class="text-base">{{ t('firewall.dialog.title') }}</h2>
-      <p class="font-mono text-sm">{{ target }}</p>
+      <h2 class="text-xl">{{ t('firewall.dialog.title') }}</h2>
+      <p class="pw-well font-mono text-sm">{{ target }}</p>
       <p class="text-text-muted text-sm">{{ t('firewall.dialog.consequence') }}</p>
       <label class="flex flex-col gap-1 text-sm">
         <span class="text-text-muted">{{ t('firewall.blocks.duration') }}</span>
@@ -79,7 +85,8 @@ async function allow(): Promise<void> {
       </label>
       <div
         v-if="defense.lastBlockResult && defense.lastBlockResult.refused_protected.length > 0"
-        class="border-warning/40 bg-warning/10 rounded-md border p-2 text-sm"
+        class="pw-note"
+        data-tone="warning"
         role="alert"
       >
         {{

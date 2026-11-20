@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup lang="ts">
-import { Play, Square } from 'lucide-vue-next'
+import { Play, Square } from '@/components/pw/icons'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
@@ -110,7 +110,7 @@ function start(): void {
       </p>
 
       <ul
-        class="border-border max-h-72 divide-y overflow-auto rounded-md border font-mono text-sm"
+        class="bg-surface-2 max-h-72 divide-y overflow-auto rounded-[12px] font-mono text-sm"
         :aria-label="t('diagnostics.ping.replies')"
       >
         <li

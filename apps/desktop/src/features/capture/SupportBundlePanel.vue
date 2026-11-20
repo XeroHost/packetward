@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup lang="ts">
-import { FileArchive, Save } from 'lucide-vue-next'
+import { FileArchive, Save } from '@/components/pw/icons'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
@@ -35,12 +35,12 @@ function size(bytes: number): string {
   return bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`
 }
 
-const card = 'bg-surface border-border flex flex-col gap-3 rounded-lg border p-[var(--card-p)]'
+const card = 'flex flex-col gap-4'
 </script>
 
 <template>
-  <div :class="card" style="box-shadow: var(--shadow-card)">
-    <h2 class="text-base">{{ t('capture.bundle.title') }}</h2>
+  <div :class="card">
+    <h2 class="text-[1.0625rem] font-semibold">{{ t('capture.bundle.title') }}</h2>
     <p class="text-text-muted text-sm">{{ t('capture.bundle.hint') }}</p>
 
     <div class="flex flex-wrap items-end gap-4">
@@ -79,7 +79,7 @@ const card = 'bg-surface border-border flex flex-col gap-3 rounded-lg border p-[
         <li
           v-for="item in capture.bundlePreview.items"
           :key="item.name"
-          class="border-border rounded-md border text-sm"
+          class="bg-surface-2 rounded-[12px] text-sm"
         >
           <details>
             <summary class="flex cursor-pointer flex-wrap items-center gap-2 px-3 py-2">
@@ -91,7 +91,7 @@ const card = 'bg-surface border-border flex flex-col gap-3 rounded-lg border p-[
             </summary>
             <pre
               v-if="item.sample"
-              class="bg-surface-raised max-h-64 overflow-auto px-3 py-2 font-mono text-xs whitespace-pre-wrap"
+              class="bg-surface-2 max-h-64 overflow-auto px-3 py-2 font-mono text-xs whitespace-pre-wrap"
               >{{ item.sample }}</pre>
             <p v-else class="text-text-muted px-3 py-2 text-xs">{{ t('capture.bundle.binary') }}</p>
           </details>

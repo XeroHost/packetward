@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup lang="ts">
+import SettingRow from '@/components/pw/SettingRow.vue'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { getAutostart, setAutostart } from '@/api/shell'
@@ -86,17 +87,12 @@ function onLanguage(v: unknown): void {
 </script>
 
 <template>
-  <div class="flex max-w-3xl flex-col gap-5">
+  <div class="flex max-w-[60rem] flex-col">
     <!-- Appearance -->
-    <section
-      class="bg-surface border-border flex flex-col gap-5 rounded-lg border p-[var(--card-p)]"
-      style="box-shadow: var(--shadow-card)"
+    <SettingRow
+      :title="t('settings.appearance.title')"
+      :description="t('settings.appearance.description')"
     >
-      <header>
-        <h2 class="text-base">{{ t('settings.appearance.title') }}</h2>
-        <p class="text-text-muted">{{ t('settings.appearance.description') }}</p>
-      </header>
-
       <div class="grid grid-cols-[12rem_1fr] items-center gap-x-4 gap-y-4">
         <Label id="lbl-theme">{{ t('settings.appearance.theme') }}</Label>
         <ToggleGroup
@@ -173,17 +169,13 @@ function onLanguage(v: unknown): void {
           }}</span>
         </div>
       </div>
-    </section>
+    </SettingRow>
 
     <!-- Notifications -->
-    <section
-      class="bg-surface border-border flex flex-col gap-5 rounded-lg border p-[var(--card-p)]"
-      style="box-shadow: var(--shadow-card)"
+    <SettingRow
+      :title="t('settings.notifications.title')"
+      :description="t('settings.notifications.description')"
     >
-      <header>
-        <h2 class="text-base">{{ t('settings.notifications.title') }}</h2>
-        <p class="text-text-muted">{{ t('settings.notifications.description') }}</p>
-      </header>
       <div class="grid grid-cols-[12rem_1fr] items-center gap-x-4 gap-y-3">
         <template v-for="severity in SEVERITIES" :key="severity">
           <Label :for="`sw-notify-${severity}`">{{ t(`alerts.severity.${severity}`) }}</Label>
@@ -195,18 +187,13 @@ function onLanguage(v: unknown): void {
         </template>
       </div>
       <p class="text-text-muted text-xs">{{ t('settings.notifications.hint') }}</p>
-    </section>
+    </SettingRow>
 
     <!-- Startup -->
-    <section
-      class="bg-surface border-border flex flex-col gap-5 rounded-lg border p-[var(--card-p)]"
-      style="box-shadow: var(--shadow-card)"
+    <SettingRow
+      :title="t('settings.startup.title')"
+      :description="t('settings.startup.description')"
     >
-      <header>
-        <h2 class="text-base">{{ t('settings.startup.title') }}</h2>
-        <p class="text-text-muted">{{ t('settings.startup.description') }}</p>
-      </header>
-
       <div class="grid grid-cols-[12rem_1fr] items-center gap-x-4">
         <Label for="sw-autostart">{{ t('settings.startup.autostart') }}</Label>
         <div class="flex items-center gap-3">
@@ -222,20 +209,15 @@ function onLanguage(v: unknown): void {
       <p v-if="autostartError" class="text-warning text-sm" role="alert">
         {{ t('settings.startup.error', { reason: autostartError }) }}
       </p>
-    </section>
+    </SettingRow>
 
     <UpdatesSettings />
 
     <!-- Language -->
-    <section
-      class="bg-surface border-border flex flex-col gap-5 rounded-lg border p-[var(--card-p)]"
-      style="box-shadow: var(--shadow-card)"
+    <SettingRow
+      :title="t('settings.language.title')"
+      :description="t('settings.language.description')"
     >
-      <header>
-        <h2 class="text-base">{{ t('settings.language.title') }}</h2>
-        <p class="text-text-muted">{{ t('settings.language.description') }}</p>
-      </header>
-
       <div class="grid grid-cols-[12rem_1fr] items-center gap-x-4">
         <Label for="sel-lang">{{ t('settings.language.label') }}</Label>
         <Select :model-value="settings.language" @update:model-value="onLanguage">
@@ -250,7 +232,7 @@ function onLanguage(v: unknown): void {
           </SelectContent>
         </Select>
       </div>
-    </section>
+    </SettingRow>
 
     <NetworkSettings />
   </div>

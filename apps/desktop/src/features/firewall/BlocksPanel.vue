@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ShieldBan, Trash2 } from 'lucide-vue-next'
+import { ShieldBan, Trash2 } from '@/components/pw/icons'
 import IpCell from '@/components/pw/IpCell.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -106,7 +106,8 @@ onMounted(() => void defense.loadBlocks())
         (defense.lastBlockResult.refused_protected.length > 0 ||
           defense.lastBlockResult.refused_broad.length > 0)
       "
-      class="border-warning/40 bg-warning/10 flex flex-col gap-1 rounded-md border p-3 text-sm"
+      class="pw-note flex flex-col gap-1"
+      data-tone="warning"
       role="alert"
     >
       <p v-for="item in defense.lastBlockResult.refused_protected" :key="item.target">
@@ -147,9 +148,9 @@ onMounted(() => void defense.loadBlocks())
       </div>
     </div>
 
-    <div v-if="defense.blocks.length > 0" class="border-border overflow-auto rounded-md border">
+    <div v-if="defense.blocks.length > 0" class="bg-surface-2 overflow-auto rounded-[12px]">
       <table class="w-full text-sm">
-        <thead class="bg-surface-raised text-text-muted text-left">
+        <thead class="text-text-muted text-left text-[11px] tracking-wide uppercase">
           <tr>
             <th class="px-3 py-2 font-medium">{{ t('firewall.blocks.address') }}</th>
             <th class="px-3 py-2 font-medium">{{ t('firewall.blocks.source') }}</th>
@@ -158,7 +159,7 @@ onMounted(() => void defense.loadBlocks())
             <th class="px-3 py-2" />
           </tr>
         </thead>
-        <tbody class="divide-border divide-y">
+        <tbody class="divide-hairline divide-y">
           <tr v-for="item in defense.blocks" :key="item.cidr">
             <td class="px-3 py-1.5 font-mono"><IpCell :addr="item.cidr" /></td>
             <td class="px-3 py-1.5">
@@ -186,7 +187,7 @@ onMounted(() => void defense.loadBlocks())
     <p v-else class="text-text-muted text-sm">{{ t('firewall.blocks.none') }}</p>
 
     <details
-      class="border-border rounded-md border p-3 text-sm"
+      class="bg-surface-2 rounded-[12px] p-3 text-sm"
       :open="purgeOpen"
       @toggle="purgeOpen = ($event.target as HTMLDetailsElement).open"
     >

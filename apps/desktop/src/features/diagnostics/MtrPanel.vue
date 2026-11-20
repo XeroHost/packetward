@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup lang="ts">
 import { onClickOutside } from '@vueuse/core'
-import { Check, ChevronDown, ClipboardCopy, Download, Play, Square } from 'lucide-vue-next'
+import { Check, ChevronDown, ClipboardCopy, Download, Play, Square } from '@/components/pw/icons'
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { MTR_ADVANCED_MIN_MINOR, type MtrExportFormat, type MtrModeView } from '@/api/diag'
@@ -193,7 +193,7 @@ function reachLabel(reach: string): string {
         </Button>
         <ul
           v-if="exportOpen"
-          class="border-border bg-surface-raised absolute right-0 z-10 mt-1 flex w-56 flex-col rounded-md border p-1 text-sm shadow-lg"
+          class="bg-surface-3 absolute right-0 z-10 mt-1 flex w-56 flex-col rounded-[12px] p-1 text-sm shadow-lg"
           role="menu"
           @keydown.esc="exportOpen = false"
         >
@@ -334,9 +334,9 @@ function reachLabel(reach: string): string {
         </span>
       </p>
 
-      <div v-if="hops.length > 0" class="border-border overflow-auto rounded-md border">
+      <div v-if="hops.length > 0" class="bg-surface-2 overflow-auto rounded-[12px]">
         <table class="w-full text-sm">
-          <thead class="bg-surface-raised text-text-muted text-left">
+          <thead class="text-text-muted text-left text-[11px] tracking-wide uppercase">
             <tr>
               <th class="px-3 py-2 font-medium">{{ t('diagnostics.mtr.hop') }}</th>
               <th class="px-3 py-2 font-medium">{{ t('diagnostics.mtr.host') }}</th>
@@ -351,7 +351,7 @@ function reachLabel(reach: string): string {
               <th class="px-3 py-2 text-right font-medium">{{ t('diagnostics.mtr.jitter') }}</th>
             </tr>
           </thead>
-          <tbody class="divide-border divide-y font-mono">
+          <tbody class="divide-hairline divide-y font-mono">
             <tr v-for="(hop, index) in hops" :key="hop.ttl">
               <td class="text-text-muted px-3 py-1.5">{{ hop.ttl }}</td>
               <td class="px-3 py-1.5">

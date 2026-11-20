@@ -2,6 +2,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import TabBar from '@/components/pw/TabBar.vue'
+import { panelTransition } from '@/lib/motion'
 import DnsPanel from './DnsPanel.vue'
 import LocalPortsPanel from './LocalPortsPanel.vue'
 import MtrPanel from './MtrPanel.vue'
@@ -10,9 +12,10 @@ import PortPanel from './PortPanel.vue'
 
 const { t } = useI18n()
 
-const TABS = ['ping', 'mtr', 'dns', 'port', 'local'] as const
-type Tab = (typeof TABS)[number]
+const IDS = ['ping', 'mtr', 'dns', 'port', 'local'] as const
+type Tab = (typeof IDS)[number]
 const active = ref<Tab>('ping')
+const tabs = computed(() => IDS.map((id) => ({ id, label: t(`diagnostics.tabs.${id}`) })))
 
 const panel = computed(
   () =>
@@ -20,53 +23,21 @@ const panel = computed(
       active.value
     ],
 )
-
-function move(step: number, event: KeyboardEvent): void {
-  const next = TABS[(TABS.indexOf(active.value) + step + TABS.length) % TABS.length]
-  if (next === undefined) return
-  active.value = next
-  event.preventDefault()
-  document.getElementById(`diag-tab-${next}`)?.focus()
-}
 </script>
 
 <template>
-  <section class="flex flex-col gap-4">
-    <div
-      role="tablist"
-      :aria-label="t('nav.diagnostics')"
-      class="border-border flex gap-1 border-b"
-    >
-      <button
-        v-for="tab in TABS"
-        :id="`diag-tab-${tab}`"
-        :key="tab"
-        type="button"
-        role="tab"
-        :aria-selected="active === tab"
-        aria-controls="diag-panel"
-        :tabindex="active === tab ? 0 : -1"
-        class="focus-visible:ring-brand -mb-px rounded-t-md border-b-2 px-4 py-2 text-sm font-medium focus-visible:ring-2 focus-visible:outline-none"
-        :class="
-          active === tab
-            ? 'border-brand text-text'
-            : 'text-text-muted hover:text-text border-transparent'
-        "
-        @click="active = tab"
-        @keydown.right="move(1, $event)"
-        @keydown.left="move(-1, $event)"
+  <section class="flex max-w-[72rem] flex-col gap-8">
+    <TabBar v-model="active" :tabs="tabs" :label="t('nav.diagnostics')" id-prefix="diag" />
+    <div id="diag-panel" role="tabpanel" :aria-labelledby="`diag-tab-${active}`">
+      <Transition
+        :css="false"
+        mode="out-in"
+        @before-enter="panelTransition.beforeEnter"
+        @enter="panelTransition.enter"
+        @leave="panelTransition.leave"
       >
-        {{ t(`diagnostics.tabs.${tab}`) }}
-      </button>
-    </div>
-    <div
-      id="diag-panel"
-      role="tabpanel"
-      :aria-labelledby="`diag-tab-${active}`"
-      class="bg-surface border-border rounded-lg border p-[var(--card-p)]"
-      style="box-shadow: var(--shadow-card)"
-    >
-      <component :is="panel" />
+        <component :is="panel" />
+      </Transition>
     </div>
   </section>
 </template>

@@ -67,9 +67,9 @@ watch(visible, (shown) => {
 
     <FailureNote v-if="diag.localPortsError" :failure="diag.localPortsError" />
 
-    <div v-if="rows.length > 0" class="border-border max-h-[28rem] overflow-auto rounded-md border">
+    <div v-if="rows.length > 0" class="bg-surface-2 max-h-[28rem] overflow-auto rounded-[12px]">
       <table class="w-full text-sm">
-        <thead class="bg-surface-raised text-text-muted sticky top-0 text-left">
+        <thead class="text-text-muted sticky top-0 text-left text-[11px] tracking-wide uppercase">
           <tr>
             <th class="px-3 py-2 font-medium">{{ t('connections.columns.proto') }}</th>
             <th class="px-3 py-2 font-medium">{{ t('diagnostics.port.port') }}</th>
@@ -79,7 +79,7 @@ watch(visible, (shown) => {
             <th class="px-3 py-2 font-medium">{{ t('connections.columns.pid') }}</th>
           </tr>
         </thead>
-        <tbody class="divide-border divide-y font-mono">
+        <tbody class="divide-hairline divide-y font-mono">
           <tr v-for="row in rows" :key="`${row.proto}-${row.addr}-${row.port}`">
             <td class="px-3 py-1.5 uppercase">{{ row.proto }}</td>
             <td class="px-3 py-1.5">

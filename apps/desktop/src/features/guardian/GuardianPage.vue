@@ -1,14 +1,17 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup lang="ts">
+// The Guardian: three stages to choose from (Off, Monitor, Active), each explained where you pick it;
+// the chosen one is outlined, and only Active uses crimson because Active is the one that acts.
 import { useIntervalFn } from '@vueuse/core'
-import { ShieldCheck, TriangleAlert } from 'lucide-vue-next'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import HIcon from '@/components/pw/HIcon.vue'
+import { TriangleAlert } from '@/components/pw/icons'
 import IpCell from '@/components/pw/IpCell.vue'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import FailureNote from '@/features/diagnostics/FailureNote.vue'
 import { FIELD } from '@/features/diagnostics/fieldClass'
+import { ShieldAlertIcon, ShieldBanIcon, ShieldCheckIcon } from '@/lib/icons'
 import { useAppVisible } from '@/lib/visibility'
 import { useDefenseStore } from '@/stores/defense'
 import type { AlertSeverity } from '@/types/generated/AlertSeverity'
@@ -24,6 +27,17 @@ const status = computed(() => defense.guardian)
 const MODES: readonly GuardianMode[] = ['off', 'monitor', 'active']
 const PRESETS: readonly GuardianPreset[] = ['gentle', 'balanced', 'strict']
 const SEVERITIES: readonly AlertSeverity[] = ['low', 'medium', 'high', 'critical']
+const MODE_ICON = { off: ShieldBanIcon, monitor: ShieldAlertIcon, active: ShieldCheckIcon } as const
+const MODE_RING: Record<GuardianMode, string> = {
+  off: 'ring-hairline-strong',
+  monitor: 'ring-warning/70',
+  active: 'ring-brand',
+}
+const MODE_TEXT: Record<GuardianMode, string> = {
+  off: 'text-text-muted',
+  monitor: 'text-warning',
+  active: 'text-brand-fg',
+}
 
 // Editable copy of the policy (ladder in minutes for readability).
 const preset = ref<GuardianPreset>('balanced')
@@ -102,43 +116,55 @@ function when(ms: number): string {
 }
 
 const OUTCOME_TONE: Record<string, string> = {
-  blocked: 'border-danger/50 text-danger',
-  would_block: 'border-warning/50 text-warning',
-  skipped_protected: 'border-success/50 text-success',
-  skipped_circuit: 'border-danger/50 text-danger',
-  skipped_below_threshold: 'border-border text-text-muted',
-  skipped_failed: 'border-danger/50 text-danger',
+  blocked: 'text-brand-fg',
+  would_block: 'text-warning',
+  skipped_protected: 'text-success',
+  skipped_circuit: 'text-brand-fg',
+  skipped_below_threshold: 'text-text-muted',
+  skipped_failed: 'text-brand-fg',
 }
 
-const card = 'bg-surface border-border flex flex-col gap-3 rounded-lg border p-[var(--card-p)]'
+const card = 'flex flex-col gap-4'
 </script>
 
 <template>
-  <section class="flex flex-col gap-4">
+  <section class="flex max-w-[64rem] flex-col gap-14">
     <FailureNote v-if="defense.guardianError" :failure="defense.guardianError" />
 
-    <div :class="card" style="box-shadow: var(--shadow-card)">
-      <div class="flex flex-wrap items-center gap-3">
-        <ShieldCheck class="text-brand-fg size-5" aria-hidden="true" />
-        <h2 class="text-base">{{ t('guardian.mode.title') }}</h2>
-        <div role="group" :aria-label="t('guardian.mode.title')" class="ml-auto flex gap-1">
-          <Button
-            v-for="mode in MODES"
-            :key="mode"
-            size="sm"
-            :variant="status?.policy.mode === mode ? 'default' : 'outline'"
-            :disabled="defense.busy || !status"
-            @click="setMode(mode)"
-          >
+    <div :class="card">
+      <h2 class="text-[1.0625rem] font-semibold">{{ t('guardian.mode.title') }}</h2>
+      <div
+        role="radiogroup"
+        :aria-label="t('guardian.mode.title')"
+        class="grid gap-3 md:grid-cols-3"
+      >
+        <button
+          v-for="mode in MODES"
+          :key="mode"
+          type="button"
+          role="radio"
+          :aria-checked="status?.policy.mode === mode"
+          :disabled="defense.busy || !status"
+          class="pw-well flex flex-col items-start gap-2 text-left transition-[box-shadow,background-color] duration-200 disabled:opacity-60"
+          :class="
+            status?.policy.mode === mode ? ['ring-2', MODE_RING[mode]] : 'hover:bg-surface-3 ring-0'
+          "
+          @click="setMode(mode)"
+        >
+          <span class="flex items-center gap-2 font-semibold" :class="MODE_TEXT[mode]">
+            <HIcon :icon="MODE_ICON[mode]" :size="18" />
             {{ t(`topbar.guardian.${mode}`) }}
-          </Button>
-        </div>
+          </span>
+          <span class="text-text-muted text-[13px] leading-relaxed">
+            {{ t(`guardian.mode.explain.${mode}`) }}
+          </span>
+        </button>
       </div>
-      <p class="text-sm">{{ t(`guardian.mode.explain.${status?.policy.mode ?? 'monitor'}`) }}</p>
 
       <div
         v-if="confirmingActive"
-        class="border-warning/40 bg-warning/10 flex flex-col gap-2 rounded-md border p-3 text-sm"
+        class="pw-note pw-appear flex flex-col gap-3"
+        data-tone="warning"
         role="alertdialog"
       >
         <p class="flex items-start gap-2">
@@ -162,58 +188,68 @@ const card = 'bg-surface border-border flex flex-col gap-3 rounded-lg border p-[
         </div>
       </div>
 
-      <dl class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-        <div>
-          <dt class="text-text-muted">{{ t('guardian.status.circuit') }}</dt>
-          <dd :class="status?.circuit_open ? 'text-danger' : 'text-success'">
+      <dl class="border-hairline grid grid-cols-2 gap-y-5 border-y py-6 sm:grid-cols-4">
+        <div class="pr-5">
+          <dt class="text-text-muted text-xs">{{ t('guardian.status.circuit') }}</dt>
+          <dd
+            class="font-heading mt-1 text-xl font-semibold"
+            :class="status?.circuit_open ? 'text-brand-fg' : 'text-success'"
+          >
             {{ status?.circuit_open ? t('guardian.status.open') : t('guardian.status.closed') }}
           </dd>
         </div>
-        <div>
-          <dt class="text-text-muted">{{ t('guardian.status.lastHour') }}</dt>
-          <dd class="font-mono">
-            {{ status?.blocks_last_hour ?? 0 }} / {{ status?.policy.max_blocks_per_hour ?? 0 }}
+        <div class="border-hairline border-l px-5">
+          <dt class="text-text-muted text-xs">{{ t('guardian.status.lastHour') }}</dt>
+          <dd class="font-heading mt-1 text-xl font-semibold">
+            {{ status?.blocks_last_hour ?? 0 }}
+            <span class="text-text-muted text-sm font-medium"
+              >/ {{ status?.policy.max_blocks_per_hour ?? 0 }}</span
+            >
           </dd>
         </div>
-        <div>
-          <dt class="text-text-muted">{{ t('guardian.status.wouldBlock') }}</dt>
-          <dd class="font-mono">{{ status?.would_block_24h ?? 0 }}</dd>
+        <div class="border-hairline border-l px-5 max-sm:!border-l-0 max-sm:!pl-0">
+          <dt class="text-text-muted text-xs">{{ t('guardian.status.wouldBlock') }}</dt>
+          <dd class="font-heading mt-1 text-xl font-semibold">
+            {{ status?.would_block_24h ?? 0 }}
+          </dd>
         </div>
-        <div>
-          <dt class="text-text-muted">{{ t('guardian.status.protected') }}</dt>
-          <dd class="font-mono">{{ status?.protected.length ?? 0 }}</dd>
+        <div class="border-hairline border-l pl-5">
+          <dt class="text-text-muted text-xs">{{ t('guardian.status.protected') }}</dt>
+          <dd class="font-heading mt-1 text-xl font-semibold">
+            {{ status?.protected.length ?? 0 }}
+          </dd>
         </div>
       </dl>
-      <p v-if="status?.circuit_open" class="text-danger text-sm" role="alert">
+      <p v-if="status?.circuit_open" class="pw-note" data-tone="danger" role="alert">
         {{ t('guardian.status.circuitNote') }}
       </p>
     </div>
 
-    <div :class="card" style="box-shadow: var(--shadow-card)">
-      <h2 class="text-base">{{ t('guardian.policy.title') }}</h2>
+    <div :class="card">
+      <h2 class="text-[1.0625rem] font-semibold">{{ t('guardian.policy.title') }}</h2>
       <div class="flex flex-wrap items-end gap-3">
-        <label class="flex w-40 flex-col gap-1 text-sm">
-          <span class="text-text-muted">{{ t('guardian.policy.preset') }}</span>
+        <label class="flex w-40 flex-col gap-1.5 text-sm">
+          <span class="text-text-muted text-xs">{{ t('guardian.policy.preset') }}</span>
           <select v-model="preset" :class="FIELD">
             <option v-for="p in PRESETS" :key="p" :value="p">
               {{ t(`guardian.policy.presets.${p}`) }}
             </option>
           </select>
         </label>
-        <label class="flex w-40 flex-col gap-1 text-sm">
-          <span class="text-text-muted">{{ t('guardian.policy.minSeverity') }}</span>
+        <label class="flex w-40 flex-col gap-1.5 text-sm">
+          <span class="text-text-muted text-xs">{{ t('guardian.policy.minSeverity') }}</span>
           <select v-model="minSeverity" :class="FIELD">
             <option v-for="s in SEVERITIES" :key="s" :value="s">
               {{ t(`alerts.severity.${s}`) }}
             </option>
           </select>
         </label>
-        <label class="flex min-w-56 flex-1 flex-col gap-1 text-sm">
-          <span class="text-text-muted">{{ t('guardian.policy.ladder') }}</span>
+        <label class="flex min-w-56 flex-1 flex-col gap-1.5 text-sm">
+          <span class="text-text-muted text-xs">{{ t('guardian.policy.ladder') }}</span>
           <input v-model="ladderText" :class="[FIELD, 'font-mono']" type="text" />
         </label>
-        <label class="flex w-36 flex-col gap-1 text-sm">
-          <span class="text-text-muted">{{ t('guardian.policy.perHour') }}</span>
+        <label class="flex w-36 flex-col gap-1.5 text-sm">
+          <span class="text-text-muted text-xs">{{ t('guardian.policy.perHour') }}</span>
           <input v-model.number="maxPerHour" :class="FIELD" type="number" min="1" max="500" />
         </label>
         <Button variant="outline" :disabled="defense.busy || !status" @click="saveSettings">
@@ -226,27 +262,33 @@ const card = 'bg-surface border-border flex flex-col gap-3 rounded-lg border p-[
       <p class="text-text-muted text-xs">{{ t('guardian.policy.hint') }}</p>
     </div>
 
-    <div :class="card" style="box-shadow: var(--shadow-card)">
-      <h2 class="text-base">{{ t('guardian.decisions.title') }}</h2>
-      <p class="text-text-muted text-xs">{{ t('guardian.decisions.hint') }}</p>
+    <div :class="card">
+      <div>
+        <h2 class="text-[1.0625rem] font-semibold">{{ t('guardian.decisions.title') }}</h2>
+        <p class="text-text-muted mt-0.5 text-xs">{{ t('guardian.decisions.hint') }}</p>
+      </div>
       <ul
         v-if="status && status.decisions.length > 0"
-        class="divide-border border-border max-h-96 divide-y overflow-auto rounded-md border text-sm"
+        class="divide-hairline max-h-[28rem] divide-y overflow-auto text-sm"
       >
         <li
           v-for="(decision, index) in status.decisions"
           :key="index"
-          class="flex flex-col gap-1 px-3 py-2"
+          class="grid grid-cols-[9rem_minmax(0,1fr)] gap-x-6 py-3"
         >
-          <div class="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" :class="OUTCOME_TONE[decision.outcome]">
+          <div class="flex flex-col gap-1">
+            <span class="text-xs font-semibold" :class="OUTCOME_TONE[decision.outcome]">
               {{ t(`guardian.decisions.outcomes.${decision.outcome}`) }}
-            </Badge>
-            <IpCell :addr="decision.source" />
-            <span class="text-text-muted">{{ t(`alerts.summary.${decision.summary_key}`) }}</span>
-            <span class="text-text-muted ml-auto text-xs">{{ when(decision.unix_ms) }}</span>
+            </span>
+            <span class="text-text-muted text-xs">{{ when(decision.unix_ms) }}</span>
           </div>
-          <p class="text-text-muted">{{ decision.why }}</p>
+          <div class="flex min-w-0 flex-col gap-1">
+            <div class="flex flex-wrap items-center gap-x-3">
+              <IpCell :addr="decision.source" />
+              <span class="text-text-muted">{{ t(`alerts.summary.${decision.summary_key}`) }}</span>
+            </div>
+            <p class="text-text-muted text-[13px]">{{ decision.why }}</p>
+          </div>
         </li>
       </ul>
       <p v-else class="text-text-muted text-sm">{{ t('guardian.decisions.none') }}</p>

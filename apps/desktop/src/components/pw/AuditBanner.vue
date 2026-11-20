@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup lang="ts">
-import { TriangleAlert } from 'lucide-vue-next'
+import { TriangleAlert } from '@/components/pw/icons'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useLiveStore } from '@/stores/live'
@@ -27,7 +27,8 @@ const problems = computed(() => {
 <template>
   <div
     v-if="problems.length"
-    class="border-warning/40 bg-surface-2 flex items-start gap-3 border-b px-5 py-2 text-sm"
+    class="pw-note pw-appear mx-9 mt-5"
+    data-tone="warning"
     role="alert"
     data-testid="audit-banner"
   >

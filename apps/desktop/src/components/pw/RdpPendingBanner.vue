@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup lang="ts">
-import { Timer } from 'lucide-vue-next'
+import { Timer } from '@/components/pw/icons'
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
 import { useRdpStore } from '@/stores/rdp'
@@ -12,7 +12,8 @@ const rdp = useRdpStore()
 <template>
   <div
     v-if="rdp.pending"
-    class="border-warning/50 bg-warning/10 flex flex-wrap items-center gap-3 border-b px-5 py-2 text-sm"
+    class="pw-note pw-appear mx-9 mt-5 flex-wrap items-center"
+    data-tone="warning"
     role="alert"
   >
     <Timer class="text-warning size-4 shrink-0" aria-hidden="true" />

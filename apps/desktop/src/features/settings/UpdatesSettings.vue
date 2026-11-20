@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup lang="ts">
+import SettingRow from '@/components/pw/SettingRow.vue'
 import { onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { UpdateChannel } from '@/api/uiPrefs'
@@ -28,16 +29,7 @@ async function onUpdateChannel(v: unknown): Promise<void> {
 
 <template>
   <!-- Updates -->
-  <section
-    class="bg-surface border-border flex flex-col gap-5 rounded-lg border p-[var(--card-p)]"
-    style="box-shadow: var(--shadow-card)"
-    aria-labelledby="updates-title"
-  >
-    <header>
-      <h2 id="updates-title" class="text-base">{{ t('settings.updates.title') }}</h2>
-      <p class="text-text-muted">{{ t('settings.updates.description') }}</p>
-    </header>
-
+  <SettingRow :title="t('settings.updates.title')" :description="t('settings.updates.description')">
     <div class="grid grid-cols-[12rem_1fr] items-center gap-x-4 gap-y-4">
       <Label>{{ t('settings.updates.currentVersion') }}</Label>
       <span class="font-mono" data-testid="update-current">{{
@@ -76,7 +68,8 @@ async function onUpdateChannel(v: unknown): Promise<void> {
 
     <p
       v-if="update.status === 'notConfigured'"
-      class="text-text-muted text-sm"
+      class="pw-note"
+      data-tone="info"
       role="status"
       data-testid="update-not-configured"
     >
@@ -121,13 +114,13 @@ async function onUpdateChannel(v: unknown): Promise<void> {
 
     <div
       v-if="update.status === 'available' && update.available?.notes"
-      class="bg-surface-2 text-text-muted max-h-40 overflow-auto rounded-md p-3 text-xs whitespace-pre-wrap"
+      class="pw-well text-text-muted max-h-40 overflow-auto text-xs whitespace-pre-wrap"
     >
       {{ update.available.notes }}
     </div>
-    <p v-if="update.status === 'error'" class="text-warning text-sm" role="alert">
+    <p v-if="update.status === 'error'" class="pw-note" data-tone="warning" role="alert">
       {{ t('settings.updates.error', { reason: update.error ?? '' }) }}
     </p>
     <p class="text-text-muted text-xs">{{ t('settings.updates.privacy') }}</p>
-  </section>
+  </SettingRow>
 </template>

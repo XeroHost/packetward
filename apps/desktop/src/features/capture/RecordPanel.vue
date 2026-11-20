@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup lang="ts">
-import { Circle, Square, Trash2 } from 'lucide-vue-next'
+import { Circle, Square, Trash2 } from '@/components/pw/icons'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
@@ -57,12 +57,12 @@ async function confirmDelete(file: string): Promise<void> {
 
 onMounted(() => void capture.loadFiles())
 
-const card = 'bg-surface border-border flex flex-col gap-3 rounded-lg border p-[var(--card-p)]'
+const card = 'flex flex-col gap-4'
 </script>
 
 <template>
-  <div :class="card" style="box-shadow: var(--shadow-card)">
-    <h2 class="text-base">{{ t('capture.record.title') }}</h2>
+  <div :class="card">
+    <h2 class="text-[1.0625rem] font-semibold">{{ t('capture.record.title') }}</h2>
     <p class="text-text-muted text-sm">{{ t('capture.record.hint') }}</p>
 
     <form class="flex flex-wrap items-end gap-3" @submit.prevent="start">
@@ -114,10 +114,7 @@ const card = 'bg-surface border-border flex flex-col gap-3 rounded-lg border p-[
       </Button>
     </form>
 
-    <label
-      v-if="payload === 'full'"
-      class="border-warning/40 bg-warning/10 flex items-start gap-2 rounded-md border p-3 text-sm"
-    >
+    <label v-if="payload === 'full'" class="pw-note flex items-start gap-2" data-tone="warning">
       <input v-model="confirmFull" type="checkbox" class="mt-1" :disabled="running" />
       <span>{{ t('capture.record.fullWarning') }}</span>
     </label>
@@ -157,10 +154,7 @@ const card = 'bg-surface border-border flex flex-col gap-3 rounded-lg border p-[
       </button>
       — {{ t('capture.files.retention') }}
     </p>
-    <ul
-      v-if="capture.files.length > 0"
-      class="divide-border border-border divide-y rounded-md border text-sm"
-    >
+    <ul v-if="capture.files.length > 0" class="divide-hairline divide-y text-sm">
       <li
         v-for="file in capture.files"
         :key="file.name"

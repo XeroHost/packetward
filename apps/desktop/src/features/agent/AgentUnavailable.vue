@@ -9,12 +9,10 @@ import {
   ServerOff,
   TriangleAlert,
   Wrench,
-  type LucideIcon,
-} from 'lucide-vue-next'
-import { computed } from 'vue'
+} from '@/components/pw/icons'
+import { computed, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { openExternal, XEROHOST_URL } from '@/api/links'
-import BrandLogo from '@/components/pw/BrandLogo.vue'
 import { Button } from '@/components/ui/button'
 import { useAgentStore } from '@/stores/agent'
 
@@ -24,7 +22,7 @@ const agent = useAgentStore()
 interface View {
   /** Key under `agent.unavailable.*` holding `title` and `body`. */
   key: string
-  icon: LucideIcon
+  icon: Component
   /** Primary elevated action, if one can fix this. */
   action: 'start' | 'repair' | null
   spinning?: boolean
@@ -72,30 +70,33 @@ const notice = computed(() => {
 </script>
 
 <template>
-  <main class="text-text flex items-center justify-center p-6">
-    <section
-      class="bg-surface border-border flex w-full max-w-lg flex-col gap-4 rounded-lg border p-6"
-      style="box-shadow: var(--shadow-card)"
-      role="alert"
-    >
-      <BrandLogo height-class="h-9" />
-      <div class="flex items-start gap-3">
-        <component
-          :is="view.icon"
-          class="text-brand-fg mt-1 size-5 shrink-0"
-          :class="{ 'animate-spin': view.spinning }"
-          aria-hidden="true"
-        />
-        <div class="flex flex-col gap-2">
-          <h1 class="text-lg">{{ t(`agent.unavailable.${view.key}.title`) }}</h1>
-          <p class="text-text-muted">{{ t(`agent.unavailable.${view.key}.body`) }}</p>
+  <main class="text-text overflow-y-auto px-10 py-12">
+    <section class="pw-appear mx-auto flex w-full max-w-2xl flex-col gap-6" role="alert">
+      <div class="flex items-start gap-5">
+        <span
+          class="pw-well text-brand-fg flex size-14 shrink-0 items-center justify-center !rounded-2xl !p-0"
+        >
+          <component
+            :is="view.icon"
+            class="size-7"
+            :class="{ 'animate-spin': view.spinning }"
+            aria-hidden="true"
+          />
+        </span>
+        <div class="flex min-w-0 flex-col gap-2">
+          <h1 class="text-[1.75rem] leading-tight font-semibold tracking-tight">
+            {{ t(`agent.unavailable.${view.key}.title`) }}
+          </h1>
+          <p class="text-text-muted max-w-prose leading-relaxed">
+            {{ t(`agent.unavailable.${view.key}.body`) }}
+          </p>
           <p v-if="view.detail" class="text-text-muted font-mono text-xs break-all">
             {{ view.detail }}
           </p>
         </div>
       </div>
 
-      <p v-if="notice" class="text-warning text-sm" role="status">{{ notice }}</p>
+      <p v-if="notice" class="pw-note" data-tone="warning" role="status">{{ notice }}</p>
 
       <div class="flex flex-wrap items-center gap-2">
         <Button

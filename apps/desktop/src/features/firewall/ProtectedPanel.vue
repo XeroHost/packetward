@@ -42,7 +42,7 @@ onMounted(() => {
     <p class="text-text-muted text-sm">{{ t('firewall.protected.hint') }}</p>
 
     <h3 class="text-sm font-medium">{{ t('firewall.protected.never') }}</h3>
-    <ul class="border-border divide-border divide-y rounded-md border text-sm">
+    <ul class="bg-surface-2 divide-hairline divide-y rounded-[12px] text-sm">
       <li
         v-for="entry in defense.guardian?.protected ?? []"
         :key="entry.cidr + entry.reason"

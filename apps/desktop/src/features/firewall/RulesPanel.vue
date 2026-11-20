@@ -3,7 +3,7 @@
 import { refDebounced } from '@vueuse/core'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Plus, Trash2 } from 'lucide-vue-next'
+import { Plus, Trash2 } from '@/components/pw/icons'
 import { LOCKOUT_PHRASE } from '@/api/defense'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -130,7 +130,7 @@ const card = 'flex flex-col gap-4'
 
     <form
       v-if="adding"
-      class="border-border flex flex-wrap items-end gap-3 rounded-md border p-3"
+      class="bg-surface-2 flex flex-wrap items-end gap-3 rounded-[12px] p-3"
       @submit.prevent="create"
     >
       <label class="flex w-48 flex-col gap-1 text-sm">
@@ -172,11 +172,7 @@ const card = 'flex flex-col gap-4'
 
     <FailureNote v-if="defense.rulesError" :failure="defense.rulesError" />
 
-    <div
-      v-if="pending"
-      class="border-warning/40 bg-warning/10 flex flex-col gap-2 rounded-md border p-3 text-sm"
-      role="alertdialog"
-    >
+    <div v-if="pending" class="pw-note flex flex-col gap-2" data-tone="warning" role="alertdialog">
       <p>
         {{ t(`firewall.rules.confirm.${pending.action}`, { name: pending.rule.name }) }}
       </p>
@@ -202,9 +198,9 @@ const card = 'flex flex-col gap-4'
       </div>
     </div>
 
-    <div class="border-border max-h-[32rem] overflow-auto rounded-md border">
+    <div class="bg-surface-2 max-h-[32rem] overflow-auto rounded-[12px]">
       <table class="w-full text-sm">
-        <thead class="bg-surface-raised text-text-muted sticky top-0 text-left">
+        <thead class="text-text-muted sticky top-0 text-left text-[11px] tracking-wide uppercase">
           <tr>
             <th class="px-3 py-2 font-medium">{{ t('firewall.rules.name') }}</th>
             <th class="px-3 py-2 font-medium">{{ t('firewall.rules.direction') }}</th>
@@ -214,7 +210,7 @@ const card = 'flex flex-col gap-4'
             <th class="px-3 py-2" />
           </tr>
         </thead>
-        <tbody class="divide-border divide-y">
+        <tbody class="divide-hairline divide-y">
           <tr v-for="rule in defense.rules" :key="rule.name + rule.direction">
             <td class="px-3 py-1.5">
               <span>{{ rule.name }}</span>

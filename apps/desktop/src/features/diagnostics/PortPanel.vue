@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup lang="ts">
-import { Plug } from 'lucide-vue-next'
+import { Plug } from '@/components/pw/icons'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
@@ -66,7 +66,7 @@ function run(): void {
 
     <div
       v-if="diag.portResult"
-      class="border-border bg-surface flex flex-col gap-1 rounded-md border p-4"
+      class="bg-surface-2 flex flex-col gap-1 rounded-[12px] p-4"
       role="status"
     >
       <p class="text-base font-medium">

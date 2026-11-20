@@ -4,7 +4,7 @@
 - Vue 3 `<script setup lang="ts">`, Vite, TypeScript strict, Pinia, Vue Router, pnpm.
 - Tailwind CSS v4 with tokens from `docs/DESIGN.md` (`src/styles/tokens.css`). No raw hex in components.
 - **shadcn-vue** components live in `src/components/ui/` (generated, then themed to Crimson Sentinel; edit freely).
-- Icons: `lucide-vue-next`; utilities: VueUse.
+- Icons: Hugeicons free (MIT) through `src/lib/icons.ts` + `HIcon.vue` (`components/pw/icons.ts` keeps the old lucide-style names). Motion: `motion-v` (MIT), always on (`<MotionConfig reduced-motion="never">`); vocabulary in `src/lib/motion.ts`. **Animate UI is not used** (Commons Clause, incompatible with GPL-3.0). Utilities: VueUse.
 - Fonts (self-hosted via `@fontsource`): Bricolage Grotesque (headings), Geist Sans (body),
   JetBrains Mono (default mono) + Geist Mono. Mono is user-selectable through `--font-mono`.
 - Charts + world map: ECharts via `vue-echarts` (tree-shaken imports). World GeoJSON bundled (Natural Earth).
@@ -54,5 +54,5 @@ src/
 - ESLint forbids importing `@tauri-apps/*` outside `src/api/`.
 - TypeScript is pinned to 6.0.x: `vue-tsc` and `typescript-eslint` do not support 7.x yet.
 - shadcn-vue's CLI imports `cn` from the `cn` package and icons from `@lucide/vue`; after `shadcn-vue add`,
-  rewrite those to `@/lib/utils` and `lucide-vue-next` and drop the extra packages.
+  rewrite those to `@/lib/utils` and `@/components/pw/icons` and drop the extra packages.
 - The branding-kit logos carry their own rounded background (dark: `#0B0F19`, light: white). Use them as shipped.

@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup lang="ts">
-import { Search } from 'lucide-vue-next'
+import { Search } from '@/components/pw/icons'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
@@ -108,10 +108,10 @@ function run(): void {
       </p>
       <div
         v-if="diag.dnsResult.records.length > 0"
-        class="border-border overflow-auto rounded-md border"
+        class="bg-surface-2 overflow-auto rounded-[12px]"
       >
         <table class="w-full text-sm">
-          <thead class="bg-surface-raised text-text-muted text-left">
+          <thead class="text-text-muted text-left text-[11px] tracking-wide uppercase">
             <tr>
               <th class="px-3 py-2 font-medium">{{ t('diagnostics.dns.name') }}</th>
               <th class="px-3 py-2 font-medium">{{ t('diagnostics.dns.type') }}</th>
@@ -119,7 +119,7 @@ function run(): void {
               <th class="px-3 py-2 font-medium">{{ t('diagnostics.dns.value') }}</th>
             </tr>
           </thead>
-          <tbody class="divide-border divide-y font-mono">
+          <tbody class="divide-hairline divide-y font-mono">
             <tr v-for="(record, index) in diag.dnsResult.records" :key="index">
               <td class="px-3 py-1.5">{{ record.name }}</td>
               <td class="px-3 py-1.5">{{ record.record_type }}</td>

@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup lang="ts">
-import { TriangleAlert } from 'lucide-vue-next'
+import SettingRow from '@/components/pw/SettingRow.vue'
+import { TriangleAlert } from '@/components/pw/icons'
 import { onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
@@ -29,14 +30,7 @@ async function save(): Promise<void> {
 </script>
 
 <template>
-  <section
-    class="bg-surface border-border flex flex-col gap-4 rounded-lg border p-[var(--card-p)]"
-    style="box-shadow: var(--shadow-card)"
-  >
-    <header>
-      <h2 class="text-base">{{ t('settings.network.title') }}</h2>
-      <p class="text-text-muted">{{ t('settings.network.description') }}</p>
-    </header>
+  <SettingRow :title="t('settings.network.title')" :description="t('settings.network.description')">
     <form class="flex flex-wrap items-end gap-2" @submit.prevent="save">
       <label class="flex min-w-72 flex-1 flex-col gap-1 text-sm">
         <span class="text-text-muted">{{ t('settings.network.proxy') }}</span>
@@ -56,7 +50,8 @@ async function save(): Promise<void> {
     </p>
     <p
       v-if="logs.settings?.restart_required"
-      class="border-warning/40 bg-warning/10 flex items-start gap-2 rounded-md border p-3 text-sm"
+      class="pw-note flex items-start gap-2"
+      data-tone="warning"
       role="status"
     >
       <TriangleAlert class="text-warning mt-0.5 size-4 shrink-0" aria-hidden="true" />
@@ -65,5 +60,5 @@ async function save(): Promise<void> {
     <p v-if="logs.settingsError" class="text-danger text-sm" role="alert">
       {{ logs.settingsError }}
     </p>
-  </section>
+  </SettingRow>
 </template>
