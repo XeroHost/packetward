@@ -1,9 +1,14 @@
-# PacketWard — Design system ("Crimson Sentinel")
+# PacketWard — Design system ("Warm Sentinel")
 
 ## Principle
-Crimson means **threat or guard**. Use it for the brand mark, the primary action, Guardian state, attacks and
-blocked traffic. Never as decoration. Legitimate/your own traffic is cyan. That way, when the screen turns red,
-it means something.
+Calm and simple, in the spirit of Claude Desktop: warm neutral greys, generous space, almost no borders, and **one**
+accent. Colour carries meaning only where it matters:
+- **Terracotta** (`--brand`) is the accent: the primary action, links, focus ring. Never a status.
+- **Red** (`--danger`) is a threat: attacks, blocked traffic, high/critical alerts, an exposed RDP.
+- **Green** (`--success`) is protected: Guardian Active, healthy, allowed.
+- **Amber** (`--warning`) is look at this: Guardian Monitor, thresholds, a peer that is not trusted.
+- **Blue** (`--info`) is your own inbound traffic and neutral information; violet is outbound.
+Never encode meaning with colour alone: pair it with an icon, a word or a shape.
 
 ## Color tokens
 Defined as CSS variables on `:root[data-theme="dark"]` (default) and `:root[data-theme="light"]`, exposed to
@@ -11,29 +16,29 @@ Tailwind v4 via `@theme`. Components use **semantic tokens only**, never raw hex
 
 | Token | Dark (default) | Light | Use |
 |---|---|---|---|
-| `--bg` | `#0B0D12` | `#F6F7F9` | App background |
-| `--surface` | `#11141B` | `#FFFFFF` | Cards, panels |
-| `--surface-2` | `#171B24` | `#EEF0F4` | Inputs, table header, hover |
-| `--surface-3` | `#1F2430` | `#E4E7EC` | Selected row, popovers |
-| `--border` | `#262C38` | `#DCE0E7` | Dividers, outlines |
-| `--text` | `#E8EAF0` | `#12151C` | Primary text |
-| `--text-muted` | `#8A93A6` | `#5A6376` | Secondary text, axes |
-| `--brand` | `#E8173F` | `#C40E34` | Primary button fill, active nav bar, logo |
-| `--brand-hover` | `#C40E34` | `#960C28` | Hover/pressed |
-| `--brand-fg` | `#FF4D6A` | `#C40E34` | Crimson text/icons on background |
-| `--on-brand` | `#FFFFFF` | `#FFFFFF` | Text on brand fill |
-| `--danger` | `#FF4D6A` | `#C40E34` | Attacks, blocked, critical alerts |
-| `--warning` | `#F5A524` | `#B45309` | Suspicious, thresholds near |
-| `--success` | `#2DD4A0` | `#047857` | Healthy, allowed, test passed |
-| `--info` | `#22D3EE` | `#0E7490` | Legit inbound traffic, info |
-| `--glow` | `rgba(232,23,63,.35)` | `rgba(196,14,52,.18)` | Guardian active halo, map arcs |
+| `--bg` | `#1C1B1A` | `#EBE8DF` | The window (and the sidebar, which has no background of its own) |
+| `--surface` | `#262624` | `#FAF9F5` | The content panel |
+| `--surface-2` | `#2F2E2B` | `#F1EFE7` | Inputs, wells, hover |
+| `--surface-3` | `#3A3835` | `#E6E3D8` | Selected pill, menus |
+| `--border` | `#3A3835` | `#DDD9CC` | Rarely: dividers are `--hairline` |
+| `--text` | `#ECE9E1` | `#1F1E1D` | Primary text |
+| `--text-muted` | `#A09D94` | `#6B685F` | Secondary text |
+| `--brand` | `#BF5D3C` | `#BF5D3C` | Primary button fill |
+| `--brand-hover` | `#A94E30` | `#A94E30` | Hover / pressed |
+| `--brand-fg` | `#E8956F` | `#B0492A` | Accent text, links, icons on the background |
+| `--on-brand` | `#FFFFFF` | `#FFFFFF` | Text on the primary fill |
+| `--danger` | `#E5786D` | `#C0392B` | Threat |
+| `--warning` | `#E0A94F` | `#A8680F` | Attention |
+| `--success` | `#7DBB8A` | `#2F7D4A` | Protected, healthy |
+| `--info` | `#7AA9D2` | `#2F6F9F` | Inbound traffic, information |
+| `--glow` | green at 35 % | green at 25 % | The Guardian-active halo |
 
-Measured contrast (WCAG): dark text on bg 16.2:1, muted 6.3:1, `--brand-fg` 6.0:1, white on `#E8173F` 4.5:1;
-light text 17.0:1, muted 6.0:1, `#C40E34` on white 6.1:1. Do not use `#E8173F` for small text on dark (4.3:1).
+Text on a `--danger`, `--warning` or `--success` fill uses `--bg` (dark text on the soft colours); only the terracotta
+fill takes white. Measured and re-checked when a token changes.
 
 ### Chart palette
-- Inbound: `--info` (cyan) · Outbound: `#A78BFA` (violet) · Blocked/attack: `--danger` · Warning: `--warning`.
-- Protocols: TCP `#22D3EE`, UDP `#A78BFA`, ICMP `#F5A524`, Other `#8A93A6`.
+- Inbound: `--info` (blue) · Outbound: violet (`#B49AD6` dark, `#8266B0` light) · Blocked/attack: `--danger` · Warning: `--warning`.
+- Protocols: TCP `--info`, UDP violet, ICMP `--warning`, Other warm grey.
 - Map: land `--surface-2`, borders `--border`, server marker `--info`, attack arcs `--danger` with `--glow`.
 - Never encode meaning with color alone: pair with icon, label or pattern.
 
@@ -53,7 +58,7 @@ Inspired by the structure of Zen Browser's UI, not its functions.
   The agent-unavailable and connecting screens carry the same bar, so the window can always be moved and closed.
 - **Sidebar** (216 px, `--sidebar-w`): no background and no divider; it *is* the window. Four small section labels
   (Observe, Defend, Tools, System). The active page is a soft panel-colored pill that slides between rows on a spring;
-  each icon draws itself once when its row is hovered or focused. Crimson is not used for the active page.
+  each icon draws itself once when its row is hovered or focused. The active page is not coloured.
 - **Panel**: one container, `--radius-panel` 14 px, `--gutter` 8 px from the window edge (right and bottom), `--surface` fill,
   an inset 1 px `--hairline` instead of a border. The page title (Bricolage Grotesque 28 px) is the first thing inside it.
 - **Backdrop**: solid `--bg` by default. With **Mica** (`<html data-backdrop="mica">`, Windows 11 build 22000+ with
@@ -62,7 +67,7 @@ Inspired by the structure of Zen Browser's UI, not its functions.
 - **Composition per page, not a template.** No row of identical cards with a big number on every page. The Dashboard has
   one hero (inbound traffic, the biggest type on the screen) with the chart under it, a quiet "Protection" column beside it,
   plain rows below. Other pages are recomposed for their task.
-- **Forbidden:** decorative gradients, emojis, everything centered, crimson as decoration, animated backgrounds.
+- **Forbidden:** decorative gradients, emojis, everything centered, colour as decoration, animated backgrounds.
 
 ### Page vocabulary (shared by every page)
 Pages are composed from a few primitives instead of boxed cards. Each page still has its own composition.
@@ -79,8 +84,8 @@ Pages are composed from a few primitives instead of boxed cards. Each page still
 | `CountingValue` | A live number that eases to its new value on a spring; the first value is shown as is. |
 | `HIcon` / `components/pw/icons.ts` | Hugeicons (MIT) drawn as SVG; the stroke draws itself once on hover/focus. `icons.ts` keeps the names pages already use. |
 - **Readout, not tiles:** key numbers sit on one line separated by hairlines (Traffic, Capture, Guardian, RDP Shield) or inside a hero (Dashboard, Speed test).
-- **Fields:** `FIELD` is a soft `--surface-2` well with a crimson focus ring and no border; buttons are 10 px with a press scale (`active:scale-[0.97]`); "outline" buttons are soft wells.
-- **Severity** is a rail *and* a word (Alerts, RDP findings), never colour alone; crimson only for what is going on now at high/critical.
+- **Fields:** `FIELD` is a soft `--surface-2` well with an accent focus ring and no border; buttons are 10 px with a press scale (`active:scale-[0.97]`); "outline" buttons are soft wells.
+- **Severity** is a rail *and* a word (Alerts, RDP findings), never colour alone; red only for high/critical.
 - Page transitions use Vue `<Transition :css="false">` with motion hooks (`panelTransition`) and a safety timer: the page always ends visible even if the window gets no animation frames (hidden or throttled).
 
 ### Layout tokens
@@ -120,7 +125,7 @@ Applied as attributes on `<html>` so CSS alone reacts:
 - Motion: springs and short ease-out tweens, see Motion above. Never gated on `prefers-reduced-motion`.
 
 ## Logo concept
-A shield outline drawn with a single stroke. Inside, three horizontal "packet" bars enter from the left;
-the middle one is crimson and stops at a vertical ward line — packets stopped at the gate. Must read at 16 px
-(favicon/tray: shield + one crimson bar). Wordmark: "Packet" in `--text`, "Ward" in `--brand`, Bricolage Grotesque SemiBold.
-Tray icon states: neutral (Guardian off), crimson (Active), crimson pulsing (blocking now), amber (Monitor).
+A shield outline drawn with a single stroke. The logo files in `branding-kit/` have no background and are copied to `src/assets/brand/`. Inside, three horizontal "packet" bars enter from the left;
+the middle one is the accent colour and stops at a vertical ward line — packets stopped at the gate. Must read at 16 px
+(favicon/tray: shield + one accent bar). Wordmark: "Packet" in `--text`, "Ward" in `--brand`, Bricolage Grotesque SemiBold.
+Tray icon states: neutral (Guardian off), green (Active), red pulsing (blocking now), amber (Monitor).

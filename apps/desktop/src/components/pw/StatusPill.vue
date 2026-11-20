@@ -14,6 +14,8 @@ const props = defineProps<{
   icon: IconData
   /** A state that is live right now (Guardian active): the icon carries a slow halo. */
   pulse?: boolean
+  /** Keep the label for screen readers only (the icon and value say it for everyone else). */
+  hideLabel?: boolean
 }>()
 
 // Meaning is never carried by colour alone: every status has an icon and a text value.
@@ -23,14 +25,14 @@ const toneClass = computed(
       neutral: 'text-text-muted',
       success: 'text-success',
       warning: 'text-warning',
-      danger: 'text-brand-fg',
+      danger: 'text-danger',
     })[props.tone],
 )
 </script>
 
 <template>
   <div class="inline-flex items-center gap-2 text-xs" role="status">
-    <span class="text-text-muted">{{ label }}</span>
+    <span :class="hideLabel ? 'sr-only' : 'text-text-muted'">{{ label }}</span>
     <span :class="cn('inline-flex items-center gap-1.5 font-medium', toneClass)">
       <span :class="cn('inline-flex rounded-full', pulse && 'pw-pulse')">
         <HIcon :icon="icon" :size="15" />

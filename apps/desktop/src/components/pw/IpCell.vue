@@ -51,7 +51,7 @@ onBeforeUnmount(() => {
       v-if="rdp"
       variant="outline"
       class="h-4 px-1.5 text-[10px] leading-none"
-      :class="trusted ? 'border-success/50 text-success' : 'border-brand-fg/50 text-brand-fg'"
+      :class="trusted ? 'border-success/50 text-success' : 'border-warning/50 text-warning'"
       :title="trusted ? t('connections.rdpTrustedBadgeTip') : t('connections.rdpBadgeTip')"
     >
       {{ trusted ? t('connections.rdpTrustedBadge') : t('connections.rdpBadge') }}

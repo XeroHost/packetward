@@ -32,10 +32,8 @@ const isActive = (id: string): boolean => route.path === `/${id}`
   <aside class="flex w-[var(--sidebar-w)] shrink-0 flex-col pb-3">
     <nav :aria-label="t('nav.label')" class="flex-1 overflow-y-auto px-3">
       <LayoutGroup>
-        <div v-for="section in groups" :key="section.group" class="mb-5 last:mb-0">
-          <h2
-            class="text-text-muted mb-1.5 px-3 font-sans text-[11px] font-medium tracking-wide uppercase opacity-70"
-          >
+        <div v-for="section in groups" :key="section.group" class="mb-4 last:mb-0">
+          <h2 class="sr-only">
             {{ t(`nav.groups.${section.group}`) }}
           </h2>
           <ul class="flex flex-col gap-0.5">
@@ -59,11 +57,17 @@ const isActive = (id: string): boolean => route.path === `/${id}`
                   class="bg-hairline absolute inset-0 rounded-[10px] opacity-0 transition-opacity duration-150 group-hover:opacity-100"
                   aria-hidden="true"
                 />
-                <HIcon :icon="item.icon" :size="17" :play="play[item.id] ?? 0" class="relative" />
+                <HIcon
+                  :icon="item.icon"
+                  :size="18"
+                  :play="play[item.id] ?? 0"
+                  :animation="item.anim"
+                  class="relative"
+                />
                 <span class="relative truncate">{{ t(item.labelKey) }}</span>
                 <span
                   v-if="item.id === 'alerts' && alerts.unread > 0"
-                  class="bg-danger text-on-brand relative ml-auto min-w-5 rounded-full px-1.5 text-center text-[10px] leading-5 font-semibold"
+                  class="bg-danger text-bg relative ml-auto min-w-5 rounded-full px-1.5 text-center text-[10px] leading-5 font-semibold"
                   :aria-label="t('alerts.unread', { count: alerts.unread })"
                 >
                   {{ alerts.unread > 99 ? '99+' : alerts.unread }}

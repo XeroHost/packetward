@@ -1,8 +1,7 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup lang="ts">
 // The inbox reads like a timeline: when and how bad on the left, what happened on the right. The
-// severity is a coloured rail *and* a word, never colour alone. Crimson is kept for what is going
-// on right now at high or critical severity.
+// severity is a coloured rail *and* a word, never colour alone. Red is kept for what is high or critical.
 import { Motion } from 'motion-v'
 import { computed, onMounted, onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -38,8 +37,8 @@ const RAIL: Record<AlertSeverity, string> = {
 const WORD: Record<AlertSeverity, string> = {
   low: 'text-text-muted',
   medium: 'text-warning',
-  high: 'text-brand-fg',
-  critical: 'text-brand-fg',
+  high: 'text-danger',
+  critical: 'text-danger',
 }
 
 function when(ms: number): string {
@@ -114,7 +113,7 @@ onBeforeUnmount(() => alerts.markSeen())
             <span class="text-text-muted text-xs leading-snug">{{
               when(alert.first_seen_unix_ms)
             }}</span>
-            <span v-if="alert.phase !== 'ended'" class="text-brand-fg mt-1 text-xs font-medium">
+            <span v-if="alert.phase !== 'ended'" class="text-text mt-1 text-xs font-medium">
               {{ t('alerts.ongoingBadge') }}
             </span>
           </div>

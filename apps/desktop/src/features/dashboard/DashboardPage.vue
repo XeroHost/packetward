@@ -48,7 +48,7 @@ const guardian = computed(() => {
   const map = {
     off: { icon: ShieldBanIcon, tone: 'text-text-muted' },
     monitor: { icon: ShieldAlertIcon, tone: 'text-warning' },
-    active: { icon: ShieldCheckIcon, tone: 'text-brand-fg' },
+    active: { icon: ShieldCheckIcon, tone: 'text-success' },
   } as const
   const mode = agent.guardianMode
   return mode === null ? null : { mode, ...map[mode] }

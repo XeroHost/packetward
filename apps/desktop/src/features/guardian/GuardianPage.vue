@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup lang="ts">
 // The Guardian: three stages to choose from (Off, Monitor, Active), each explained where you pick it;
-// the chosen one is outlined, and only Active uses crimson because Active is the one that acts.
+// the chosen one is outlined, and Active is green: protected and acting.
 import { useIntervalFn } from '@vueuse/core'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -31,12 +31,12 @@ const MODE_ICON = { off: ShieldBanIcon, monitor: ShieldAlertIcon, active: Shield
 const MODE_RING: Record<GuardianMode, string> = {
   off: 'ring-hairline-strong',
   monitor: 'ring-warning/70',
-  active: 'ring-brand',
+  active: 'ring-success/70',
 }
 const MODE_TEXT: Record<GuardianMode, string> = {
   off: 'text-text-muted',
   monitor: 'text-warning',
-  active: 'text-brand-fg',
+  active: 'text-success',
 }
 
 // Editable copy of the policy (ladder in minutes for readability).
@@ -116,12 +116,12 @@ function when(ms: number): string {
 }
 
 const OUTCOME_TONE: Record<string, string> = {
-  blocked: 'text-brand-fg',
+  blocked: 'text-danger',
   would_block: 'text-warning',
   skipped_protected: 'text-success',
-  skipped_circuit: 'text-brand-fg',
+  skipped_circuit: 'text-danger',
   skipped_below_threshold: 'text-text-muted',
-  skipped_failed: 'text-brand-fg',
+  skipped_failed: 'text-danger',
 }
 
 const card = 'flex flex-col gap-4'
@@ -193,7 +193,7 @@ const card = 'flex flex-col gap-4'
           <dt class="text-text-muted text-xs">{{ t('guardian.status.circuit') }}</dt>
           <dd
             class="font-heading mt-1 text-xl font-semibold"
-            :class="status?.circuit_open ? 'text-brand-fg' : 'text-success'"
+            :class="status?.circuit_open ? 'text-danger' : 'text-success'"
           >
             {{ status?.circuit_open ? t('guardian.status.open') : t('guardian.status.closed') }}
           </dd>

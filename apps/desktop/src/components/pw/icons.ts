@@ -42,55 +42,56 @@ import {
   Tick02Icon,
   Timer02Icon,
   Wrench01Icon,
+  type IconAnimation,
   type IconData,
 } from '@/lib/icons'
 
-function icon(data: IconData, size = 16): Component {
+function icon(data: IconData, animation: IconAnimation = 'draw', size = 16): Component {
   return defineComponent({
     inheritAttrs: false,
     setup(_, { attrs }) {
-      return () => h(HIcon, { icon: data, size, ...attrs })
+      return () => h(HIcon, { icon: data, size, animation, ...attrs })
     },
   })
 }
 
-export const Check = icon(Tick02Icon)
+export const Check = icon(Tick02Icon, 'pop')
 export const ChevronDown = icon(ArrowDown01Icon)
 export const ChevronUp = icon(ArrowUp01Icon)
-export const Copy = icon(Copy01Icon)
-export const ShieldBan = icon(ShieldBanIcon)
-export const Timer = icon(Timer02Icon)
+export const Copy = icon(Copy01Icon, 'pop')
+export const ShieldBan = icon(ShieldBanIcon, 'pulse')
+export const Timer = icon(Timer02Icon, 'spin')
 export const TriangleAlert = icon(Alert02Icon)
-export const ExternalLink = icon(ArrowUpRight01Icon)
+export const ExternalLink = icon(ArrowUpRight01Icon, 'wave')
 export const KeyRound = icon(Key01Icon)
-export const LoaderCircle = icon(Loading03Icon)
+export const LoaderCircle = icon(Loading03Icon, 'draw')
 export const LogOut = icon(Logout01Icon)
-export const PlugZap = icon(PlugZapIcon)
+export const PlugZap = icon(PlugZapIcon, 'pop')
 export const ServerOff = icon(ServerOffIcon)
-export const Wrench = icon(Wrench01Icon)
-export const BellOff = icon(NotificationOff01Icon)
-export const Trash2 = icon(Delete02Icon)
-export const Play = icon(PlayIcon)
-export const Square = icon(StopIcon)
+export const Wrench = icon(Wrench01Icon, 'tilt')
+export const BellOff = icon(NotificationOff01Icon, 'ring')
+export const Trash2 = icon(Delete02Icon, 'tilt')
+export const Play = icon(PlayIcon, 'wave')
+export const Square = icon(StopIcon, 'pop')
 export const Circle = icon(RecordIcon)
 export const FileArchive = icon(FileArchiveIcon)
-export const Save = icon(FloppyDiskIcon)
-export const ArrowDown = icon(ArrowDown01Icon)
-export const ArrowUp = icon(ArrowUp01Icon)
+export const Save = icon(FloppyDiskIcon, 'bob')
+export const ArrowDown = icon(ArrowDown01Icon, 'bob')
+export const ArrowUp = icon(ArrowUp01Icon, 'bob')
 export const ArrowUpDown = icon(ArrowUpDownIcon)
-export const Search = icon(Search01Icon)
+export const Search = icon(Search01Icon, 'tilt')
 export const ClipboardCopy = icon(ClipboardCopyIcon)
-export const Download = icon(Download04Icon)
-export const Plug = icon(PlugSocketIcon)
-export const Plus = icon(Add01Icon)
-export const ShieldCheck = icon(ShieldCheckIcon)
-export const Globe2 = icon(Globe02Icon)
+export const Download = icon(Download04Icon, 'bob')
+export const Plug = icon(PlugSocketIcon, 'bob')
+export const Plus = icon(Add01Icon, 'pop')
+export const ShieldCheck = icon(ShieldCheckIcon, 'pulse')
+export const Globe2 = icon(Globe02Icon, 'orbit')
 export const ListChecks = icon(CheckListIcon)
-export const Radar = icon(RadarIcon)
+export const Radar = icon(RadarIcon, 'ping')
 export const ShieldQuestion = icon(ShieldQuestionMarkIcon)
-export const ScrollText = icon(ScrollTextIcon)
+export const ScrollText = icon(ScrollTextIcon, 'scroll')
 export const Hourglass = icon(HourglassIcon)
 export const LifeBuoy = icon(LifebuoyIcon)
 export const ShieldHalf = icon(ShieldKeyIcon)
-export const Gauge = icon(GaugeIcon)
+export const Gauge = icon(GaugeIcon, 'sweep')
 export const PackageX = icon(Package01Icon)

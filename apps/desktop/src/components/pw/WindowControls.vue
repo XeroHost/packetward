@@ -64,7 +64,7 @@ const button =
     </button>
     <button
       type="button"
-      :class="[button, 'hover:!bg-danger hover:!text-on-brand']"
+      :class="[button, 'hover:!bg-danger hover:!text-bg']"
       :aria-label="t('window.close')"
       @click="closeWindow"
     >

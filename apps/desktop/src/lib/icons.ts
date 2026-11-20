@@ -58,5 +58,22 @@ export {
   Wrench01Icon,
 } from '@hugeicons/core-free-icons'
 
+/** How an icon moves on hover: `draw` traces its stroke, the rest are one-shot keyframes. */
+export type IconAnimation =
+  | 'draw'
+  | 'ring'
+  | 'spin'
+  | 'pulse'
+  | 'pop'
+  | 'wave'
+  | 'orbit'
+  | 'blink'
+  | 'bob'
+  | 'flicker'
+  | 'tilt'
+  | 'sweep'
+  | 'ping'
+  | 'scroll'
+
 /** The shape every Hugeicons export has: a list of [svg tag, attributes]. */
 export type IconData = readonly (readonly [string, Readonly<Record<string, string | number>>])[]

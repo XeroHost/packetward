@@ -26,8 +26,8 @@ const locked = computed(() => rdp.pending !== null || rdp.busy)
 const TONE: Record<AlertSeverity, string> = {
   low: 'text-text-muted',
   medium: 'text-warning',
-  high: 'text-brand-fg',
-  critical: 'text-brand-fg',
+  high: 'text-danger',
+  critical: 'text-danger',
 }
 const RAIL: Record<AlertSeverity, string> = {
   low: 'bg-text-muted/40',
@@ -133,7 +133,7 @@ const sectionTitle = 'text-[1.0625rem] font-semibold'
           <dt class="text-text-muted text-xs">NLA</dt>
           <dd
             class="font-heading mt-1 text-xl font-semibold"
-            :class="audit.nla_required ? '' : 'text-brand-fg'"
+            :class="audit.nla_required ? '' : 'text-danger'"
           >
             {{ audit.nla_required ? t('rdp.audit.required') : t('rdp.audit.notRequired') }}
           </dd>
@@ -142,7 +142,7 @@ const sectionTitle = 'text-[1.0625rem] font-semibold'
           <dt class="text-text-muted text-xs">{{ t('rdp.audit.firewall') }}</dt>
           <dd
             class="font-heading mt-1 text-xl font-semibold"
-            :class="audit.open_to_any && !audit.restricted ? 'text-brand-fg' : ''"
+            :class="audit.open_to_any && !audit.restricted ? 'text-danger' : ''"
           >
             {{
               audit.restricted

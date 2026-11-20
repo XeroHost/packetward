@@ -1,13 +1,20 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup lang="ts">
-// A Hugeicons icon that draws itself when `play` changes (hover/focus of its parent). The stroke
-// animation is a one-shot CSS keyframe (no loop, no layout), so it costs nothing at rest.
+// A Hugeicons icon with its own one-shot motion (see `.hi-a-*` in main.css): the default `draw` traces
+// the stroke when `play` changes; the others (ring, spin, sweep...) play from CSS when the row, button
+// or tab that holds the icon is hovered or focused. No loop, no layout, nothing at rest.
 import { computed, ref, watch } from 'vue'
-import type { IconData } from '@/lib/icons'
+import type { IconAnimation, IconData } from '@/lib/icons'
 
 const props = withDefaults(
-  defineProps<{ icon: IconData; size?: number; stroke?: number; play?: number }>(),
-  { size: 18, stroke: 1.5, play: 0 },
+  defineProps<{
+    icon: IconData
+    size?: number
+    stroke?: number
+    play?: number
+    animation?: IconAnimation
+  }>(),
+  { size: 18, stroke: 1.5, play: 0, animation: 'draw' },
 )
 
 const run = ref(0)
@@ -44,9 +51,9 @@ const parts = computed(() =>
     :height="size"
     aria-hidden="true"
     focusable="false"
-    class="shrink-0"
+    :class="['hi shrink-0', 'hi-a-' + animation]"
   >
-    <g :key="run" :class="{ 'hi-draw': run > 0 }">
+    <g :key="run" :class="{ 'hi-draw': animation === 'draw' && run > 0 }">
       <component :is="part.tag" v-for="part in parts" :key="part.index" v-bind="part.attrs" />
     </g>
   </svg>

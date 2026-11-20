@@ -32,7 +32,7 @@ const AGENT_PILLS = {
 const GUARDIAN_PILLS = {
   off: { icon: ShieldBanIcon, tone: 'neutral' },
   monitor: { icon: ShieldAlertIcon, tone: 'warning' },
-  active: { icon: ShieldCheckIcon, tone: 'danger' },
+  active: { icon: ShieldCheckIcon, tone: 'success' },
 } as const satisfies Record<string, { icon: IconData; tone: PillTone }>
 
 const agentPill = computed(() => ({
@@ -72,6 +72,7 @@ const guardianPill = computed(() => {
     <div class="flex-1" data-tauri-drag-region />
     <div class="flex items-center gap-5 pr-4">
       <StatusPill
+        hide-label
         :label="t('topbar.agent.label')"
         :value="agentPill.value"
         :tone="agentPill.tone"

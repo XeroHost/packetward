@@ -451,7 +451,7 @@ const GRID = 'grid grid-cols-[4rem_minmax(0,1.4fr)_minmax(0,1.4fr)_8rem_minmax(0
                   :class="
                     rdpTrusted.has(r.row.local_addr)
                       ? 'border-success/50 text-success'
-                      : 'border-brand-fg/50 text-brand-fg'
+                      : 'border-warning/50 text-warning'
                   "
                   :title="rdpTrusted.has(r.row.local_addr) ? rdpTrustedTip : rdpTip"
                   >{{ rdpTrusted.has(r.row.local_addr) ? rdpTrustedLabel : rdpLabel }}</span
@@ -477,7 +477,7 @@ const GRID = 'grid grid-cols-[4rem_minmax(0,1.4fr)_minmax(0,1.4fr)_8rem_minmax(0
                   :class="
                     rdpTrusted.has(r.row.remote_addr)
                       ? 'border-success/50 text-success'
-                      : 'border-brand-fg/50 text-brand-fg'
+                      : 'border-warning/50 text-warning'
                   "
                   :title="rdpTrusted.has(r.row.remote_addr) ? rdpTrustedTip : rdpTip"
                   >{{ rdpTrusted.has(r.row.remote_addr) ? rdpTrustedLabel : rdpLabel }}</span
