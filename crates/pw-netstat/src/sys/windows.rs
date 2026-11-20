@@ -544,4 +544,29 @@ mod tests {
         );
         assert!(warm < Duration::from_secs(1));
     }
+
+    /// Where the idle CPU of the agent goes: the cost of every source the poller reads, per call.
+    /// Run it with `cargo test -p pw-netstat --release -- --ignored --nocapture idle_poll_costs`.
+    #[test]
+    #[ignore = "a measurement, not a check"]
+    fn idle_poll_costs() {
+        fn time<T>(label: &str, runs: u32, mut f: impl FnMut() -> T) {
+            let _ = f(); // warm the caches
+            let start = Instant::now();
+            for _ in 0..runs {
+                std::hint::black_box(f());
+            }
+            println!(
+                "{label:<22} {:>9.3} ms/call",
+                start.elapsed().as_secs_f64() * 1000.0 / f64::from(runs)
+            );
+        }
+        let backend = WindowsNetStat::new();
+        time("connections", 50, || backend.connections().unwrap());
+        time("interfaces", 200, || backend.interfaces().unwrap());
+        time("rdp_sessions", 50, || backend.rdp_sessions().unwrap());
+        time("logon_audit", 20, || backend.logon_audit());
+        time("rdp_port", 200, || backend.rdp_port());
+        time("network_context", 20, || backend.network_context());
+    }
 }

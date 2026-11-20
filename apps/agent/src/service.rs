@@ -48,6 +48,9 @@ enum Command {
         /// Run in this terminal instead of as a service (development; needs an elevated shell).
         #[arg(long)]
         console: bool,
+        /// Do not start the live capture (development: to measure the agent without it).
+        #[arg(long, requires = "console")]
+        no_capture: bool,
     },
     /// Register the service, create the operators group and start the agent. Needs administrator.
     Install {
@@ -74,8 +77,11 @@ enum Command {
 
 pub fn dispatch(cli: Cli) -> anyhow::Result<()> {
     match cli.command {
-        Command::Run { console: true } => run_console(),
-        Command::Run { console: false } => run_as_service(),
+        Command::Run {
+            console: true,
+            no_capture,
+        } => run_console(!no_capture),
+        Command::Run { console: false, .. } => run_as_service(),
         Command::Install {
             operator_sid,
             no_start,
@@ -114,12 +120,13 @@ fn admin_only(action: impl FnOnce() -> anyhow::Result<()>) -> anyhow::Result<()>
 // Running
 // ---------------------------------------------------------------------------------------------
 
-fn run_console() -> anyhow::Result<()> {
+fn run_console(capture: bool) -> anyhow::Result<()> {
     let _log = logging::init(true);
     let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
         .enable_all()
         .build()?;
-    runtime.block_on(host::run_agent(false, async {
+    runtime.block_on(host::run_agent(false, capture, async {
         let _ = tokio::signal::ctrl_c().await;
         tracing::info!("Ctrl-C received; shutting down");
     }))
@@ -183,6 +190,7 @@ fn run_service() -> anyhow::Result<()> {
         Duration::from_secs(10),
     )?;
     let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
         .enable_all()
         .build()?;
     report(
@@ -194,7 +202,11 @@ fn run_service() -> anyhow::Result<()> {
         Duration::default(),
     )?;
 
-    let result = runtime.block_on(host::run_agent(true, async move { stop.notified().await }));
+    let result = runtime.block_on(host::run_agent(
+        true,
+        true,
+        async move { stop.notified().await },
+    ));
 
     let exit_code = u32::from(result.is_err());
     if let Err(err) = &result {

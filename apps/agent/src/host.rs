@@ -14,6 +14,7 @@ pub const AGENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub async fn run_agent(
     service_mode: bool,
+    capture: bool,
     shutdown: impl Future<Output = ()> + Send,
 ) -> anyhow::Result<()> {
     let operators = match access::operators_group_sid() {
@@ -44,7 +45,7 @@ pub async fn run_agent(
         {
             let mut config = EngineConfig::new(AGENT_VERSION, service_mode);
             // Passive and bounded: the live capture feeds the traffic page and the detectors.
-            config.capture_autostart = true;
+            config.capture_autostart = capture;
             config.alerts_log = Some(crate::logging::data_dir().join("alerts.jsonl"));
             config.defense_dir = Some(crate::logging::data_dir());
             config.intel_dir = Some(crate::logging::data_dir().join("intel"));

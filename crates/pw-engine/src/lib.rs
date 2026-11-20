@@ -12,6 +12,7 @@ mod detect;
 mod diag;
 mod intel;
 mod poller;
+mod presence;
 mod rdp_shield;
 mod settings;
 mod speed;
@@ -67,6 +68,9 @@ pub struct EngineConfig {
     pub heartbeat_interval: Duration,
     /// How often the network state is read and `live.stats` published.
     pub poll_interval: Duration,
+    /// The same pace while nobody is watching the live data (`presence`): the agent protects at a
+    /// lower cost when the UI is closed. A viewer arriving wakes the loop at once.
+    pub idle_poll_interval: Duration,
     /// The RDP sessions are refreshed every this many polls.
     pub rdp_refresh_every: u32,
     /// How many days back a successful RDP logon keeps an address trusted (1..=365). Will be set
@@ -90,6 +94,8 @@ pub struct EngineConfig {
     pub detect_preset: pw_detect::Preset,
     /// How often the detectors are ticked.
     pub detect_interval: Duration,
+    /// How often the detectors are ticked while nobody is watching the live data.
+    pub idle_detect_interval: Duration,
     /// Start the live capture when the engine starts. Off by default so tests and tools that build
     /// an engine never open a capture; the agent turns it on.
     pub capture_autostart: bool,
@@ -102,6 +108,7 @@ impl EngineConfig {
             service_mode,
             heartbeat_interval: Duration::from_secs(1),
             poll_interval: Duration::from_secs(1),
+            idle_poll_interval: Duration::from_secs(5),
             rdp_refresh_every: 5,
             rdp_trust_days: DEFAULT_WINDOW_DAYS,
             capture_dir: data_dir().join("captures"),
@@ -112,6 +119,7 @@ impl EngineConfig {
             intel_dir: None,
             detect_preset: pw_detect::Preset::Balanced,
             detect_interval: Duration::from_secs(1),
+            idle_detect_interval: Duration::from_secs(2),
             capture_autostart: false,
         }
     }
@@ -140,6 +148,7 @@ pub struct Engine {
     speed: Arc<dyn SpeedApi>,
     intel: Arc<dyn IntelApi>,
     settings: settings::SettingsStore,
+    presence: Arc<presence::Presence>,
     _poller: AbortOnDrop,
     _detector: AbortOnDrop,
     _guardian: AbortOnDrop,
@@ -274,11 +283,13 @@ impl Engine {
                 }
             });
         }
+        let presence = presence::Presence::new();
         let detector_task = tokio::spawn(detect_loop(
             Arc::clone(&detection),
             latest.clone(),
             Arc::clone(&trust),
-            config.detect_interval,
+            (config.detect_interval, config.idle_detect_interval),
+            Arc::clone(&presence),
         ));
         let packet_sink: PacketSink = {
             let detection = Arc::clone(&detection);
@@ -341,9 +352,10 @@ impl Engine {
         let task = tokio::spawn(poll_loop(
             netstat,
             publish,
-            config.poll_interval,
+            (config.poll_interval, config.idle_poll_interval),
             config.rdp_refresh_every,
             trust,
+            Arc::clone(&presence),
         ));
         let capture = Arc::new(CaptureManager::new(
             host,
@@ -386,6 +398,7 @@ impl Engine {
             speed,
             intel,
             settings,
+            presence,
             _poller: AbortOnDrop(task),
             _detector: AbortOnDrop(detector_task),
             _guardian: AbortOnDrop(guardian_task),
@@ -509,7 +522,8 @@ async fn intel_loop(intel: Arc<dyn IntelApi>) {
 /// Reverts RDP changes nobody confirmed in time. The very first pass runs at once: a change that
 /// outlived an agent restart was never confirmed.
 async fn shield_loop(shield: Arc<RdpShield>) {
-    let mut ticker = tokio::time::interval(Duration::from_secs(1));
+    // The revert deadlines are minutes long: a two-second check is plenty.
+    let mut ticker = tokio::time::interval(Duration::from_secs(2));
     ticker.set_missed_tick_behavior(MissedTickBehavior::Skip);
     loop {
         ticker.tick().await;
@@ -582,12 +596,14 @@ async fn detect_loop(
     detection: Arc<DetectionService>,
     latest: watch::Receiver<Option<Arc<Snapshot>>>,
     trust: Arc<TrustState>,
-    period: Duration,
+    (period, idle_period): (Duration, Duration),
+    presence: Arc<presence::Presence>,
 ) {
-    let mut ticker = tokio::time::interval(period);
-    ticker.set_missed_tick_behavior(MissedTickBehavior::Skip);
+    let mut first = true;
     loop {
-        ticker.tick().await;
+        if !std::mem::take(&mut first) {
+            presence.sleep(period, idle_period).await;
+        }
         let snapshot = latest.borrow().clone();
         let trusted: Vec<String> = trust
             .addresses(poller::unix_ms())
@@ -609,20 +625,23 @@ async fn detect_loop(
 async fn poll_loop(
     netstat: Arc<dyn NetStat>,
     publish: watch::Sender<Option<Arc<Snapshot>>>,
-    period: Duration,
+    (period, idle_period): (Duration, Duration),
     rdp_every: u32,
     trust: Arc<TrustState>,
+    presence: Arc<presence::Presence>,
 ) {
     let mut poller = Some(Poller::new(
         Arc::clone(&netstat),
         rdp_every,
         Arc::clone(&trust),
     ));
-    let mut ticker = tokio::time::interval(period);
-    // A slow poll delays the next one instead of queueing a burst of catch-up polls.
-    ticker.set_missed_tick_behavior(MissedTickBehavior::Skip);
+    // A slow poll delays the next one instead of queueing a burst of catch-up polls; with nobody
+    // watching, the pace drops to `idle_period`.
+    let mut first = true;
     loop {
-        ticker.tick().await;
+        if !std::mem::take(&mut first) {
+            presence.sleep(period, idle_period).await;
+        }
         // If a previous poll panicked the poller was lost with it; start over with a fresh one.
         let mut current = poller
             .take()
@@ -1011,7 +1030,10 @@ impl Handler for Engine {
             topic::LIVE_STATS => {
                 let (tx, rx) = mpsc::channel(SUBSCRIPTION_QUEUE);
                 let mut latest = self.latest.clone();
+                // The viewer counts as present for as long as this subscription lives.
+                let watcher = self.presence.enter();
                 tokio::spawn(async move {
+                    let _watcher = watcher;
                     loop {
                         // The current value first (a late subscriber must not wait a second), then
                         // every change. `watch` coalesces: a slow consumer skips to the newest.
@@ -1184,6 +1206,8 @@ mod tests {
 
     fn fast(mut config: EngineConfig) -> EngineConfig {
         config.poll_interval = Duration::from_millis(20);
+        config.idle_poll_interval = Duration::from_millis(20);
+        config.idle_detect_interval = config.detect_interval;
         config
     }
 
@@ -1308,6 +1332,7 @@ mod tests {
     async fn a_late_subscriber_gets_the_current_snapshot_immediately() {
         let mut config = EngineConfig::new("1", true);
         config.poll_interval = Duration::from_secs(3600); // only the very first poll happens
+        config.idle_poll_interval = config.poll_interval;
         let (client, _connector) = connect_with(config, Arc::new(FakeNetStat::new())).await;
         tokio::time::sleep(Duration::from_millis(150)).await; // let the first poll finish
         let mut sub = client.subscribe(topic::LIVE_STATS).await.unwrap();
@@ -1425,6 +1450,7 @@ mod tests {
     async fn before_the_first_poll_the_connection_list_is_empty_not_an_error() {
         let mut config = EngineConfig::new("1", true);
         config.poll_interval = Duration::from_secs(3600);
+        config.idle_poll_interval = config.poll_interval;
         let engine = Engine::new(config, Arc::new(FakeNetStat::new()));
         // Ask before the poller task has had a chance to run.
         let reply = engine
