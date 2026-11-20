@@ -1128,6 +1128,7 @@
     "block": "Bloquear",
     "unblock": "Desbloquear",
     "allow": "Adicionar à lista permitida",
-    "allowed": "Adicionado à lista permitida"
+    "allowed": "Adicionado à lista permitida",
+    "noGeo": "Sem banco de dados GeoIP: baixe-o em Inteligência de ameaças"
   }
 }

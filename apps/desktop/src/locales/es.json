@@ -1128,6 +1128,7 @@
     "block": "Bloquear",
     "unblock": "Desbloquear",
     "allow": "Añadir a la lista permitida",
-    "allowed": "Añadida a la lista permitida"
+    "allowed": "Añadida a la lista permitida",
+    "noGeo": "Sin base de datos GeoIP: descárgala en Inteligencia de amenazas"
   }
 }

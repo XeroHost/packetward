@@ -219,6 +219,21 @@ describe('check at start', () => {
     update.stopAutoCheck()
   })
 
+  it('starts the schedule when the switch is turned on during the session', async () => {
+    vi.useFakeTimers()
+    api.getUpdateInfo.mockResolvedValue(configured)
+    api.checkForUpdate.mockResolvedValue({ state: 'upToDate', currentVersion: '0.1.0' })
+    const settings = useSettingsStore()
+    await settings.setCheckOnStart(false)
+    const update = useUpdateStore()
+    await settings.setCheckOnStart(true)
+    await vi.advanceTimersByTimeAsync(START_CHECK_DELAY_MS + 1)
+    expect(api.checkForUpdate).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(AUTO_CHECK_INTERVAL_MS)
+    expect(api.checkForUpdate).toHaveBeenCalledTimes(2)
+    update.stopAutoCheck()
+  })
+
   it('stays quiet when the build has no updater key', async () => {
     vi.useFakeTimers()
     api.getUpdateInfo.mockResolvedValue({ currentVersion: '0.1.0', configured: false })

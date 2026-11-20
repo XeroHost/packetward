@@ -363,6 +363,27 @@ when you have no signing key. Output: `target\release\bundle\nsis\PacketWard_<ve
 9. **Authenticode** (only when a certificate exists): the installer, `PacketWard.exe`, `packetward-agent.exe` and `pwctl.exe`
    have a valid signature (`Get-AuthenticodeSignature`) and the SmartScreen prompt names the publisher.
 
+## F12. Country restriction, proxy credentials, alert database, automatic update check (2026-11-20) — TEST VPS
+1. **Country restriction** (RDP Shield → Country restriction; needs the GeoIP database from Threat intelligence):
+   - Policy *Block these countries*, one country that a test address belongs to, Guardian in **Monitor** → connect to RDP from that address
+     (a VPN exit in that country works) → Guardian page shows a `would_block` decision with summary `rdp_country`; nothing is blocked.
+   - Guardian **Active** (confirm) → the same address is blocked within ~5 s (Firewall → Blocks, source Guardian) and the audit log has the entry.
+   - An address on the allowlist, or one with a successful RDP logon, is **never** blocked even if its country is refused.
+   - *Allow only these countries* with your own country missing: the page warns that it would lock you out; with an empty list the Save button is off.
+   - Without the GeoIP database installed (or after deleting it), nothing is blocked and the row says so.
+   - Turning the policy off stops new blocks; existing blocks expire by TTL or `pwctl unblock --all`.
+2. **Proxy with basic auth** (for example a squid with `basic_auth`): Settings → Network → address, user, password → Save → restart the
+   PacketWard service. The credentials show in Credential Manager (generic credentials `proxy-username` / `proxy-password`) and are **not** in
+   `settings.json`, `logs\`, the audit log or the UI after saving (the password field is empty). A speed test or a GeoIP download goes through the
+   proxy (check the proxy's access log). A wrong password gives a clear error, never the password. "Remove credentials" deletes both entries.
+3. **Alerts in SQLite**: raise an alert (for example `iperf3` flood or a port scan from another machine) → restart the service → the alert is
+   still in the inbox, shown as ended. Put an old `alerts.jsonl` in `%ProgramData%\PacketWard` before the first start of this build → it is imported
+   and renamed `alerts.jsonl.imported`. Clear the finished alerts, restart, raise another one → its id is higher than every previous one.
+4. **Automatic update check**: only does anything with a real updater key (release build). Settings → Updates → "Check automatically" is ON on a
+   new install; a request to GitHub is seen a few seconds after the app starts and then every 24 h; turning it off stops them at once (no restart);
+   nothing is ever downloaded or installed until the button is pressed. A `ui.json` from an older build keeps the switch OFF.
+5. **Idle CPU** (`tools\dev\measure-idle.ps1`, release agent, UI closed, 1 vCPU test VPS): target below 1 % of one core and below 60 MB.
+
 ## G. Leave-no-trace check
 
 After testing, all of these must be empty / `False`:

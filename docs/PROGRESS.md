@@ -47,7 +47,7 @@ the updater uses the Windows system proxy, not the agent-config proxy).
 Measured on the dev VPS (16 logical cores; release build; `run --console`; capture on, 1 s poll, ~60 connections, ~3 Mbps):
 - Working set 27 MB, private 15 MB → **RAM criterion met**.
 - Before optimizing: CPU **1.7 – 2.9 % of one core** (60 s window, spread across the tokio workers and the blocking pool).
-- After (2026-11-20): the engine polls the network and ticks the detectors every 5 s / 2 s while **no UI is subscribed** to `live.stats`
+- After (2026-11-20, measured at commit `803e721`, before the country loop and the alert database were merged): the engine polls the network and ticks the detectors every 5 s / 2 s while **no UI is subscribed** to `live.stats`
   (a viewer wakes them at once), the agent runtime has 2 worker threads, and the RDP Shield checks every 2 s. Measured on the same VPS
   (release, Monitor, UI closed, 60 s window after 10 s of warm-up): **0.68 % of one core with capture on, 0.86 % with `--no-capture`**
   (noise of the same order), RAM 39 – 45 MB → **both criteria met**. With the UI open the 1 s pace applies again (not measured separately).
@@ -65,8 +65,12 @@ HKCU/HKLM Run `False`/`False`, `Test-Path ProgramData\PacketWard` `False`, agent
   changes is deferred to a test VPS (TESTING §0 and §F4–F11).
 
 ## Live tests pending for a test VPS
-See docs/TESTING.md §F4–F11 (capture/Npcap, alerts, firewall + Guardian, RDP Shield, threat-intel lists, speed test, MTR modes,
-installer/upgrade/uninstall/updater).
+See docs/TESTING.md §0 (inbound capture rule, first step) and §F4–F11 (capture/Npcap, alerts, firewall + Guardian, RDP Shield, threat-intel
+lists, speed test, MTR modes, installer/upgrade/uninstall/updater), plus §F12 (country restriction, proxy with basic auth, alerts in SQLite,
+automatic update check) for what was added on 2026-11-20.
+
+Note: a `ui.json` written before 2026-11-20 keeps `checkOnStart: false`, so the automatic update check shows as OFF on machines that already
+ran the app; new installs get it ON.
 
 ## How to run everything
 ```powershell

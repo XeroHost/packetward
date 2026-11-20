@@ -1061,8 +1061,14 @@ impl Handler for Engine {
             }
             method::ALERTS_LIST => to_value(&self.alerts.list()),
             method::ALERTS_CLEAR => {
-                self.alerts.clear_ended();
-                to_value(&self.alerts.list())
+                // The database write must not run on a runtime worker.
+                let alerts = Arc::clone(&self.alerts);
+                blocking(move || {
+                    alerts.clear_ended();
+                    Ok(alerts.list())
+                })
+                .await
+                .and_then(|v| to_value(&v))
             }
             method::FIREWALL_RULES => {
                 let request: FirewallRulesRequest = parse_or_default(payload)?;

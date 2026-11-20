@@ -1128,6 +1128,7 @@
     "block": "Block",
     "unblock": "Unblock",
     "allow": "Add to allowlist",
-    "allowed": "Added to the allowlist"
+    "allowed": "Added to the allowlist",
+    "noGeo": "No GeoIP database: download it in Threat intelligence"
   }
 }

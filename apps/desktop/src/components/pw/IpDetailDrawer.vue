@@ -17,6 +17,7 @@ import { Cancel01Icon, Copy01Icon } from '@/lib/icons'
 import { exitFast, runTransition, springDialog } from '@/lib/motion'
 import { useAlertsStore } from '@/stores/alerts'
 import { useDefenseStore } from '@/stores/defense'
+import { useGeoStore } from '@/stores/geo'
 import { useIntelStore } from '@/stores/intel'
 import { useIpDetailStore } from '@/stores/ipDetail'
 import { useLiveStore } from '@/stores/live'
@@ -28,6 +29,7 @@ const detail = useIpDetailStore()
 const route = useRoute()
 const alerts = useAlertsStore()
 const defense = useDefenseStore()
+const geo = useGeoStore()
 const intel = useIntelStore()
 const live = useLiveStore()
 
@@ -95,6 +97,7 @@ watch(addr, async (value) => {
   void defense.loadAllowlist()
   void live.loadConnections()
   void intel.refresh()
+  void geo.warm([value])
   try {
     const result = await geoLookup([value])
     if (detail.addr === value) place.value = result.entries[0] ?? null
@@ -104,6 +107,26 @@ watch(addr, async (value) => {
   await nextTick()
   closeButton.value?.focus()
 })
+
+/** Keeps Tab inside the panel while it is open (it is modal: the page behind is out of reach). */
+function trapFocus(event: KeyboardEvent): void {
+  const root = event.currentTarget as HTMLElement
+  const items = [
+    ...root.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input, select, [tabindex]',
+    ),
+  ].filter((el) => el.tabIndex >= 0)
+  const first = items[0]
+  const last = items[items.length - 1]
+  if (!first || !last) return
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault()
+    last.focus()
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault()
+    first.focus()
+  }
+}
 
 function when(ms: number): string {
   return new Date(ms).toLocaleString()
@@ -166,6 +189,7 @@ function onLeave(el: Element, done: () => void): void {
         aria-modal="true"
         :aria-label="t('ipDetail.title', { addr })"
         data-testid="ip-detail"
+        @keydown.tab="trapFocus"
       >
         <header class="border-hairline flex items-start gap-3 border-b px-5 py-4">
           <Flag :addr="addr" class="mt-1" />
@@ -178,6 +202,7 @@ function onLeave(el: Element, done: () => void): void {
                 {{ place.country_name ?? countryName(place.country_code, locale) }}
               </template>
               <template v-else-if="place?.reserved">{{ t('ipDetail.reserved') }}</template>
+              <template v-else-if="geo.ready === false">{{ t('ipDetail.noGeo') }}</template>
               <template v-else-if="placeFailed">{{ t('ipDetail.placeFailed') }}</template>
               <template v-else>…</template>
             </p>

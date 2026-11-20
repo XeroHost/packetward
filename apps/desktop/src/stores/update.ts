@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import {
   checkForUpdate,
   getUpdateInfo,
@@ -127,12 +127,21 @@ export const useUpdateStore = defineStore('update', () => {
    * the switch on and this build can update at all. It only looks; failures stay silent (the Settings
    * page shows them when the user looks) and nothing is ever installed from here.
    */
+  let starting = false
   async function checkAtStart(): Promise<void> {
+    if (!settings.updates.checkOnStart || starting) return
+    starting = true
+    try {
+      await load()
+      if (!configured.value) return
+      await new Promise((resolve) => setTimeout(resolve, START_CHECK_DELAY_MS))
+      // The user may have switched it off while we waited.
+      if (!settings.updates.checkOnStart) return
+      await check()
+    } finally {
+      starting = false
+    }
     if (!settings.updates.checkOnStart) return
-    await load()
-    if (!configured.value) return
-    await new Promise((resolve) => setTimeout(resolve, START_CHECK_DELAY_MS))
-    await check()
     stopAutoCheck()
     timer = setInterval(() => {
       // The switch may have been turned off since: it applies at once.
@@ -140,6 +149,15 @@ export const useUpdateStore = defineStore('update', () => {
       void check()
     }, AUTO_CHECK_INTERVAL_MS)
   }
+
+  // The schedule follows the switch while the app is open: on starts it, off stops it.
+  watch(
+    () => settings.updates.checkOnStart,
+    (on) => {
+      if (on) void checkAtStart()
+      else stopAutoCheck()
+    },
+  )
 
   return {
     info,
