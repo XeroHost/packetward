@@ -26,6 +26,34 @@ on one thread.
   (or `pnpm tauri dev` from `apps/desktop`). Paths below use `target\debug`.
 - No other program may be using `\\.\pipe\packetward`.
 
+## 0. FIRST STEP on the test VPS: inbound capture with the raw-socket backend
+
+Do this before anything else on the test VPS: the whole detection story depends on the agent seeing inbound packets. On the
+development VPS the raw socket saw **outbound packets only** (hypothesis: Windows Firewall does not deliver inbound packets to a
+raw socket of a program without an allow rule). The installer creates that rule; this step proves it. Never do it on the
+development VPS (no firewall changes there).
+
+**With the installer** (the real case):
+1. Baseline, before installing: nothing to check yet. Install `PacketWard_x.y.z_x64-setup.exe` (elevated).
+2. `Get-NetFirewallRule -Name 'PacketWard agent (raw capture)' | Format-List Name,Group,Enabled,Direction,Action` →
+   `Group: PacketWard`, `Enabled: True`, `Direction: Inbound`, `Action: Allow`; and
+   `(Get-NetFirewallRule -Name 'PacketWard agent (raw capture)' | Get-NetFirewallApplicationFilter).Program` is the installed
+   `packetward-agent.exe`. It is ONE rule: `Get-NetFirewallRule -Group PacketWard` shows only it (the Guardian is in Monitor).
+3. Generate inbound traffic from **another machine** (ping the VPS, `iperf3 -c <vps> -u -b 20M`, or an RDP session).
+   `pwctl status` → the *Capture* line shows inbound **and** outbound packets, and **no** "sees outbound packets but no inbound ones"
+   warning (it appears after ~10 s when blind). Dashboard → Traffic shows inbound rates and top sources.
+4. **Control (proves the rule is what fixed it)**: `Disable-NetFirewallRule -Name 'PacketWard agent (raw capture)'`, restart the agent
+   (`Restart-Service PacketWard`), repeat step 3 → the blind warning must come back after ~10 s (if inbound still shows with the
+   rule disabled the hypothesis is wrong: record it). `Enable-NetFirewallRule …` and restart again → inbound is back.
+5. Uninstall (or `pwctl firewall purge`) → `Get-NetFirewallRule -Group PacketWard` is empty.
+
+**Development build on a test VPS** (no installer): `.\tools\dev\capture-rule.ps1 -Action Add -WhatIf` shows what it would create,
+then `-Action Add` (elevated) creates the same rule for `target\debug\packetward-agent.exe`; `-Action Status` shows it;
+`-Action Remove` deletes it. Then run `packetward-agent run --console` and repeat steps 3–4.
+
+**Result to record in docs/PROGRESS.md**: Windows build (`winver`), rule on/off result, and — if inbound is still blind with the rule — the
+fallback decision (NDIS ETW provider, ARCHITECTURE §6.2).
+
 ## A. Agent without installing (development)
 
 1. Elevated: `target\debug\packetward-agent.exe run --console`.
@@ -169,10 +197,8 @@ Automated tests cover the pipeline, stats, recorder, blind detection, support bu
 
 1. `packetward-agent run --console` (elevated), then `pwctl status`: the *Capture* line names the backend (raw socket without
    Npcap), the adapter and packets seen. Dashboard → Traffic shows inbound/outbound rates, the protocol table and top sources.
-2. **Raw socket inbound visibility (known issue)**: on the development VPS the raw socket saw outbound packets only; `pwctl status`
-   then shows the *blind* warning after about 10 s. On a **test VPS** create an inbound allow rule for `packetward-agent.exe`
-   (program-scoped, group `PacketWard`, e.g. with the firewall page once M6 is wired) and confirm inbound packets and top
-   sources appear and the warning goes away. If not, record the Windows build and report: the NDIS ETW provider is the fallback.
+2. **Raw socket inbound visibility (known issue)**: see **section 0** (first step on the test VPS): the installer creates the
+   inbound allow rule; `tools\dev\capture-rule.ps1` does the same for a development build.
 3. **Npcap** (test VPS only; never on the dev VPS): install Npcap from npcap.com, restart the agent, confirm the backend switches
    to Npcap (*kernel filters*, inbound and outbound), record 30 s with filter `tcp and port 3389` and open the .pcapng in
    Wireshark (timestamps, 128-byte snaplen, original lengths). Uninstall Npcap and confirm the agent falls back without errors.

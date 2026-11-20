@@ -511,7 +511,7 @@ Discreet XeroHost presence: "by XeroHost" in the sidebar footer and About, a "Co
     or the SID in `/OPERATORSID=<SID>` for unattended installs by another account —, registers/repairs the service
     and starts it; the same command serves install and upgrade), then ONE inbound allow rule
     `PacketWard agent (raw capture)` for `packetward-agent.exe` in the rule group `PacketWard`. `netsh ... add rule` has
-    no `group=` parameter, so the rule is created with `New-NetFirewallRule -Group PacketWard`. Reason: raw-socket
+    no `group=` parameter, so the rule is created with `New-NetFirewallRule -Group PacketWard`. For development builds `tools/dev/capture-rule.ps1` creates/removes/shows the same rule (test VPS only; guarded by `.github/scripts/installer.test.mjs`). Reason: raw-socket
     capture delivery (DECISIONS M4 row; hypothesis, to be confirmed by TESTING §F4/§F11).
   - **Pre-uninstall** (not in update mode): if `%ProgramData%\PacketWard\rdp_shield.json` exists, `pwctl rdp reset`
     (through the agent, which falls back to a direct reset when it is not reachable) and, if that fails,
