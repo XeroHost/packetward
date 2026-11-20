@@ -3,6 +3,7 @@
 // into GeoJSON whose region names are ISO alpha-2 codes, so GeoIP answers match them directly.
 // Loaded on demand: the map page pulls this in, nothing else does.
 import type { FeatureCollection } from 'geojson'
+import { fixAntimeridian } from './antimeridian'
 
 let cached: Promise<FeatureCollection> | null = null
 
@@ -20,7 +21,7 @@ export function loadWorld(): Promise<FeatureCollection> {
       const code = iso.default.numericToAlpha2(String(feature.id ?? '').padStart(3, '0'))
       // No code (disputed or tiny territories) or Antarctica: not worth drawing.
       if (!code || code === 'AQ') return []
-      return [{ ...feature, properties: { name: code } }]
+      return [fixAntimeridian({ ...feature, properties: { name: code } })]
     })
     return { type: 'FeatureCollection', features } as FeatureCollection
   })()
