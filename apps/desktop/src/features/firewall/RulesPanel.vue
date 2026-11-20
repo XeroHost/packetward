@@ -211,7 +211,11 @@ const card = 'flex flex-col gap-4'
           </tr>
         </thead>
         <tbody class="divide-hairline divide-y">
-          <tr v-for="rule in defense.rules" :key="rule.name + rule.direction">
+          <!-- Windows allows several rules with the same name and direction (one per profile). -->
+          <tr
+            v-for="(rule, index) in defense.rules"
+            :key="`${rule.name}|${rule.direction}|${index}`"
+          >
             <td class="px-3 py-1.5">
               <span>{{ rule.name }}</span>
               <Badge

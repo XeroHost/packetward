@@ -39,6 +39,7 @@ const { t } = useI18n()
       <p class="text-text-muted leading-relaxed">{{ t('about.credits.geoip') }}</p>
       <p class="text-text-muted leading-relaxed">{{ t('about.credits.motion') }}</p>
       <p class="text-text-muted leading-relaxed">{{ t('about.credits.icons') }}</p>
+      <p class="text-text-muted leading-relaxed">{{ t('about.credits.maps') }}</p>
       <p class="text-text-muted leading-relaxed">{{ t('about.credits.fonts') }}</p>
       <p class="text-text-muted leading-relaxed">{{ t('about.credits.ui') }}</p>
       <p class="text-text-muted mt-2 text-xs leading-relaxed">{{ t('about.credits.note') }}</p>

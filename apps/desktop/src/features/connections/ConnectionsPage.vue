@@ -14,6 +14,7 @@ import { refDebounced, useIntervalFn } from '@vueuse/core'
 import { ArrowDown, ArrowUp, ArrowUpDown, TriangleAlert } from '@/components/pw/icons'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import Flag from '@/components/pw/Flag.vue'
 import { Button } from '@/components/ui/button'
 import { FIELD } from '@/features/diagnostics/fieldClass'
 import {
@@ -470,6 +471,7 @@ const GRID = 'grid grid-cols-[4rem_minmax(0,1.4fr)_minmax(0,1.4fr)_8rem_minmax(0
             </div>
             <div role="gridcell" class="group flex min-w-0 items-center gap-1.5">
               <template v-if="r.row.remote_addr">
+                <Flag :addr="r.row.remote_addr" />
                 <span class="truncate font-mono" :title="r.row.remote">{{ r.row.remote }}</span>
                 <span
                   v-if="rdpPeers.has(r.row.remote_addr)"

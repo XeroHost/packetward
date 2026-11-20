@@ -134,7 +134,8 @@
       "icons": "Icons: the free Hugeicons set, MIT.",
       "fonts": "Fonts: Bricolage Grotesque, Geist and JetBrains Mono, SIL OFL 1.1.",
       "ui": "Components: Reka UI and shadcn-vue, MIT. Charts: Apache ECharts, Apache-2.0.",
-      "note": "Every dependency is checked for compatibility with the GPL-3.0 license of PacketWard. Animate UI was not used: its Commons Clause license is not compatible."
+      "note": "Every dependency is checked for compatibility with the GPL-3.0 license of PacketWard. Animate UI was not used: its Commons Clause license is not compatible.",
+      "maps": "Flags: country-flag-icons, MIT. World map: Natural Earth (public domain) via world-atlas and topojson-client, ISC; country codes: i18n-iso-countries, MIT."
     }
   },
   "agent": {
@@ -1029,6 +1030,19 @@
       "reports": "Reports",
       "isp": "ISP",
       "cached": "from cache"
+    },
+    "map": {
+      "title": "Where attacks come from",
+      "hint": "Countries of the addresses behind alerts and blocks. The darker, the more addresses. Location comes from the local GeoIP database.",
+      "noDb": "Download the GeoIP database to see the map and the country flags.",
+      "noDbShort": "No GeoIP database yet.",
+      "empty": "No attackers recorded yet.",
+      "loading": "Loading the map…",
+      "failed": "The map could not be loaded.",
+      "top": "Top countries",
+      "addresses": "{n} addresses",
+      "alerts": "{n} alerts",
+      "blocked": "{n} blocked"
     }
   },
   "logs": {

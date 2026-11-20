@@ -134,7 +134,8 @@
       "icons": "Iconos: el conjunto gratuito de Hugeicons, MIT.",
       "fonts": "Tipografías: Bricolage Grotesque, Geist y JetBrains Mono, SIL OFL 1.1.",
       "ui": "Componentes: Reka UI y shadcn-vue, MIT. Gráficos: Apache ECharts, Apache-2.0.",
-      "note": "Cada dependencia se revisa para que sea compatible con la licencia GPL-3.0 de PacketWard. No se usó Animate UI: su licencia con Commons Clause no es compatible."
+      "note": "Cada dependencia se revisa para que sea compatible con la licencia GPL-3.0 de PacketWard. No se usó Animate UI: su licencia con Commons Clause no es compatible.",
+      "maps": "Banderas: country-flag-icons, MIT. Mapa del mundo: Natural Earth (dominio público) con world-atlas y topojson-client, ISC; códigos de país: i18n-iso-countries, MIT."
     }
   },
   "agent": {
@@ -1029,6 +1030,19 @@
       "reports": "Denuncias",
       "isp": "ISP",
       "cached": "de la caché"
+    },
+    "map": {
+      "title": "De dónde vienen los ataques",
+      "hint": "Países de las direcciones detrás de alertas y bloqueos. Cuanto más oscuro, más direcciones. La ubicación sale de la base GeoIP local.",
+      "noDb": "Descargue la base GeoIP para ver el mapa y las banderas de los países.",
+      "noDbShort": "Aún no hay base GeoIP.",
+      "empty": "Aún no hay atacantes registrados.",
+      "loading": "Cargando el mapa…",
+      "failed": "No se pudo cargar el mapa.",
+      "top": "Países principales",
+      "addresses": "{n} direcciones",
+      "alerts": "{n} alertas",
+      "blocked": "{n} bloqueadas"
     }
   },
   "logs": {

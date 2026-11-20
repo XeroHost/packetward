@@ -2,7 +2,7 @@
 /*
  * PacketWard design tokens — "Warm Sentinel" (docs/DESIGN.md).
  * Components use the semantic tokens only, never raw hex.
- * Warm neutral greys, one terracotta accent for actions and links; red means a threat, green means
+ * Warm neutral greys, one sky-blue accent (the blue of "Ward" in the logo) for actions and links; red means a threat, green means
  * protected, amber means look at this.
  */
 
@@ -16,14 +16,14 @@
   --border: #3a3835;
   --text: #ece9e1;
   --text-muted: #a09d94;
-  --brand: #bf5d3c;
-  --brand-hover: #a94e30;
-  --brand-fg: #e8956f;
+  --brand: #0284c7;
+  --brand-hover: #0369a1;
+  --brand-fg: #38bdf8;
   --on-brand: #ffffff;
   --danger: #e5786d;
   --warning: #e0a94f;
   --success: #7dbb8a;
-  --info: #7aa9d2;
+  --info: #38bdf8;
   --glow: rgb(125 187 138 / 0.35);
   --shadow-card: none;
   --hairline: rgb(236 233 225 / 0.07);
@@ -43,14 +43,14 @@
   --border: #ddd9cc;
   --text: #1f1e1d;
   --text-muted: #6b685f;
-  --brand: #bf5d3c;
-  --brand-hover: #a94e30;
-  --brand-fg: #b0492a;
+  --brand: #0284c7;
+  --brand-hover: #0369a1;
+  --brand-fg: #0369a1;
   --on-brand: #ffffff;
   --danger: #c0392b;
   --warning: #a8680f;
   --success: #2f7d4a;
-  --info: #2f6f9f;
+  --info: #0369a1;
   --glow: rgb(47 125 74 / 0.25);
   --shadow-card: 0 1px 2px rgb(31 30 29 / 0.06);
   --hairline: rgb(31 30 29 / 0.08);

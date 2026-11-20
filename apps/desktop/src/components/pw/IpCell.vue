@@ -3,6 +3,7 @@
 import { Check, Copy, ShieldBan } from '@/components/pw/icons'
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import Flag from '@/components/pw/Flag.vue'
 import { Badge } from '@/components/ui/badge'
 import { copyText } from '@/lib/clipboard'
 import { useDefenseStore } from '@/stores/defense'
@@ -46,6 +47,7 @@ onBeforeUnmount(() => {
 
 <template>
   <span v-if="addr" class="group inline-flex min-w-0 items-center gap-1.5">
+    <Flag :addr="addr" />
     <span class="truncate font-mono" :title="text">{{ text }}</span>
     <Badge
       v-if="rdp"

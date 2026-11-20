@@ -3,11 +3,11 @@
 ## Principle
 Calm and simple, in the spirit of Claude Desktop: warm neutral greys, generous space, almost no borders, and **one**
 accent. Colour carries meaning only where it matters:
-- **Terracotta** (`--brand`) is the accent: the primary action, links, focus ring. Never a status.
+- **Sky blue** (`--brand`, the blue of "Ward" in the logo) is the accent: the primary action, links, focus ring. Never a status.
 - **Red** (`--danger`) is a threat: attacks, blocked traffic, high/critical alerts, an exposed RDP.
 - **Green** (`--success`) is protected: Guardian Active, healthy, allowed.
 - **Amber** (`--warning`) is look at this: Guardian Monitor, thresholds, a peer that is not trusted.
-- **Blue** (`--info`) is your own inbound traffic and neutral information; violet is outbound.
+- **Blue** (`--info`, the same family as the accent) is inbound traffic and neutral information; violet is outbound.
 Never encode meaning with colour alone: pair it with an icon, a word or a shape.
 
 ## Color tokens
@@ -23,18 +23,23 @@ Tailwind v4 via `@theme`. Components use **semantic tokens only**, never raw hex
 | `--border` | `#3A3835` | `#DDD9CC` | Rarely: dividers are `--hairline` |
 | `--text` | `#ECE9E1` | `#1F1E1D` | Primary text |
 | `--text-muted` | `#A09D94` | `#6B685F` | Secondary text |
-| `--brand` | `#BF5D3C` | `#BF5D3C` | Primary button fill |
-| `--brand-hover` | `#A94E30` | `#A94E30` | Hover / pressed |
-| `--brand-fg` | `#E8956F` | `#B0492A` | Accent text, links, icons on the background |
+| `--brand` | `#0284C7` | `#0284C7` | Primary button fill |
+| `--brand-hover` | `#0369A1` | `#0369A1` | Hover / pressed |
+| `--brand-fg` | `#38BDF8` | `#0369A1` | Accent text, links, icons on the background |
 | `--on-brand` | `#FFFFFF` | `#FFFFFF` | Text on the primary fill |
 | `--danger` | `#E5786D` | `#C0392B` | Threat |
 | `--warning` | `#E0A94F` | `#A8680F` | Attention |
 | `--success` | `#7DBB8A` | `#2F7D4A` | Protected, healthy |
-| `--info` | `#7AA9D2` | `#2F6F9F` | Inbound traffic, information |
+| `--info` | `#38BDF8` | `#0369A1` | Inbound traffic, information |
 | `--glow` | green at 35 % | green at 25 % | The Guardian-active halo |
 
-Text on a `--danger`, `--warning` or `--success` fill uses `--bg` (dark text on the soft colours); only the terracotta
+Text on a `--danger`, `--warning` or `--success` fill uses `--bg` (dark text on the soft colours); only the blue
 fill takes white. Measured and re-checked when a token changes.
+
+### Flags and the attack map
+- Country flags are SVG images (`country-flag-icons`, MIT), never emoji (Windows draws those as two letters), shown before every address (`IpCell`, the Connections grid) and in the country lists. Each flag is a lazy chunk; private and unknown addresses show none, and without a GeoIP database nothing is asked or shown.
+- Placement is local: `stores/geo.ts` batches lookups to the agent (`intel.lookup`, GeoIP database) and remembers the answers.
+- **Attack map** (Threat Intel): world countries from Natural Earth via `world-atlas` (ISC) + `topojson-client` (ISC), regions named by ISO alpha-2 (`i18n-iso-countries`, MIT), shaded in `--danger` by how many distinct addresses are behind alerts and blocks, with the top countries beside it. Trusted (protected) sources are never counted as attackers.
 
 ### Chart palette
 - Inbound: `--info` (blue) · Outbound: violet (`#B49AD6` dark, `#8266B0` light) · Blocked/attack: `--danger` · Warning: `--warning`.

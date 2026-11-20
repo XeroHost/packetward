@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { FIELD } from '@/features/diagnostics/fieldClass'
 import { useIntelStore } from '@/stores/intel'
 import { useLiveStore } from '@/stores/live'
+import AttackMap from './AttackMap.vue'
 import type { ListStatusView } from '@/types/generated/ListStatusView'
 
 const { t } = useI18n()
@@ -76,6 +77,10 @@ const mostConnections = computed(() => Math.max(1, ...intel.countries.map((c) =>
       <TriangleAlert class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
       <span>{{ intel.error }}</span>
     </p>
+
+    <div class="border-hairline mb-2 border-b pb-10">
+      <AttackMap />
+    </div>
 
     <SettingRow :title="t('intel.geo.title')" :description="t('intel.geo.hint')">
       <div v-if="intel.geo" class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
