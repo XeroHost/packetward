@@ -395,7 +395,12 @@ impl Engine {
             config.capture_dir.clone(),
             Some(packet_sink),
         ));
-        if config.capture_autostart {
+        // The user may have switched the start-up capture off in Settings (kept in settings.json).
+        let capture_on_start = settings::saved_capture_on_start(config.defense_dir.as_deref());
+        if config.capture_autostart && !capture_on_start {
+            tracing::info!("live capture not started: it is switched off in the settings");
+        }
+        if config.capture_autostart && capture_on_start {
             let capture = Arc::clone(&capture);
             tokio::spawn(async move {
                 let cleaner = Arc::clone(&capture);
@@ -985,6 +990,18 @@ impl Handler for Engine {
                     .and_then(|v| to_value(&v))
             }
             method::SETTINGS_GET => to_value(&self.settings.view()),
+            method::SETTINGS_SET_CAPTURE_ON_START => {
+                let request: pw_proto::CaptureOnStartRequest = parse(payload)?;
+                let view = self.settings.set_capture_on_start(request.enabled)?;
+                self.defense.audit_entry(
+                    "operator",
+                    "set_capture_on_start",
+                    "-",
+                    if request.enabled { "on" } else { "off" },
+                    "ok",
+                );
+                to_value(&view)
+            }
             method::SETTINGS_SET_PROXY => {
                 let request: ProxyRequest = parse(payload)?;
                 let (view, credentials) = self.settings.set_proxy(&request)?;
@@ -1780,6 +1797,41 @@ mod tests {
             stats_until(&mut sub, |_| true).await.rdp_trust.window_days,
             1
         );
+    }
+
+    #[tokio::test]
+    async fn the_start_up_capture_switch_is_saved_audited_and_validated() {
+        let engine = Engine::new(
+            fast(EngineConfig::new("1", true)),
+            Arc::new(FakeNetStat::new()),
+        );
+        let got = engine
+            .handle(method::SETTINGS_GET, Value::Null)
+            .await
+            .unwrap();
+        assert_eq!(got["capture_on_start"], true);
+        let off = engine
+            .handle(
+                method::SETTINGS_SET_CAPTURE_ON_START,
+                serde_json::json!({"enabled": false}),
+            )
+            .await
+            .unwrap();
+        assert_eq!(off["capture_on_start"], false);
+        let audit = engine
+            .handle(method::LOGS_AUDIT, Value::Null)
+            .await
+            .unwrap()
+            .to_string();
+        assert!(audit.contains("set_capture_on_start"), "{audit}");
+        let bad = engine
+            .handle(
+                method::SETTINGS_SET_CAPTURE_ON_START,
+                serde_json::json!({"enabled": "yes"}),
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(bad.code, ErrorCode::BadRequest);
     }
 
     #[tokio::test]

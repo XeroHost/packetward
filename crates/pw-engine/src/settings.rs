@@ -33,6 +33,8 @@ pub enum CredentialChange {
 #[serde(default)]
 struct Saved {
     proxy: Option<String>,
+    /// `None` = never chosen = on.
+    capture_on_start: Option<bool>,
 }
 
 pub struct SettingsStore {
@@ -49,6 +51,17 @@ pub struct SettingsStore {
 
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     mutex.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
+/// Whether the live capture should start with the agent: on unless the user switched it off.
+pub fn saved_capture_on_start(dir: Option<&Path>) -> bool {
+    read_saved(dir).capture_on_start.unwrap_or(true)
+}
+
+fn read_saved(dir: Option<&Path>) -> Saved {
+    dir.and_then(|d| fs::read_to_string(d.join(FILE)).ok())
+        .and_then(|text| serde_json::from_str(&text).ok())
+        .unwrap_or_default()
 }
 
 /// The proxy saved in `dir`, if any (read before the HTTP clients are built).
@@ -139,6 +152,7 @@ impl SettingsStore {
             path: dir.map(|d| d.join(FILE)),
             saved: Mutex::new(Saved {
                 proxy: applied_proxy.clone(),
+                capture_on_start: read_saved(dir).capture_on_start,
             }),
             secrets,
             auth: Mutex::new(applied_auth.clone()),
@@ -148,7 +162,10 @@ impl SettingsStore {
     }
 
     pub fn view(&self) -> AgentSettingsView {
-        let proxy = lock(&self.saved).proxy.clone();
+        let (proxy, capture_on_start) = {
+            let saved = lock(&self.saved);
+            (saved.proxy.clone(), saved.capture_on_start.unwrap_or(true))
+        };
         let auth = lock(&self.auth).clone();
         AgentSettingsView {
             restart_required: proxy != self.applied_proxy || auth != self.applied_auth,
@@ -156,7 +173,39 @@ impl SettingsStore {
             applied_proxy: self.applied_proxy.clone(),
             proxy_credentials: auth.is_some(),
             proxy_username: auth.map(|a| a.username().to_owned()),
+            capture_on_start,
         }
+    }
+
+    /// Writes the settings file (atomically). Nothing is kept without a data folder.
+    fn persist(&self, saved: &Saved) -> Result<(), ErrorPayload> {
+        let Some(path) = &self.path else {
+            return Ok(());
+        };
+        let write = || -> std::io::Result<()> {
+            if let Some(parent) = path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            let tmp = path.with_extension("json.tmp");
+            fs::write(
+                &tmp,
+                serde_json::to_vec_pretty(saved).map_err(std::io::Error::other)?,
+            )?;
+            fs::rename(tmp, path)
+        };
+        write().map_err(|e| {
+            ErrorPayload::new(ErrorCode::Internal, format!("could not save settings: {e}"))
+        })
+    }
+
+    /// Chooses whether the live capture starts with the agent. It takes effect at the next agent start;
+    /// the running capture is not touched (the Capture page starts and stops it).
+    pub fn set_capture_on_start(&self, enabled: bool) -> Result<AgentSettingsView, ErrorPayload> {
+        let mut saved = lock(&self.saved);
+        saved.capture_on_start = Some(enabled);
+        self.persist(&saved)?;
+        drop(saved);
+        Ok(self.view())
     }
 
     /// Credentials after applying `request` to `current`, or `None` to remove them. Validates everything
@@ -234,22 +283,7 @@ impl SettingsStore {
         }
         let mut saved = lock(&self.saved);
         saved.proxy = proxy;
-        if let Some(path) = &self.path {
-            let write = || -> std::io::Result<()> {
-                if let Some(parent) = path.parent() {
-                    fs::create_dir_all(parent)?;
-                }
-                let tmp = path.with_extension("json.tmp");
-                fs::write(
-                    &tmp,
-                    serde_json::to_vec_pretty(&*saved).map_err(std::io::Error::other)?,
-                )?;
-                fs::rename(tmp, path)
-            };
-            write().map_err(|e| {
-                ErrorPayload::new(ErrorCode::Internal, format!("could not save settings: {e}"))
-            })?;
-        }
+        self.persist(&saved)?;
         drop(saved);
         Ok((self.view(), change))
     }
@@ -572,5 +606,46 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         fs::write(dir.path().join(FILE), "{ not json").unwrap();
         assert!(saved_proxy(Some(dir.path())).is_none());
+    }
+
+    #[test]
+    fn the_capture_starts_with_the_agent_unless_the_user_switched_it_off() {
+        let dir = tempfile::tempdir().unwrap();
+        // Nothing saved: on.
+        assert!(saved_capture_on_start(Some(dir.path())));
+        assert!(saved_capture_on_start(None));
+        let store = SettingsStore::open(Some(dir.path()), memory());
+        assert!(store.view().capture_on_start);
+        let view = store.set_capture_on_start(false).unwrap();
+        assert!(!view.capture_on_start);
+        assert!(
+            !saved_capture_on_start(Some(dir.path())),
+            "it survives a restart"
+        );
+        // A restarted store shows it off, and the proxy setting does not undo it.
+        let restarted = SettingsStore::open(Some(dir.path()), memory());
+        assert!(!restarted.view().capture_on_start);
+        restarted.set_proxy(&url_only("http://proxy:3128")).unwrap();
+        assert!(!saved_capture_on_start(Some(dir.path())));
+        let on = restarted.set_capture_on_start(true).unwrap();
+        assert!(on.capture_on_start);
+        assert!(saved_capture_on_start(Some(dir.path())));
+        // The proxy survived the capture switch too.
+        assert_eq!(
+            saved_proxy(Some(dir.path())).as_deref(),
+            Some("http://proxy:3128")
+        );
+    }
+
+    #[test]
+    fn an_old_settings_file_without_the_field_keeps_capturing() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(dir.path().join(FILE), r#"{"proxy":"http://p:1"}"#).unwrap();
+        assert!(saved_capture_on_start(Some(dir.path())));
+        assert!(
+            SettingsStore::open(Some(dir.path()), memory())
+                .view()
+                .capture_on_start
+        );
     }
 }

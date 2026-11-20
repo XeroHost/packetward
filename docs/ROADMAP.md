@@ -138,7 +138,7 @@ Design: ARCHITECTURE §6.14. Decisions: DECISIONS "MCP server". Nothing of this 
 - [ ] `crates/pw-mcp` (new): tool catalog, JSON schemas, result envelope with untrusted-field marking, prompts; `rmcp` (official Rust SDK),
       stdio transport, launched as `pwctl mcp`. No network transport in v1.
 - [ ] Agent: `ClientKind::Mcp`, MCP policy (master switch off by default, one level per tool: disabled / automatic / approval), pending-action
-      queue with a 5-minute expiry, write rate limit, `AuditActor::Mcp`, protocol 1.14 (`mcp.*` methods and the `mcp.pending` topic; 1.13 is the speed-test providers).
+      queue with a 5-minute expiry, write rate limit, `AuditActor::Mcp`, protocol 1.15 (`mcp.*` methods and the `mcp.pending` topic; 1.13 is the speed-test providers, 1.14 the start-up capture switch).
       Enforcement lives in the agent, not only in `pwctl mcp`: an `Mcp` connection can only call the methods of the catalog.
 - [ ] Read tools (always available once the switch is on): live stats, connections, top remote IPs, alerts, Guardian decisions, capture summary,
       MTR / ping / DNS / port check, IP lookup (GeoIP/ASN, AbuseIPDB only with the user's key), firewall rules, RDP Shield audit, audit log.

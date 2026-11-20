@@ -23,4 +23,10 @@ proxy_credentials: boolean,
 /**
  * The stored proxy user name, if any (shown so the user can see what is saved).
  */
-proxy_username?: string, };
+proxy_username?: string, 
+/**
+ * The live capture starts together with the agent (the default). Turning it off keeps the agent from
+ * capturing packets until the user starts it from the Capture page; the flood detectors and the traffic
+ * page then see no packets.
+ */
+capture_on_start: boolean, };

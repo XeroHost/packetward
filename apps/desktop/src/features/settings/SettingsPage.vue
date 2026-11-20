@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import CaptureSettings from '@/features/settings/CaptureSettings.vue'
 import NetworkSettings from '@/features/settings/NetworkSettings.vue'
 import { useAppearanceStore } from '@/stores/appearance'
 import { useSettingsStore } from '@/stores/settings'
@@ -233,6 +234,8 @@ function onLanguage(v: unknown): void {
         </Select>
       </div>
     </SettingRow>
+
+    <CaptureSettings />
 
     <NetworkSettings />
   </div>

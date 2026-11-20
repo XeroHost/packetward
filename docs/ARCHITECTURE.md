@@ -169,6 +169,10 @@ sources in each). Only a recording writes to disk: a timed one stops at 500 MiB 
 all recordings together may take 2 GiB (`RECORDINGS_MAX_TOTAL`; the oldest finished ones are deleted first), files older than 7 days are removed,
 and a recording is refused unless the disk keeps `MIN_FREE_BYTES` (2 GiB) free besides its own maximum (`sys::free_disk_bytes`).
 
+**Start-up switch (protocol minor 14).** `settings.json` carries `capture_on_start` (absent = on). `settings.set_capture_on_start {enabled}` saves it
+(audited as `set_capture_on_start`) and `settings.get` returns it; the engine reads it when it starts and skips the capture autostart when it is off
+(the Capture page still starts and stops the capture at any time). Settings → Live capture shows it with what stops working when it is off.
+
 ### 6.2 Detection (`pw-detect`) — pure, deterministic, heavily tested
 Per source IP, sliding windows (e.g. 1 s, 10 s, 60 s) tracking: packets, bytes, SYN count, SYN-ACK/ACK ratio,
 UDP packets, ICMP packets, distinct destination ports, new connections.
@@ -527,7 +531,7 @@ approval), the write limit, and **Copy configuration** buttons that put on the c
 `pwctl.exe` path (the installer already ships it): Claude Desktop (`mcpServers` entry for `claude_desktop_config.json`), Claude Code (the
 `claude mcp add` command), OpenCode (`mcp` entry with `type: "local"` in `opencode.json`) and Cursor (`mcpServers` entry for `mcp.json`).
 
-**IPC (protocol minor 14; 13 is the speed-test providers).** Methods `mcp.settings.get`, `mcp.settings.set`, `mcp.pending.list`, `mcp.approve`, `mcp.reject`, `mcp.action.status`
+**IPC (protocol minor 15; 13 is the speed-test providers, 14 the start-up capture switch).** Methods `mcp.settings.get`, `mcp.settings.set`, `mcp.pending.list`, `mcp.approve`, `mcp.reject`, `mcp.action.status`
 (the three that change state are desktop/`Pwctl` only) and the topic `mcp.pending`; `ClientKind::Mcp`. Existing methods are reused for the
 tools; a one-shot getter missing for a read tool is added in the same bump.
 

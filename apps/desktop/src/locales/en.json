@@ -124,6 +124,13 @@
       "notConfigured": "Updates are not configured in this build: it has no update signing key, so it cannot verify or install updates. Download new versions from the PacketWard releases page instead.",
       "error": "Could not complete the update: {reason}",
       "privacy": "A check only downloads a small version file from GitHub. Installers are verified against the signing key built into this app before they run. The installer stops the PacketWard service, replaces the files and starts it again; your settings and rules are kept."
+    },
+    "capture": {
+      "title": "Live capture",
+      "description": "The live capture reads the traffic of the network adapter to feed the flood detectors and the Traffic page.",
+      "label": "Start the live capture with the agent",
+      "hint": "On by default. It writes nothing to disk (only a recording you start does) and its memory is bounded. The change applies the next time the agent starts; the Capture page starts and stops it right now.",
+      "offNote": "Off: after the next agent start there is no packet capture, so SYN, UDP and ICMP flood detection and the Traffic page see no packets. Detection from connections, logons and adapter counters keeps working."
     }
   },
   "about": {
@@ -532,7 +539,8 @@
       },
       "adapter": "Adapter",
       "seen": "Packets seen",
-      "dropped": "Dropped"
+      "dropped": "Dropped",
+      "notOnStart": "The live capture does not start with the agent (Settings → Live capture)."
     },
     "record": {
       "title": "Record to a file",

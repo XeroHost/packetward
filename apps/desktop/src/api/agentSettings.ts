@@ -24,5 +24,7 @@ export const setProxy = (update: ProxyUpdate) =>
     ...(update.password ? { password: update.password } : {}),
     ...(update.clearCredentials ? { clear_credentials: true } : {}),
   })
+export const setCaptureOnStart = (enabled: boolean) =>
+  callAgent<AgentSettingsView>('settings.set_capture_on_start', { enabled })
 export const auditLog = (limit?: number, search?: string) =>
   callAgent<AuditView>('logs.audit', { limit, search: search || undefined })

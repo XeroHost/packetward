@@ -77,6 +77,18 @@ export const useLogsStore = defineStore('logs', () => {
     }
   }
 
+  /** Switches the start-up capture; the agent saves it and applies it at its next start. */
+  async function saveCaptureOnStart(enabled: boolean): Promise<boolean> {
+    settingsError.value = null
+    try {
+      settings.value = await api.setCaptureOnStart(enabled)
+      return true
+    } catch (err) {
+      settingsError.value = message(err)
+      return false
+    }
+  }
+
   function reset(): void {
     entries.value = []
     truncated.value = false
@@ -95,6 +107,7 @@ export const useLogsStore = defineStore('logs', () => {
     load,
     loadSettings,
     saveProxy,
+    saveCaptureOnStart,
     reset,
   }
 })

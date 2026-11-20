@@ -24,6 +24,22 @@ pub struct AgentSettingsView {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[cfg_attr(feature = "ts-export", ts(optional))]
     pub proxy_username: Option<String>,
+    /// The live capture starts together with the agent (the default). Turning it off keeps the agent from
+    /// capturing packets until the user starts it from the Capture page; the flood detectors and the traffic
+    /// page then see no packets.
+    #[serde(default = "default_true")]
+    pub capture_on_start: bool,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+/// Payload of `settings.set_capture_on_start`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-export", derive(ts_rs::TS), ts(export))]
+pub struct CaptureOnStartRequest {
+    pub enabled: bool,
 }
 
 /// Payload of `settings.set_proxy`; an absent proxy goes back to the system proxy (and removes any stored
@@ -134,10 +150,15 @@ mod tests {
             restart_required: true,
             proxy_credentials: true,
             proxy_username: Some("alice".into()),
+            capture_on_start: true,
         };
         let json = serde_json::to_string(&view).unwrap();
         assert!(!json.contains("password"));
         let old: AgentSettingsView = serde_json::from_str(r#"{"restart_required":false}"#).unwrap();
         assert!(!old.proxy_credentials && old.proxy_username.is_none());
+        assert!(
+            old.capture_on_start,
+            "an agent that does not say it still captures at start"
+        );
     }
 }

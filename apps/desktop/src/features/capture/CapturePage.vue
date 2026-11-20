@@ -11,12 +11,14 @@ import { Button } from '@/components/ui/button'
 import FailureNote from '@/features/diagnostics/FailureNote.vue'
 import { useAppVisible } from '@/lib/visibility'
 import { useCaptureStore } from '@/stores/capture'
+import { useLogsStore } from '@/stores/logs'
 import RecordPanel from './RecordPanel.vue'
 import SupportBundlePanel from './SupportBundlePanel.vue'
 
 const { t } = useI18n()
 const capture = useCaptureStore()
 const visible = useAppVisible()
+const logs = useLogsStore()
 
 const status = computed(() => capture.status)
 const running = computed(() => status.value?.state === 'running')
@@ -27,6 +29,7 @@ const backends = computed(() =>
 // Counters and the recording progress move; poll while the page is open and the window is shown.
 const { pause, resume } = useIntervalFn(() => void capture.refresh(), 2000, { immediate: false })
 onMounted(() => {
+  void logs.loadSettings()
   void capture.refresh()
   if (visible.value) resume()
   else pause()
@@ -43,6 +46,13 @@ onMounted(() => {
           <h2 class="text-[1.0625rem] font-semibold">{{ t('capture.backend.title') }}</h2>
           <p v-if="status" class="text-text-muted mt-1 max-w-prose text-[13px] leading-relaxed">
             {{ status.selection.summary }}
+          </p>
+          <p
+            v-if="logs.settings && !logs.settings.capture_on_start"
+            class="text-text-muted mt-1 max-w-prose text-xs"
+            data-testid="capture-start-note"
+          >
+            {{ t('capture.live.notOnStart') }}
           </p>
         </div>
         <Button

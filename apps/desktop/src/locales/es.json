@@ -124,6 +124,13 @@
       "notConfigured": "Las actualizaciones no están configuradas en esta compilación: no tiene clave de firma de actualizaciones, así que no puede verificar ni instalar actualizaciones. Descarga las versiones nuevas desde la página de versiones de PacketWard.",
       "error": "No se pudo completar la actualización: {reason}",
       "privacy": "Una búsqueda solo descarga un pequeño archivo de versión desde GitHub. Los instaladores se verifican con la clave de firma incluida en esta aplicación antes de ejecutarse. El instalador detiene el servicio de PacketWard, reemplaza los archivos y lo inicia de nuevo; tus ajustes y reglas se conservan."
+    },
+    "capture": {
+      "title": "Captura en vivo",
+      "description": "La captura en vivo lee el tráfico del adaptador de red para alimentar los detectores de inundaciones y la página de Tráfico.",
+      "label": "Iniciar la captura en vivo con el agente",
+      "hint": "Activada por defecto. No escribe nada en disco (solo una grabación que usted inicie) y su memoria está acotada. El cambio se aplica la próxima vez que arranque el agente; la página Captura la inicia y la detiene ahora mismo.",
+      "offNote": "Desactivada: tras el próximo arranque del agente no habrá captura de paquetes, así que la detección de inundaciones SYN, UDP e ICMP y la página de Tráfico no verán paquetes. La detección por conexiones, inicios de sesión y contadores del adaptador sigue funcionando."
     }
   },
   "about": {
@@ -532,7 +539,8 @@
       },
       "adapter": "Adaptador",
       "seen": "Paquetes vistos",
-      "dropped": "Perdidos"
+      "dropped": "Perdidos",
+      "notOnStart": "La captura en vivo no arranca con el agente (Ajustes → Captura en vivo)."
     },
     "record": {
       "title": "Grabar a un archivo",

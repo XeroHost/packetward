@@ -63,7 +63,9 @@ pub use rdp::{
     RdpEndSessionRequest, RdpFinding, RdpLockoutRequest, RdpNlaRequest, RdpPending, RdpPortRequest,
     RdpRestrictRequest,
 };
-pub use settings::{AgentSettingsView, AuditEntryView, AuditQuery, AuditView, ProxyRequest};
+pub use settings::{
+    AgentSettingsView, AuditEntryView, AuditQuery, AuditView, CaptureOnStartRequest, ProxyRequest,
+};
 pub use speed::{
     SpeedEvent, SpeedKind, SpeedLatencyView, SpeedRequest, SpeedResultView, SpeedServerView,
     SpeedStarted, SpeedTransferView,
@@ -140,6 +142,7 @@ pub mod method {
     pub const INTEL_ABUSE_CHECK: &str = "intel.abuse.check";
     pub const SETTINGS_GET: &str = "settings.get";
     pub const SETTINGS_SET_PROXY: &str = "settings.set_proxy";
+    pub const SETTINGS_SET_CAPTURE_ON_START: &str = "settings.set_capture_on_start";
     pub const LOGS_AUDIT: &str = "logs.audit";
     pub const SPEED_START: &str = "speed.start";
     pub const SPEED_CANCEL: &str = "speed.cancel";

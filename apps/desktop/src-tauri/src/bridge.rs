@@ -347,6 +347,7 @@ const CALLABLE_METHODS: &[&str] = &[
     method::INTEL_ABUSE_CHECK,
     method::SETTINGS_GET,
     method::SETTINGS_SET_PROXY,
+    method::SETTINGS_SET_CAPTURE_ON_START,
     method::LOGS_AUDIT,
 ];
 

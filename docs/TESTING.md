@@ -217,6 +217,10 @@ Automated tests cover the pipeline, stats, recorder, blind detection, support bu
 2. Record three 500 MB timed captures in a row (or fill `%ProgramData%\PacketWard\captures` with large `.pcapng` files): the folder never exceeds 2 GiB, the oldest recordings disappear first, other files in the folder stay.
 3. Leave the live capture running for an hour under normal traffic: the agent's private memory stays flat (check with the Task Manager details tab) and `captures\` stays empty.
 
+## F4c. Start-up capture switch (2026-11-20)
+1. Settings → Live capture: turn **off**, restart the service: the Capture page shows the capture stopped with "does not start with the agent", Dashboard/Traffic show no packets, `pwctl status` says capture is not running, the log says "live capture not started: it is switched off in the settings". Start it from the Capture page: it runs until the next restart.
+2. Turn it **on**, restart: the capture starts by itself again. An older `settings.json` without the field behaves as on.
+
 ## F5. Alerts and notifications (M5)
 
 Automated tests cover every detector on its fixture and the quiet "normal traffic" fixture, the engine wiring (netstat, failed logons,
