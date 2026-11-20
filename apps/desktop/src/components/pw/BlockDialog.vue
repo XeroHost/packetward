@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { FIELD } from '@/features/diagnostics/fieldClass'
 import { springDialog } from '@/lib/motion'
 import { useDefenseStore } from '@/stores/defense'
+import PwSelect from '@/components/pw/PwSelect.vue'
 
 const { t } = useI18n()
 const defense = useDefenseStore()
@@ -61,6 +62,8 @@ async function allow(): Promise<void> {
   if (await defense.updateAllowlist({ ...defense.allowlist, allowlist: merged }))
     defense.closeBlock()
 }
+
+const durationOptions = computed(() => DURATIONS.map((value) => ({ value, label: label(value) })))
 </script>
 
 <template>
@@ -75,9 +78,7 @@ async function allow(): Promise<void> {
       <p class="text-text-muted text-sm">{{ t('firewall.dialog.consequence') }}</p>
       <label class="flex flex-col gap-1 text-sm">
         <span class="text-text-muted">{{ t('firewall.blocks.duration') }}</span>
-        <select v-model="duration" :class="FIELD">
-          <option v-for="value in DURATIONS" :key="value" :value="value">{{ label(value) }}</option>
-        </select>
+        <PwSelect v-model="duration" :options="durationOptions" />
       </label>
       <label class="flex flex-col gap-1 text-sm">
         <span class="text-text-muted">{{ t('firewall.blocks.reason') }}</span>

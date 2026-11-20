@@ -15,6 +15,7 @@ import { useSpeedStore } from '@/stores/speed'
 import { formatLoss, formatMs, isIcmpRateLimited, lossLevel } from './diagFormat'
 import FailureNote from './FailureNote.vue'
 import { FIELD } from './fieldClass'
+import PwSelect from '@/components/pw/PwSelect.vue'
 
 const { t } = useI18n()
 const diag = useDiagStore()
@@ -136,6 +137,12 @@ const EXPORT_ITEMS: { format: MtrExportFormat; action: 'save' | 'copy'; key: str
 function reachLabel(reach: string): string {
   return t(`diagnostics.mtr.reach.${reach.replace(/-/g, '_')}`)
 }
+
+const modeOptions = [
+  { value: 'icmp', label: 'ICMP' },
+  { value: 'udp', label: 'UDP' },
+  { value: 'tcp', label: 'TCP SYN' },
+] as const
 </script>
 
 <template>
@@ -215,11 +222,7 @@ function reachLabel(reach: string): string {
       <legend class="sr-only">{{ t('diagnostics.mtr.options') }}</legend>
       <label v-if="advancedSupported" class="flex w-32 flex-col gap-1 text-sm">
         <span class="text-text-muted">{{ t('diagnostics.mtr.mode') }}</span>
-        <select v-model="mode" :class="FIELD" :disabled="diag.mtrRunning">
-          <option value="icmp">ICMP</option>
-          <option value="udp">UDP</option>
-          <option value="tcp">TCP SYN</option>
-        </select>
+        <PwSelect v-model="mode" :options="modeOptions" :disabled="diag.mtrRunning" />
       </label>
       <label v-if="advancedSupported && usesPort" class="flex w-28 flex-col gap-1 text-sm">
         <span class="text-text-muted">{{ t('diagnostics.mtr.port') }}</span>

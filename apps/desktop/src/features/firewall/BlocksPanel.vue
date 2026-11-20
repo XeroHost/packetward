@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ShieldBan, Trash2 } from '@/components/pw/icons'
 import IpCell from '@/components/pw/IpCell.vue'
@@ -10,6 +10,7 @@ import { FIELD } from '@/features/diagnostics/fieldClass'
 import FailureNote from '@/features/diagnostics/FailureNote.vue'
 import { LOCKOUT_PHRASE } from '@/api/defense'
 import { splitTargets, useDefenseStore } from '@/stores/defense'
+import PwSelect from '@/components/pw/PwSelect.vue'
 
 const { t } = useI18n()
 const defense = useDefenseStore()
@@ -65,6 +66,10 @@ async function doPurge(): Promise<void> {
 }
 
 onMounted(() => void defense.loadBlocks())
+
+const durationOptions = computed(() =>
+  DURATIONS.map((value) => ({ value, label: durationLabel(value) })),
+)
 </script>
 
 <template>
@@ -83,11 +88,7 @@ onMounted(() => void defense.loadBlocks())
       </label>
       <label class="flex w-44 flex-col gap-1 text-sm">
         <span class="text-text-muted">{{ t('firewall.blocks.duration') }}</span>
-        <select v-model="duration" :class="FIELD">
-          <option v-for="value in DURATIONS" :key="value" :value="value">
-            {{ durationLabel(value) }}
-          </option>
-        </select>
+        <PwSelect v-model="duration" :options="durationOptions" />
       </label>
       <label class="flex w-56 flex-col gap-1 text-sm">
         <span class="text-text-muted">{{ t('firewall.blocks.reason') }}</span>

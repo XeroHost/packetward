@@ -11,6 +11,7 @@ import { FIELD } from '@/features/diagnostics/fieldClass'
 import FailureNote from '@/features/diagnostics/FailureNote.vue'
 import { useDefenseStore } from '@/stores/defense'
 import type { FirewallRuleView } from '@/types/generated/FirewallRuleView'
+import PwSelect from '@/components/pw/PwSelect.vue'
 
 const { t } = useI18n()
 const defense = useDefenseStore()
@@ -101,6 +102,22 @@ function summary(rule: FirewallRuleView): string {
 }
 
 const card = 'flex flex-col gap-4'
+
+const directionOptions = computed(() => [
+  { value: 'inbound' as const, label: t('firewall.rules.inbound') },
+  { value: 'outbound' as const, label: t('firewall.rules.outbound') },
+])
+
+const actionOptions = computed(() => [
+  { value: 'allow' as const, label: t('firewall.rules.allow') },
+  { value: 'block' as const, label: t('firewall.rules.block') },
+])
+
+const protocolOptions = [
+  { value: 'tcp', label: 'TCP' },
+  { value: 'udp', label: 'UDP' },
+  { value: 'any', label: 'Any' },
+] as const
 </script>
 
 <template>
@@ -139,25 +156,15 @@ const card = 'flex flex-col gap-4'
       </label>
       <label class="flex w-32 flex-col gap-1 text-sm">
         <span class="text-text-muted">{{ t('firewall.rules.direction') }}</span>
-        <select v-model="draft.direction" :class="FIELD">
-          <option value="inbound">{{ t('firewall.rules.inbound') }}</option>
-          <option value="outbound">{{ t('firewall.rules.outbound') }}</option>
-        </select>
+        <PwSelect v-model="draft.direction" :options="directionOptions" />
       </label>
       <label class="flex w-28 flex-col gap-1 text-sm">
         <span class="text-text-muted">{{ t('firewall.rules.action') }}</span>
-        <select v-model="draft.action" :class="FIELD">
-          <option value="allow">{{ t('firewall.rules.allow') }}</option>
-          <option value="block">{{ t('firewall.rules.block') }}</option>
-        </select>
+        <PwSelect v-model="draft.action" :options="actionOptions" />
       </label>
       <label class="flex w-28 flex-col gap-1 text-sm">
         <span class="text-text-muted">{{ t('diagnostics.port.protocol') }}</span>
-        <select v-model="draft.protocol" :class="FIELD">
-          <option value="tcp">TCP</option>
-          <option value="udp">UDP</option>
-          <option value="any">Any</option>
-        </select>
+        <PwSelect v-model="draft.protocol" :options="protocolOptions" />
       </label>
       <label class="flex w-36 flex-col gap-1 text-sm">
         <span class="text-text-muted">{{ t('firewall.rules.localPorts') }}</span>

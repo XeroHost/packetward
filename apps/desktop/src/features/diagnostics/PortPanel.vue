@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { useDiagStore } from '@/stores/diag'
 import FailureNote from './FailureNote.vue'
 import { FIELD } from './fieldClass'
+import PwSelect from '@/components/pw/PwSelect.vue'
 
 const { t } = useI18n()
 const diag = useDiagStore()
@@ -30,6 +31,11 @@ function run(): void {
     timeout_ms: 5000,
   })
 }
+
+const protocolOptions = [
+  { value: 'tcp', label: 'TCP' },
+  { value: 'udp', label: 'UDP' },
+] as const
 </script>
 
 <template>
@@ -52,10 +58,7 @@ function run(): void {
       </label>
       <label class="flex w-28 flex-col gap-1 text-sm">
         <span class="text-text-muted">{{ t('diagnostics.port.protocol') }}</span>
-        <select v-model="protocol" :class="FIELD">
-          <option value="tcp">TCP</option>
-          <option value="udp">UDP</option>
-        </select>
+        <PwSelect v-model="protocol" :options="protocolOptions" />
       </label>
       <Button type="submit" :disabled="!canRun">
         <Plug aria-hidden="true" />{{ t('diagnostics.port.check') }}

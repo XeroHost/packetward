@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { useDiagStore } from '@/stores/diag'
 import FailureNote from './FailureNote.vue'
 import { FIELD } from './fieldClass'
+import PwSelect from '@/components/pw/PwSelect.vue'
 
 const { t } = useI18n()
 const diag = useDiagStore()
@@ -50,6 +51,12 @@ function run(): void {
       .filter((server) => server !== ''),
   })
 }
+
+const typeOptions = RECORD_TYPES.map((value) => ({ value, label: value }))
+
+const resolverOptions = computed(() =>
+  RESOLVERS.map((value) => ({ value, label: t(`diagnostics.dns.resolvers.${value}`) })),
+)
 </script>
 
 <template>
@@ -68,17 +75,11 @@ function run(): void {
       </label>
       <label class="flex w-28 flex-col gap-1 text-sm">
         <span class="text-text-muted">{{ t('diagnostics.dns.type') }}</span>
-        <select v-model="recordType" :class="FIELD">
-          <option v-for="type in RECORD_TYPES" :key="type" :value="type">{{ type }}</option>
-        </select>
+        <PwSelect v-model="recordType" :options="typeOptions" />
       </label>
       <label class="flex w-44 flex-col gap-1 text-sm">
         <span class="text-text-muted">{{ t('diagnostics.dns.resolver') }}</span>
-        <select v-model="resolver" :class="FIELD">
-          <option v-for="option in RESOLVERS" :key="option" :value="option">
-            {{ t(`diagnostics.dns.resolvers.${option}`) }}
-          </option>
-        </select>
+        <PwSelect v-model="resolver" :options="resolverOptions" />
       </label>
       <label v-if="resolver === 'custom'" class="flex min-w-48 flex-col gap-1 text-sm">
         <span class="text-text-muted">{{ t('diagnostics.dns.customServers') }}</span>

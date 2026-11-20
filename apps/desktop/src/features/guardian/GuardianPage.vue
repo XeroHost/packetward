@@ -18,6 +18,7 @@ import type { AlertSeverity } from '@/types/generated/AlertSeverity'
 import type { GuardianMode } from '@/types/generated/GuardianMode'
 import type { GuardianPolicy } from '@/types/generated/GuardianPolicy'
 import type { GuardianPreset } from '@/types/generated/GuardianPreset'
+import PwSelect from '@/components/pw/PwSelect.vue'
 
 const { t } = useI18n()
 const defense = useDefenseStore()
@@ -125,6 +126,14 @@ const OUTCOME_TONE: Record<string, string> = {
 }
 
 const card = 'flex flex-col gap-4'
+
+const presetOptions = computed(() =>
+  PRESETS.map((value) => ({ value, label: t(`guardian.policy.presets.${value}`) })),
+)
+
+const severityOptions = computed(() =>
+  SEVERITIES.map((value) => ({ value, label: t(`alerts.severity.${value}`) })),
+)
 </script>
 
 <template>
@@ -230,19 +239,11 @@ const card = 'flex flex-col gap-4'
       <div class="flex flex-wrap items-end gap-3">
         <label class="flex w-40 flex-col gap-1.5 text-sm">
           <span class="text-text-muted text-xs">{{ t('guardian.policy.preset') }}</span>
-          <select v-model="preset" :class="FIELD">
-            <option v-for="p in PRESETS" :key="p" :value="p">
-              {{ t(`guardian.policy.presets.${p}`) }}
-            </option>
-          </select>
+          <PwSelect v-model="preset" :options="presetOptions" />
         </label>
         <label class="flex w-40 flex-col gap-1.5 text-sm">
           <span class="text-text-muted text-xs">{{ t('guardian.policy.minSeverity') }}</span>
-          <select v-model="minSeverity" :class="FIELD">
-            <option v-for="s in SEVERITIES" :key="s" :value="s">
-              {{ t(`alerts.severity.${s}`) }}
-            </option>
-          </select>
+          <PwSelect v-model="minSeverity" :options="severityOptions" />
         </label>
         <label class="flex min-w-56 flex-1 flex-col gap-1.5 text-sm">
           <span class="text-text-muted text-xs">{{ t('guardian.policy.ladder') }}</span>

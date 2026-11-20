@@ -10,6 +10,7 @@ import type { PayloadView } from '@/types/generated/PayloadView'
 import type { RecordModeView } from '@/types/generated/RecordModeView'
 import FailureNote from '@/features/diagnostics/FailureNote.vue'
 import { FIELD } from '@/features/diagnostics/fieldClass'
+import PwSelect from '@/components/pw/PwSelect.vue'
 
 const { t } = useI18n()
 const capture = useCaptureStore()
@@ -58,6 +59,16 @@ async function confirmDelete(file: string): Promise<void> {
 onMounted(() => void capture.loadFiles())
 
 const card = 'flex flex-col gap-4'
+
+const modeOptions = computed(() => [
+  { value: 'timed' as const, label: t('capture.record.modes.timed') },
+  { value: 'ring' as const, label: t('capture.record.modes.ring') },
+])
+
+const payloadOptions = computed(() => [
+  { value: 'headers' as const, label: t('capture.record.payloads.headers') },
+  { value: 'full' as const, label: t('capture.record.payloads.full') },
+])
 </script>
 
 <template>
@@ -72,10 +83,7 @@ const card = 'flex flex-col gap-4'
       </label>
       <label class="flex w-40 flex-col gap-1 text-sm">
         <span class="text-text-muted">{{ t('capture.record.mode') }}</span>
-        <select v-model="mode" :class="FIELD" :disabled="running">
-          <option value="timed">{{ t('capture.record.modes.timed') }}</option>
-          <option value="ring">{{ t('capture.record.modes.ring') }}</option>
-        </select>
+        <PwSelect v-model="mode" :options="modeOptions" :disabled="running" />
       </label>
       <label v-if="mode === 'timed'" class="flex w-28 flex-col gap-1 text-sm">
         <span class="text-text-muted">{{ t('capture.record.seconds') }}</span>
@@ -101,10 +109,7 @@ const card = 'flex flex-col gap-4'
       </label>
       <label class="flex w-48 flex-col gap-1 text-sm">
         <span class="text-text-muted">{{ t('capture.record.payload') }}</span>
-        <select v-model="payload" :class="FIELD" :disabled="running">
-          <option value="headers">{{ t('capture.record.payloads.headers') }}</option>
-          <option value="full">{{ t('capture.record.payloads.full') }}</option>
-        </select>
+        <PwSelect v-model="payload" :options="payloadOptions" :disabled="running" />
       </label>
       <Button v-if="!running" type="submit" :disabled="!canStart">
         <Circle aria-hidden="true" />{{ t('capture.record.start') }}
