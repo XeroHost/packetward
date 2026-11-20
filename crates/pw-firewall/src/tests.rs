@@ -1065,3 +1065,59 @@ fn random_block_unblock_sequences_keep_the_firewall_consistent() {
         assert!(pw_rules(&m).is_empty());
     }
 }
+
+// ---- duplicate rule names and concurrent writers -------------------------------------------
+
+#[test]
+fn rules_that_share_a_name_are_healed_and_their_stale_blocks_go() {
+    let m = manager();
+    let none = CidrSet::new();
+    let opts = BlockOptions::new(&none);
+    let batch = BatchId::auto_block();
+    m.block_ips(&batch, &[host(1), host(2)], &opts).unwrap();
+
+    // What the race left on the dev VPS: a second rule with the same name that still blocks an
+    // address nobody wants any more. Updates by name only reach the first copy.
+    let mut twin = pw_rules(&m).remove(0);
+    twin.remote_addresses = "10.0.0.99".into();
+    m.backend().seed(twin);
+    assert_eq!(pw_rules(&m).len(), 2);
+    assert!(m.list_blocks(&batch).unwrap().contains(&host(99)));
+
+    let desired = [host(1), host(2)].map(|block| DesiredBlock {
+        block,
+        expires_at: None,
+    });
+    m.reconcile_blocks(&batch, &desired, 1, &opts).unwrap();
+
+    assert_eq!(pw_rules(&m).len(), 1, "one rule per name again");
+    let mut blocked = m.list_blocks(&batch).unwrap();
+    blocked.sort_by_key(|c| c.to_string());
+    assert_eq!(blocked, vec![host(1), host(2)], "the stale block is gone");
+}
+
+#[test]
+fn concurrent_writers_lose_no_block_and_create_no_duplicate_rule() {
+    let m = std::sync::Arc::new(manager());
+    let batch = BatchId::auto_block();
+    let threads: Vec<_> = (1..=8u32)
+        .map(|n| {
+            let m = std::sync::Arc::clone(&m);
+            let batch = batch.clone();
+            std::thread::spawn(move || {
+                let none = CidrSet::new();
+                m.block_ips(&batch, &[host(n)], &BlockOptions::new(&none))
+                    .unwrap();
+            })
+        })
+        .collect();
+    for t in threads {
+        t.join().unwrap();
+    }
+    let mut blocked = m.list_blocks(&batch).unwrap();
+    blocked.sort_by_key(|c| c.to_string());
+    let mut expected = hosts(1..9);
+    expected.sort_by_key(|c| c.to_string());
+    assert_eq!(blocked, expected);
+    assert_eq!(pw_rules(&m).len(), 1);
+}

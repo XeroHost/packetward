@@ -6,9 +6,10 @@
 //! protected-set and breadth screening, foreign-rule protection, lockout confirmations and the
 //! ordering of multi-step changes.
 
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 use std::net::IpAddr;
 use std::sync::atomic::{AtomicU16, Ordering};
+use std::sync::{Mutex, MutexGuard, PoisonError};
 
 use pw_core::{Cidr, CidrSet};
 use tracing::{info, warn};
@@ -173,6 +174,10 @@ pub struct FirewallManager<B: FirewallBackend> {
     backend: B,
     batch: BatchConfig,
     rdp_port: AtomicU16,
+    /// One writer at a time for the block batches. Without it two callers (a Guardian block and the
+    /// 10-second reconcile) both saw "no rule yet" and both created `PW-AutoBlock-001`: two rules with
+    /// one name, of which later updates only ever reached the first, leaving stale blocks behind.
+    batch_writes: Mutex<()>,
 }
 
 impl<B: FirewallBackend> FirewallManager<B> {
@@ -181,6 +186,7 @@ impl<B: FirewallBackend> FirewallManager<B> {
             backend,
             batch: BatchConfig::default(),
             rdp_port: AtomicU16::new(DEFAULT_RDP_PORT),
+            batch_writes: Mutex::new(()),
         }
     }
 
@@ -233,6 +239,42 @@ impl<B: FirewallBackend> FirewallManager<B> {
 
     // ---- batches -------------------------------------------------------------------------
 
+    fn writer(&self) -> MutexGuard<'_, ()> {
+        self.batch_writes
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+    }
+
+    /// Rules of one batch that share a name (left by the race described at `batch_writes`, or by an
+    /// older agent). The backends address a rule by name, so only the first of them is ever updated or
+    /// removed: all copies are deleted here and the normal plan recreates the batch from the desired
+    /// set. Returns how many names were repaired.
+    fn heal_duplicate_rules(&self, batch: &BatchId) -> Result<usize> {
+        let rules = self.backend.list_rules(Some(GROUP))?;
+        let mut seen = HashSet::new();
+        let mut duplicated = BTreeSet::new();
+        for rule in rules
+            .iter()
+            .filter(|r| batch.parse_index(&r.name).is_some())
+        {
+            if !seen.insert(rule.name.to_ascii_lowercase()) {
+                duplicated.insert(rule.name.clone());
+            }
+        }
+        for name in &duplicated {
+            warn!(rule = %name, "several firewall rules share this name: removing the copies and rebuilding the batch");
+            // A name can only be removed one copy at a time; the cap stops a misbehaving backend.
+            for _ in 0..16 {
+                match self.backend.remove_rule(name) {
+                    Ok(()) => {}
+                    Err(FirewallError::NotFound(_)) => break,
+                    Err(e) => return Err(e),
+                }
+            }
+        }
+        Ok(duplicated.len())
+    }
+
     fn read_batch(&self, batch: &BatchId) -> Result<Vec<ExistingBatchRule>> {
         let rules = self.backend.list_rules(Some(GROUP))?;
         Ok(rules
@@ -278,6 +320,7 @@ impl<B: FirewallBackend> FirewallManager<B> {
         screened: Screened,
         evicted: Vec<Cidr>,
     ) -> Result<BatchOutcome> {
+        self.heal_duplicate_rules(batch)?;
         let existing = self.read_batch(batch)?;
         let current: HashSet<Cidr> = existing
             .iter()
@@ -608,6 +651,7 @@ impl<B: FirewallBackend> Firewall for FirewallManager<B> {
     ) -> Result<BatchOutcome> {
         // Screen first: a refused batch performs no write and no read.
         let screened = screen_blocks(ips, opts)?;
+        let _writer = self.writer();
         let spans = ProtectedSpans::new(opts.protected);
         let mut desired = Vec::new();
         let mut evicted = Vec::new();
@@ -623,6 +667,7 @@ impl<B: FirewallBackend> Firewall for FirewallManager<B> {
     }
 
     fn unblock_ips(&self, batch: &BatchId, ips: &[Cidr]) -> Result<BatchOutcome> {
+        let _writer = self.writer();
         let current = self.current_blocks(batch)?;
         let drop: HashSet<Cidr> = ips.iter().copied().collect();
         let held: HashSet<Cidr> = current.iter().copied().collect();
@@ -641,6 +686,7 @@ impl<B: FirewallBackend> Firewall for FirewallManager<B> {
         opts: &BlockOptions<'_>,
     ) -> Result<BatchOutcome> {
         let screened = screen_blocks(blocks, opts)?;
+        let _writer = self.writer();
         let desired = screened.accepted.clone();
         self.converge(batch, desired, screened, Vec::new())
     }
@@ -654,6 +700,7 @@ impl<B: FirewallBackend> Firewall for FirewallManager<B> {
     ) -> Result<BatchOutcome> {
         let (active, expired) = split_expired(desired, now);
         let screened = screen_blocks(&active, opts)?;
+        let _writer = self.writer();
         let accepted = screened.accepted.clone();
         let mut outcome = self.converge(batch, accepted, screened, Vec::new())?;
         outcome.expired = expired;
@@ -665,6 +712,7 @@ impl<B: FirewallBackend> Firewall for FirewallManager<B> {
     }
 
     fn clear_batch(&self, batch: &BatchId) -> Result<usize> {
+        let _writer = self.writer();
         let mut removed = 0;
         for rule in self.read_batch(batch)? {
             match self.backend.remove_rule(&rule.name) {
@@ -677,6 +725,7 @@ impl<B: FirewallBackend> Firewall for FirewallManager<B> {
     }
 
     fn purge(&self, opts: &RuleOptions<'_>) -> Result<PurgeReport> {
+        let _writer = self.writer();
         let rules = self.backend.list_rules(Some(GROUP))?;
         // Only exact members of the group; the backend filter is advisory.
         let mine: Vec<&Rule> = rules.iter().filter(|r| r.grouping == GROUP).collect();

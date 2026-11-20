@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { useIntervalFn } from '@vueuse/core'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ShieldBan, Trash2 } from '@/components/pw/icons'
 import IpCell from '@/components/pw/IpCell.vue'
@@ -11,6 +12,7 @@ import FailureNote from '@/features/diagnostics/FailureNote.vue'
 import { LOCKOUT_PHRASE } from '@/api/defense'
 import { splitTargets, useDefenseStore } from '@/stores/defense'
 import PwSelect from '@/components/pw/PwSelect.vue'
+import { useAppVisible } from '@/lib/visibility'
 
 const { t } = useI18n()
 const defense = useDefenseStore()
@@ -66,6 +68,21 @@ async function doPurge(): Promise<void> {
 }
 
 onMounted(() => void defense.loadBlocks())
+// The Guardian blocks (and lifts) addresses on its own: look again while this tab is open and visible.
+const visible = useAppVisible()
+const { pause, resume } = useIntervalFn(() => void defense.loadBlocks(), 5_000, {
+  immediate: false,
+})
+watch(
+  visible,
+  (shown) => {
+    if (shown) {
+      void defense.loadBlocks()
+      resume()
+    } else pause()
+  },
+  { immediate: true },
+)
 
 const durationOptions = computed(() =>
   DURATIONS.map((value) => ({ value, label: durationLabel(value) })),
