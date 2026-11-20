@@ -5,6 +5,8 @@
 //! `live.stats` topics. The engine implements [`pw_ipc::Handler`] itself, so the agent only has to
 //! hand it to `pw_ipc::serve`.
 
+#[cfg(feature = "store")]
+mod alert_db;
 mod capture;
 mod connections;
 mod defense;
@@ -49,7 +51,7 @@ use tokio::time::{Instant, MissedTickBehavior};
 pub use capture::ensure_private_dir;
 pub use capture::{CaptureHost, CaptureManager, PacketSink, SystemCaptureHost};
 pub use defense::{Defense, JsonPersistence, MemoryPersistence, Persistence};
-pub use detect::{AlertStore, DetectionService, KEEP_INCIDENTS};
+pub use detect::{AlertRetention, AlertStore, DetectionService, KEEP_INCIDENTS};
 pub use diag::{Diag, IntelEnricher, SharedProbe, MAX_RUNNING_JOBS};
 pub use intel::{IntelApi, IntelService, OfflineFetcher};
 pub use poller::{Poller, Snapshot};
@@ -85,6 +87,8 @@ pub struct EngineConfig {
     /// Alerts are appended here as JSON lines so the inbox survives restarts. `None` (the default of
     /// `EngineConfig::new`) keeps them in memory only; the agent sets the real path.
     pub alerts_log: Option<PathBuf>,
+    /// How long and how many incidents the database keeps (with `defense_dir` and the `store` feature).
+    pub alert_retention: AlertRetention,
     /// Where the blocks, the Guardian policy, the allowlist and the audit log are kept (`None`: in
     /// memory only, as in tests).
     pub defense_dir: Option<PathBuf>,
@@ -115,6 +119,7 @@ impl EngineConfig {
             support_dir: data_dir().join("support"),
             logs_dir: data_dir().join("logs"),
             alerts_log: None,
+            alert_retention: AlertRetention::default(),
             defense_dir: None,
             intel_dir: None,
             detect_preset: pw_detect::Preset::Balanced,
@@ -224,7 +229,12 @@ impl Engine {
     ) -> Self {
         let (publish, latest) = watch::channel(None);
         let trust = TrustState::new(config.rdp_trust_days);
-        let alerts = Arc::new(AlertStore::new(config.alerts_log.clone()));
+        // One database for the defense state, the audit log and the alert inbox.
+        let shared_store = config
+            .defense_dir
+            .as_deref()
+            .and_then(|dir| open_store(dir, config.alert_retention));
+        let alerts = Arc::new(make_alert_store(&config, &shared_store));
         // Learning RDP logons reads the event log (a bounded initial load, then live events); it
         // blocks, so it runs on a blocking thread and never delays the first snapshot.
         {
@@ -237,7 +247,7 @@ impl Engine {
                 let recorder = trust.sink();
                 let watcher = Arc::clone(&trust);
                 let alerts = Arc::clone(&alerts);
-                let counter = std::sync::atomic::AtomicU64::new(1);
+                let counter = std::sync::atomic::AtomicU64::new(alerts.first_logon_seq());
                 let sink: pw_netstat::LogonSink = Arc::new(move |event| {
                     let known = watcher
                         .addresses(poller::unix_ms())
@@ -304,7 +314,7 @@ impl Engine {
         // servers, the addresses with a successful RDP logon and the user's allowlist.
         let context = Arc::new(RwLock::new(pw_netstat::NetworkContext::default()));
         let persistence: Arc<dyn Persistence> = match &config.defense_dir {
-            Some(dir) => open_persistence(dir),
+            Some(dir) => open_persistence(dir, shared_store),
             None => Arc::new(MemoryPersistence::default()),
         };
         let defense_firewall = Arc::clone(&firewall);
@@ -348,6 +358,7 @@ impl Engine {
             Arc::clone(&defense),
             Arc::clone(&netstat),
             context,
+            Arc::clone(&alerts),
         ));
         let task = tokio::spawn(poll_loop(
             netstat,
@@ -473,29 +484,69 @@ impl Engine {
 
 /// The defense state and audit log of the agent: SQLite when the `store` feature is on and the
 /// database opens, the JSON files otherwise (a broken database must never stop the protection).
-fn open_persistence(dir: &std::path::Path) -> Arc<dyn Persistence> {
+fn open_persistence(dir: &std::path::Path, store: StoreHandle) -> Arc<dyn Persistence> {
     #[cfg(feature = "store")]
-    {
-        match pw_store::Store::open_private(dir.join("packetward.db")) {
-            Ok(opened) => {
-                if let Some(recovery) = &opened.recovery {
-                    tracing::error!(
-                        backup = %recovery.backup.display(),
-                        reason = %recovery.reason,
-                        "the database was corrupt and was replaced; blocks, policy and audit log started empty"
-                    );
-                }
-                return Arc::new(store_persist::StorePersistence::new(
-                    Arc::new(opened.store),
-                    Some(dir.to_path_buf()),
-                ));
+    if let Some(store) = store {
+        return Arc::new(store_persist::StorePersistence::new(
+            store,
+            Some(dir.to_path_buf()),
+        ));
+    }
+    #[cfg(not(feature = "store"))]
+    let _ = store;
+    Arc::new(JsonPersistence::new(dir.to_path_buf()))
+}
+
+/// The shared database handle (`()` when the `store` feature is off).
+#[cfg(feature = "store")]
+type StoreHandle = Option<Arc<pw_store::Store>>;
+#[cfg(not(feature = "store"))]
+type StoreHandle = Option<()>;
+
+/// Opens `packetward.db` (a corrupt file is replaced and the old one kept as a backup). `None` when
+/// it cannot be opened: the JSON files take over, because a broken database must never stop the
+/// protection.
+#[cfg(feature = "store")]
+fn open_store(dir: &std::path::Path, retention: AlertRetention) -> StoreHandle {
+    let limits = pw_store::Limits {
+        alerts_keep: retention.max_rows.max(1),
+        ..pw_store::Limits::default()
+    };
+    match pw_store::Store::open_private_with(dir.join("packetward.db"), limits) {
+        Ok(opened) => {
+            if let Some(recovery) = &opened.recovery {
+                tracing::error!(
+                    backup = %recovery.backup.display(),
+                    reason = %recovery.reason,
+                    "the database was corrupt and was replaced; blocks, policy, alerts and audit log started empty"
+                );
             }
-            Err(err) => {
-                tracing::error!(%err, "could not open the database; using the JSON files");
-            }
+            Some(Arc::new(opened.store))
+        }
+        Err(err) => {
+            tracing::error!(%err, "could not open the database; using the JSON files");
+            None
         }
     }
-    Arc::new(JsonPersistence::new(dir.to_path_buf()))
+}
+
+#[cfg(not(feature = "store"))]
+fn open_store(_dir: &std::path::Path, _retention: AlertRetention) -> StoreHandle {
+    None
+}
+
+fn make_alert_store(config: &EngineConfig, store: &StoreHandle) -> AlertStore {
+    #[cfg(feature = "store")]
+    if let Some(store) = store {
+        return AlertStore::with_store(
+            Arc::clone(store),
+            config.alerts_log.clone(),
+            config.alert_retention,
+        );
+    }
+    #[cfg(not(feature = "store"))]
+    let _ = store;
+    AlertStore::new(config.alerts_log.clone())
 }
 
 /// What the engine is given to build the intel service with.
@@ -562,6 +613,7 @@ async fn upkeep_loop(
     defense: Arc<Defense>,
     netstat: Arc<dyn NetStat>,
     context: Arc<RwLock<pw_netstat::NetworkContext>>,
+    alerts: Arc<AlertStore>,
 ) {
     let mut ticker = tokio::time::interval(Duration::from_secs(10));
     ticker.set_missed_tick_behavior(MissedTickBehavior::Skip);
@@ -572,8 +624,14 @@ async fn upkeep_loop(
         let netstat = Arc::clone(&netstat);
         let context = Arc::clone(&context);
         let refresh_context = round.is_multiple_of(3);
+        // The alert retention is applied hourly (and once when the agent starts).
+        let prune_alerts = round.is_multiple_of(360);
         round = round.wrapping_add(1);
+        let alerts = Arc::clone(&alerts);
         let job = tokio::task::spawn_blocking(move || {
+            if prune_alerts {
+                alerts.prune();
+            }
             if refresh_context {
                 let fresh = netstat.network_context();
                 *context

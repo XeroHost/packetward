@@ -23,6 +23,7 @@ use pw_proto::{
     AlertKindView, AlertList, AlertMetric, AlertPhaseView, AlertSeverity, AlertView, Proto,
     TcpState,
 };
+use serde::{Deserialize, Serialize};
 use tokio::sync::{broadcast, mpsc};
 
 use crate::poller::Snapshot;
@@ -40,6 +41,10 @@ fn now_ns() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_or(0, |d| u64::try_from(d.as_nanos()).unwrap_or(u64::MAX))
+}
+
+fn now_ms() -> u64 {
+    now_ns() / 1_000_000
 }
 
 // ---- conversions ----------------------------------------------------------------------------------
@@ -119,17 +124,83 @@ pub fn alert_view(alert: &Alert) -> AlertView {
 
 // ---- the store ------------------------------------------------------------------------------------
 
+/// The detectors number their incidents from 1 and the "new RDP logon" notices from here, so the two
+/// kinds never share an id.
+pub(crate) const LOGON_ID_BASE: u64 = 1 << 62;
+
+/// How long and how many incidents the database keeps (ongoing incidents are never pruned).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AlertRetention {
+    /// Ended incidents last seen longer ago than this are removed; 0 keeps them for ever.
+    pub days: u32,
+    /// Most rows kept; the oldest ended incidents go first. At least 1.
+    pub max_rows: u64,
+}
+
+impl Default for AlertRetention {
+    fn default() -> Self {
+        Self {
+            days: 90,
+            max_rows: 10_000,
+        }
+    }
+}
+
+/// The highest incident id handed out so far in each id range, so ids keep growing across restarts
+/// (also after the inbox was cleared or pruned).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct IdMarks {
+    /// Highest detector incident id.
+    pub detector: u64,
+    /// Highest logon-notice sequence number (the id minus [`LOGON_ID_BASE`]).
+    pub logon: u64,
+}
+
+impl IdMarks {
+    fn of(incidents: &VecDeque<AlertView>) -> Self {
+        let mut marks = Self::default();
+        for incident in incidents {
+            marks.raise(incident.id);
+        }
+        marks
+    }
+
+    /// Notes that `id` is in use; true when that moved a mark.
+    pub(crate) fn raise(&mut self, id: u64) -> bool {
+        let (mark, value) = if id >= LOGON_ID_BASE {
+            (&mut self.logon, id - LOGON_ID_BASE)
+        } else {
+            (&mut self.detector, id)
+        };
+        if value > *mark {
+            *mark = value;
+            true
+        } else {
+            false
+        }
+    }
+}
+
 struct StoreInner {
     /// Newest first, one entry per incident id.
     incidents: VecDeque<AlertView>,
     dropped: u64,
+    /// The legacy JSON-lines file: the whole persistence without the database, and the place alerts
+    /// go to if a database write fails.
     log: Option<PathBuf>,
+    marks: IdMarks,
+    #[cfg(feature = "store")]
+    db: Option<crate::alert_db::AlertDb>,
 }
 
-/// Bounded list of incidents, persisted as JSON lines so the inbox survives an agent restart.
+/// Bounded list of incidents. The newest [`KEEP_INCIDENTS`] are kept in memory for `alerts.list`;
+/// they survive an agent restart in the SQLite store (feature `store`, retention applies) or, without
+/// it, as JSON lines.
 pub struct AlertStore {
     inner: Mutex<StoreInner>,
     events: broadcast::Sender<AlertView>,
+    detector_offset: u64,
+    logon_start: u64,
 }
 
 impl AlertStore {
@@ -154,14 +225,86 @@ impl AlertStore {
                 }
             }
         }
+        let marks = IdMarks::of(&incidents);
+        Self::from_parts(StoreInner {
+            incidents,
+            dropped: 0,
+            log,
+            marks,
+            #[cfg(feature = "store")]
+            db: None,
+        })
+    }
+
+    fn from_parts(inner: StoreInner) -> Self {
         Self {
-            inner: Mutex::new(StoreInner {
-                incidents,
-                dropped: 0,
-                log,
-            }),
+            // Fixed for this run: the marks keep growing as incidents are recorded.
+            detector_offset: inner.marks.detector,
+            logon_start: inner.marks.logon.saturating_add(1),
+            inner: Mutex::new(inner),
             events: broadcast::channel(EVENT_BACKLOG).0,
         }
+    }
+
+    /// An inbox kept in the shared SQLite store. `legacy_log` is the old `alerts.jsonl`: imported
+    /// once (see `alert_db`) and written to only if the database refuses a write.
+    #[cfg(feature = "store")]
+    pub fn with_store(
+        store: Arc<pw_store::Store>,
+        legacy_log: Option<PathBuf>,
+        retention: AlertRetention,
+    ) -> Self {
+        let db = crate::alert_db::AlertDb::new(store, retention);
+        if let Some(path) = &legacy_log {
+            db.import_legacy(path);
+        }
+        db.end_ongoing();
+        db.prune(now_ms());
+        let marks = db.marks();
+        let incidents = db.load_recent(KEEP_INCIDENTS);
+        Self::from_parts(StoreInner {
+            incidents,
+            dropped: 0,
+            log: legacy_log,
+            marks,
+            db: Some(db),
+        })
+    }
+
+    /// Added to the id of every incident the detectors raise, so ids never repeat after a restart.
+    pub fn detector_id_offset(&self) -> u64 {
+        self.detector_offset
+    }
+
+    /// The first sequence number for the "new RDP logon" notices of this run (their ids are
+    /// `LOGON_ID_BASE` + the sequence).
+    pub fn first_logon_seq(&self) -> u64 {
+        self.logon_start
+    }
+
+    /// Applies the retention (age and row cap) to the database now and returns how many incidents
+    /// went. Ongoing incidents stay. Without the database there is nothing to prune.
+    pub fn prune(&self) -> usize {
+        self.prune_at(now_ms())
+    }
+
+    #[cfg(feature = "store")]
+    pub fn prune_at(&self, now_ms: u64) -> usize {
+        let mut inner = lock(&self.inner);
+        let Some(db) = &inner.db else {
+            return 0;
+        };
+        let removed = db.prune(now_ms);
+        if removed > 0 {
+            // The database decides what is left; the inbox shows the same.
+            inner.incidents = db.load_recent(KEEP_INCIDENTS);
+        }
+        removed
+    }
+
+    #[cfg(not(feature = "store"))]
+    pub fn prune_at(&self, _now_ms: u64) -> usize {
+        0
     }
 
     pub fn record(&self, event: AlertView) {
@@ -172,8 +315,26 @@ impl AlertStore {
                 inner.incidents.pop_back();
                 inner.dropped += 1;
             }
-            if let Some(path) = inner.log.clone() {
-                append_line(&path, &stored);
+            let raised = inner.marks.raise(stored.id);
+            #[cfg(feature = "store")]
+            let written = match &inner.db {
+                Some(db) => {
+                    if raised {
+                        db.save_marks(&inner.marks);
+                    }
+                    db.upsert(&stored)
+                }
+                None => false,
+            };
+            #[cfg(not(feature = "store"))]
+            let written = {
+                let _ = raised;
+                false
+            };
+            if !written {
+                if let Some(path) = inner.log.clone() {
+                    append_line(&path, &stored);
+                }
             }
             stored
         };
@@ -194,6 +355,11 @@ impl AlertStore {
         let before = inner.incidents.len();
         inner.incidents.retain(|i| i.phase != AlertPhaseView::Ended);
         let removed = before - inner.incidents.len();
+        #[cfg(feature = "store")]
+        if let Some(db) = &inner.db {
+            // The database may hold more than the inbox shows: they all go.
+            return db.clear_ended().unwrap_or(removed);
+        }
         if let Some(path) = inner.log.clone() {
             // Rewrite the log with what is left, so cleared alerts do not come back after a restart.
             let lines: String = inner
@@ -238,18 +404,26 @@ impl AlertStore {
 }
 
 /// Merges one update into the list (newest first) and returns the stored incident.
-fn apply(incidents: &mut VecDeque<AlertView>, mut event: AlertView) -> AlertView {
-    if let Some(position) = incidents.iter().position(|i| i.id == event.id) {
-        if let Some(existing) = incidents.remove(position) {
-            event.first_seen_unix_ms = existing.first_seen_unix_ms;
-            event.peak_severity = existing.peak_severity.max(event.severity);
-            if event.phase == AlertPhaseView::Ended {
-                // An ended incident keeps the severity it peaked at.
-                event.severity = event.peak_severity;
-            }
+fn apply(incidents: &mut VecDeque<AlertView>, event: AlertView) -> AlertView {
+    let existing = incidents
+        .iter()
+        .position(|i| i.id == event.id)
+        .and_then(|position| incidents.remove(position));
+    let event = merge_incident(existing.as_ref(), event);
+    incidents.push_front(event.clone());
+    event
+}
+
+/// One update of an incident on top of what is known of it: the first sighting and the peak
+/// severity are kept, and an ended incident keeps the severity it peaked at.
+pub(crate) fn merge_incident(existing: Option<&AlertView>, mut event: AlertView) -> AlertView {
+    if let Some(existing) = existing {
+        event.first_seen_unix_ms = existing.first_seen_unix_ms;
+        event.peak_severity = existing.peak_severity.max(event.severity);
+        if event.phase == AlertPhaseView::Ended {
+            event.severity = event.peak_severity;
         }
     }
-    incidents.push_front(event.clone());
     event
 }
 
@@ -398,8 +572,13 @@ impl DetectionService {
             detector.tick(now_ns)
         };
         let produced = alerts.len();
+        // The detector numbers its incidents from 1 on every start; the store continues after the
+        // highest id it ever stored.
+        let offset = self.store.detector_id_offset();
         for alert in &alerts {
-            self.store.record(alert_view(alert));
+            let mut view = alert_view(alert);
+            view.id = view.id.saturating_add(offset);
+            self.store.record(view);
         }
         produced
     }

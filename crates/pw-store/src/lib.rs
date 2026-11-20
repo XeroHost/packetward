@@ -21,7 +21,7 @@ mod rdp;
 mod schema;
 mod store;
 
-pub use alerts::{AlertMetricRecord, AlertPhase, AlertRecord, AlertSeverity};
+pub use alerts::{AlertMetricRecord, AlertPhase, AlertRecord, AlertSeverity, AlertsPruned};
 pub use audit::{
     AuditActor, AuditEntry, AuditQuery, AuditResult, NewAudit, MAX_ACTION_BYTES, MAX_DETAIL_BYTES,
     MAX_QUERY_LIMIT, MAX_TARGET_BYTES,

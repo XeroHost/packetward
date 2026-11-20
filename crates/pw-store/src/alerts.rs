@@ -242,6 +242,62 @@ impl Store {
             Ok(u64::try_from(n).unwrap_or(0))
         })
     }
+
+    /// The highest stored id in `lo..hi` (`hi` exclusive), `None` when there is none. Lets the
+    /// caller keep separate id ranges (detector incidents, logon notices) restart-safe.
+    pub fn alerts_max_id_in(&self, lo: u64, hi: u64) -> Result<Option<u64>> {
+        let lo = to_i64(lo, "alert id")?;
+        let hi = i64::try_from(hi).unwrap_or(i64::MAX);
+        self.with(|conn| {
+            let max: Option<i64> = conn.query_row(
+                "SELECT max(id) FROM alerts WHERE id >= ?1 AND id < ?2",
+                [lo, hi],
+                |r| r.get(0),
+            )?;
+            Ok(max.and_then(|v| u64::try_from(v).ok()))
+        })
+    }
+
+    /// Retention: removes the *ended* incidents last seen before `older_than_ms` (when given), then
+    /// the oldest ended ones until at most `keep` rows are left. Incidents that are still running
+    /// are never removed, so the table can stay above `keep` while many are ongoing.
+    pub fn alerts_prune(&self, older_than_ms: Option<i64>, keep: u64) -> Result<AlertsPruned> {
+        let keep = i64::try_from(keep).unwrap_or(i64::MAX);
+        self.with(|conn| {
+            let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+            let by_age = match older_than_ms {
+                Some(cutoff) => tx.execute(
+                    "DELETE FROM alerts WHERE phase = 'ended' AND last_seen_ms < ?1",
+                    [cutoff],
+                )?,
+                None => 0,
+            };
+            let by_rows = tx.execute(
+                "DELETE FROM alerts WHERE id IN ( \
+                   SELECT id FROM alerts WHERE phase = 'ended' \
+                   ORDER BY last_seen_ms ASC, id ASC \
+                   LIMIT max(0, (SELECT count(*) FROM alerts) - ?1))",
+                [keep],
+            )?;
+            tx.commit()?;
+            Ok(AlertsPruned { by_age, by_rows })
+        })
+    }
+}
+
+/// What [`Store::alerts_prune`] removed.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct AlertsPruned {
+    /// Ended incidents older than the age limit.
+    pub by_age: usize,
+    /// Further ended incidents removed to get under the row cap.
+    pub by_rows: usize,
+}
+
+impl AlertsPruned {
+    pub const fn total(self) -> usize {
+        self.by_age + self.by_rows
+    }
 }
 
 #[cfg(test)]
@@ -430,6 +486,45 @@ mod tests {
             Err(StoreError::InvalidInput(_))
         ));
         assert_eq!(s.alerts_count().unwrap(), 1);
+    }
+
+    #[test]
+    fn max_id_in_a_range() {
+        let s = mem();
+        assert_eq!(s.alerts_max_id_in(1, 100).unwrap(), None);
+        s.alert_upsert(&alert(5, 1, AlertPhase::Ended)).unwrap();
+        s.alert_upsert(&alert(50, 1, AlertPhase::Ended)).unwrap();
+        s.alert_upsert(&alert(100, 1, AlertPhase::Ended)).unwrap();
+        assert_eq!(s.alerts_max_id_in(1, 100).unwrap(), Some(50));
+        assert_eq!(s.alerts_max_id_in(100, u64::MAX).unwrap(), Some(100));
+        assert_eq!(s.alerts_max_id_in(6, 50).unwrap(), None);
+    }
+
+    #[test]
+    fn prune_by_age_then_by_rows_never_touches_ongoing() {
+        let s = mem();
+        s.alert_upsert(&alert(1, 10, AlertPhase::Started)).unwrap(); // old but running
+        s.alert_upsert(&alert(2, 20, AlertPhase::Ended)).unwrap();
+        s.alert_upsert(&alert(3, 30, AlertPhase::Ended)).unwrap();
+        s.alert_upsert(&alert(4, 100, AlertPhase::Ended)).unwrap();
+        s.alert_upsert(&alert(5, 110, AlertPhase::Ended)).unwrap();
+        s.alert_upsert(&alert(6, 120, AlertPhase::Ended)).unwrap();
+        let pruned = s.alerts_prune(Some(50), 3).unwrap();
+        assert_eq!(
+            pruned,
+            AlertsPruned {
+                by_age: 2,
+                by_rows: 1
+            }
+        );
+        assert_eq!(pruned.total(), 3);
+        let ids: Vec<u64> = s.alerts_recent(10).unwrap().iter().map(|a| a.id).collect();
+        assert_eq!(
+            ids,
+            [6, 5, 1],
+            "the running incident stays even over the cap"
+        );
+        assert_eq!(s.alerts_prune(None, 100).unwrap(), AlertsPruned::default());
     }
 
     #[test]
