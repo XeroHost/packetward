@@ -167,7 +167,7 @@ state, and every write path behaves as specified above on a test VPS (TESTING §
       clean install/upgrade/uninstall is TESTING §F11 and is pending for Windows Server 2019/2022 test VMs.)
 - [x] Tauri updater with signed artifacts; **Stable + Beta** channels; release workflow on tag
       (`vX.Y.Z` → stable, `vX.Y.Z-beta.N` → beta).
-      (Built and unit-tested; fails closed with the placeholder public key. Signed artifacts, `latest.json` and the channel
+      (Built and unit-tested; fails closed with the placeholder public key. Signed installers, the channel JSON (`updates` branch) and the channel
       switch need the owner's keys (docs/RELEASE-KEYS.md) and were never exercised end to end: TESTING §F11.)
 - [x] Optional Authenticode step in CI (runs only when signing secrets exist).
       (In `release.yml`; untested until a certificate exists.)

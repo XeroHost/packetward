@@ -11,7 +11,7 @@ until the key exists.
 
 | Key | Used for | Public part lives in | Private part lives in |
 |---|---|---|---|
-| Tauri updater key | Signing update artifacts (`latest.json` + installers) so installed apps trust updates | `apps/desktop/src-tauri/tauri.conf.json` → `plugins.updater.pubkey` | GitHub Actions secret `TAURI_SIGNING_PRIVATE_KEY` (+ `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`) |
+| Tauri updater key | Signing the installer of each release (the signature goes inside `stable.json` / `beta.json`) so installed apps trust updates | `apps/desktop/src-tauri/tauri.conf.json` → `plugins.updater.pubkey` | GitHub Actions secret `TAURI_SIGNING_PRIVATE_KEY` (+ `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`) |
 | Blocklist minisign key | Signing the shared XeroHost blocklist (`blocklist.txt.minisig`) | Pinned in the app: `crates/pw-intel/src/blocklist/pinned_key.rs` (`PINNED_PUBLIC_KEY`) | A secret of the repo `XeroHost/packetward-blocklist` |
 
 > **If you lose the updater private key you can never ship another update to installed apps** (they only accept
@@ -49,17 +49,20 @@ Public key id: `86363F430AEB7F72` (the first line of the decoded public key says
 
 | Channel | Endpoint the app reads | What puts a file there |
 |---|---|---|
-| stable | `https://github.com/XeroHost/packetward/releases/latest/download/latest.json` | the workflow, **only for a normal release** (tag `vX.Y.Z`); GitHub's "latest" ignores pre-releases |
-| beta | `https://github.com/XeroHost/packetward/releases/download/updater-beta/latest.json` | the workflow, for every beta **and** every stable release (so beta users also get a stable that supersedes their beta) |
+| stable | `https://raw.githubusercontent.com/XeroHost/packetward/updates/stable.json` | the release workflow, **only after a stable release** (tag `vX.Y.Z`) is published |
+| beta | `https://raw.githubusercontent.com/XeroHost/packetward/updates/beta.json` | the release workflow after every beta **and** every stable release is published (so beta users also get a stable that supersedes their beta) |
 
-A beta can never reach somebody on stable, on four independent layers: a pre-release release never carries a `latest.json`
-for the stable endpoint; `release.mjs manifest` refuses a stable manifest with a pre-release version (`assertChannel`);
+Both files are in the orphan `updates` branch (no code in it) and contain the updater signature of that release. **A release has no `.sig` or
+checksum asset: only the installer.** A file is never moved to an older version, and nothing is written unless the release was published.
+raw.githubusercontent.com caches for about 5 minutes.
+
+A beta can never reach somebody on stable, on four independent layers: a beta release only ever writes `beta.json`;
+`release.mjs` refuses a stable manifest with a pre-release version (`assertChannel`, `checkDraft`);
 the app's stable channel ignores any offered version that contains `-` (`UpdateChannel::accepts`); and semver ranks
 `0.1.0-beta.1` below `0.1.0`, so nobody on a newer version is offered an older beta. The app checks at start and every 24 hours
 (Settings switch, on by default) and **never installs without the user pressing the button**.
 
-> The endpoints are on github.com: the repository must be **public** before an installed app can read them (a private repo
-> answers 404 to anonymous requests).
+> The endpoints are on raw.githubusercontent.com: the repository must be **public** (it is, since 2026-11-21) or they answer 404.
 
 ### 1.4 Hand-over and deletion of the VPS copy (done 2026-11-21)
 
@@ -93,16 +96,17 @@ Then put the content of `packetward.key.pub` in `tauri.conf.json` and back both 
 ### 1.6 How a release is published (and why it cannot go out half-done)
 
 Push a tag `vX.Y.Z` (stable) or `vX.Y.Z-beta.N` (beta) **on a commit that is on `main`**. Nothing else starts a release (a branch push never does).
-`guard` → `ci` (all checks, Windows included) → `build` (signs, writes a **draft**) → `publish` (re-checks the draft: file hashes, `latest.json`, and
-the updater signature against the public key; then publishes). If any check fails, the release stops there: before `build` nothing exists, after it
+`guard` → `ci` (all checks, Windows included) → `build` (signs, writes a **draft** with only the installer) → `publish` (re-checks the draft
+against the build's private proof: hash, updater JSON and the updater signature against the public key; publishes; and only then commits the channel
+files to the `updates` branch). If any check fails, the release stops there: before `build` nothing exists, after it
 only a draft that no client can see (delete it with `gh release delete <tag>`; re-running the workflow reuses it). Never create or edit the release by hand.
 
 There is no "dry-run" branch any more: a failing check stops the run, and the only thing a passing run leaves before the last job is a draft.
 To test the gates without publishing, push a test tag from a throwaway branch with the repository variable `RELEASE_BRANCH` set to that branch
 and a deliberately broken test (or leave the variable unset to see the guard refuse a tag that is not on `main`).
 
-The release workflow (`.github/workflows/release.yml`, M12) reads the two secrets. Without them it builds **unsigned** artifacts and skips
-publishing `latest.json`, so no update channel is advertised by accident.
+The release workflow (`.github/workflows/release.yml`, M12) reads the two secrets. Without them it builds an **unsigned** installer and does not
+touch the channel files, so no update is advertised by accident.
 
 ## 2. Blocklist minisign key (on your own PC)
 

@@ -9,12 +9,16 @@
 # Jobs, in order. Each one needs the previous, so a failure anywhere stops everything after it:
 #   guard    the tag has the right shape and points to a commit that is on the release branch (main)
 #   ci       the whole CI workflow (Linux, Windows, frontend, cargo deny + audit, the desktop build)
-#   build    builds and signs the installer and uploads everything to a DRAFT release (invisible to clients)
-#   publish  re-downloads the draft, checks every file and the updater signature, and only then publishes it
-#            and points the beta channel at it. No client ever sees a half-finished release.
+#   build    builds and signs the installer and uploads ONLY the installer to a DRAFT release (invisible to clients).
+#            The updater signature and the hash are not release assets: they travel to the last job as a private
+#            workflow artifact (the "proof"), and the signature ends up only inside the updater JSON.
+#   publish  re-downloads the draft, checks the installer against the proof and the updater signature against
+#            the public key, publishes the release, and ONLY THEN commits stable.json / beta.json to the
+#            orphan `updates` branch (a beta updates beta.json; a stable release updates both). If anything
+#            fails before, no channel file is touched.
 #
 # Secrets (optional; without them the build still runs and publishes an UNSIGNED installer):
-#   TAURI_SIGNING_PRIVATE_KEY (+ _PASSWORD)  signed updater artifacts (.sig) and latest.json
+#   TAURI_SIGNING_PRIVATE_KEY (+ _PASSWORD)  signed updater artifacts: the signature goes into the updater JSON
 #   WINDOWS_CERTIFICATE (+ _PASSWORD)        Authenticode signing of the executables and the installer
 # Repository variable (optional): RELEASE_BRANCH, the branch a release tag must be on (default: main).
 name: Release
@@ -148,7 +152,7 @@ jobs:
         if: steps.prep.outputs.signed != 'true'
         shell: pwsh
         run: |
-          $msg = 'TAURI_SIGNING_PRIVATE_KEY is not set: this release is built WITHOUT signed updater artifacts and latest.json is NOT published, so installed apps will not be offered this version. See docs/RELEASE-KEYS.md.'
+          $msg = 'TAURI_SIGNING_PRIVATE_KEY is not set: this release is built WITHOUT signed updater artifacts and the update channels are NOT touched, so installed apps will not be offered this version. See docs/RELEASE-KEYS.md.'
           Write-Host "::warning title=Unsigned release::$msg"
           "### Unsigned release`n$msg" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
 
@@ -164,7 +168,10 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: pnpm tauri build --config src-tauri/tauri.release.conf.json
 
-      - name: Collect the release files
+      # The release gets ONLY the installer (dist-release). Everything else is the "proof" of this build, kept as
+      # a private workflow artifact for the last job: the hash of the installer and, when signed, the updater
+      # signature file and the updater JSON that will be committed to the `updates` branch.
+      - name: Collect the installer and the proof
         id: files
         shell: pwsh
         env:
@@ -174,19 +181,14 @@ jobs:
           if ($installers.Count -ne 1) { throw "expected exactly one NSIS installer, found $($installers.Count)" }
           $installer = $installers[0]
           $out = New-Item -ItemType Directory -Force -Path dist-release
+          $proof = New-Item -ItemType Directory -Force -Path proof
           Copy-Item $installer.FullName $out
-          $names = @($installer.Name)
+          (Get-FileHash -Algorithm SHA256 -Path $installer.FullName).Hash.ToLower() | Out-File -FilePath (Join-Path $proof 'sha256.txt') -Encoding ascii -NoNewline
           if ($env:SIGNED -eq 'true') {
             $sig = "$($installer.FullName).sig"
             if (-not (Test-Path $sig)) { throw "missing updater signature $sig" }
-            Copy-Item $sig $out
-            $names += "$($installer.Name).sig"
+            Copy-Item $sig $proof
           }
-          $lines = foreach ($n in $names) {
-            $hash = (Get-FileHash -Algorithm SHA256 -Path (Join-Path $out $n)).Hash.ToLower()
-            "$hash  $n"
-          }
-          [IO.File]::WriteAllText((Join-Path $out 'SHA256SUMS.txt'), (($lines -join "`n") + "`n"))
           "installer_name=$($installer.Name)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
       # The app verifies this signature against the public key in tauri.conf.json before it installs anything.
@@ -196,12 +198,10 @@ jobs:
         shell: bash
         env:
           INSTALLER_NAME: ${{ steps.files.outputs.installer_name }}
-        run: node .github/scripts/verify-sig.mjs "dist-release/$INSTALLER_NAME" "dist-release/$INSTALLER_NAME.sig"
+        run: node .github/scripts/verify-sig.mjs "dist-release/$INSTALLER_NAME" "proof/$INSTALLER_NAME.sig"
 
-      # latest.json is written for every signed release, but it only goes INTO a stable release (it is what the
-      # stable channel reads through "releases/latest/download": a beta must never carry one). A beta's
-      # manifest travels to the last job as a workflow artifact and only feeds the beta channel.
-      - name: Write latest.json (signed releases)
+      # The updater JSON (signature inside) for the channel files. Never uploaded to the release.
+      - name: Write the updater JSON (signed releases)
         if: steps.prep.outputs.signed == 'true'
         shell: bash
         env:
@@ -210,21 +210,20 @@ jobs:
           TAG: ${{ github.ref_name }}
           PRERELEASE: ${{ steps.prep.outputs.prerelease }}
           INSTALLER_NAME: ${{ steps.files.outputs.installer_name }}
-          SIG_PATH: dist-release/${{ steps.files.outputs.installer_name }}.sig
+          SIG_PATH: proof/${{ steps.files.outputs.installer_name }}.sig
           NOTES: See https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}
-          OUT: dist-release/latest.json
+          OUT: proof/manifest.json
         run: node .github/scripts/release.mjs manifest
 
-      - name: Keep the channel manifest for the last job
-        if: steps.prep.outputs.signed == 'true'
+      - name: Keep the proof for the last job
         uses: actions/upload-artifact@v4
         with:
-          name: channel-manifest
-          path: dist-release/latest.json
+          name: release-proof
+          path: proof
           retention-days: 1
 
-      # A DRAFT: nobody (no client, no "latest" lookup) can see it until the last job publishes it.
-      - name: Upload everything to a draft release
+      # A DRAFT with only the installer: nobody (no client, no "latest" lookup) can see it until the last job.
+      - name: Upload the installer to a draft release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -232,9 +231,7 @@ jobs:
           VERSION: ${{ steps.prep.outputs.version }}
           PRERELEASE: ${{ steps.prep.outputs.prerelease }}
         run: |
-          $assets = @(Get-ChildItem dist-release -File |
-            Where-Object { -not ($env:PRERELEASE -eq 'true' -and $_.Name -eq 'latest.json') } |
-            ForEach-Object { $_.FullName })
+          $assets = @(Get-ChildItem dist-release -File | ForEach-Object { $_.FullName })
           $state = gh release view $env:TAG --json isDraft 2>$null | ConvertFrom-Json
           if ($state) {
             if (-not $state.isDraft) { throw "release $($env:TAG) is already published: refusing to touch it" }
@@ -264,12 +261,11 @@ jobs:
         with:
           node-version: 24
 
-      - name: Download the channel manifest
-        if: env.SIGNED == 'true'
+      - name: Download the proof of the build
         uses: actions/download-artifact@v4
         with:
-          name: channel-manifest
-          path: manifest
+          name: release-proof
+          path: proof
 
       - name: Download the draft release
         run: |
@@ -277,14 +273,16 @@ jobs:
           gh release download "$TAG" --dir draft --repo "$REPO"
           ls -l draft
 
-      # Every file, its hash, the manifest and the signature, as the clients will see them.
-      - name: Check the files of the draft
+      # The installer in the draft is the one that was built, nothing else is attached, and the manifest that
+      # the channels will carry names this release.
+      - name: Check the draft against the proof
         env:
           DIR: draft
+          PROOF: proof
         run: node .github/scripts/release.mjs check-draft
       - name: Verify the updater signature with the public key
         if: env.SIGNED == 'true'
-        run: node .github/scripts/verify-sig.mjs "draft/$INSTALLER_NAME" "draft/$INSTALLER_NAME.sig"
+        run: node .github/scripts/verify-sig.mjs "draft/$INSTALLER_NAME" "proof/$INSTALLER_NAME.sig"
 
       - name: Publish the release
         run: |
@@ -294,17 +292,35 @@ jobs:
             gh release edit "$TAG" --repo "$REPO" --draft=false --prerelease=false --latest
           fi
 
-      # The beta channel reads latest.json from one fixed pre-release (the updater cannot use
-      # "releases/latest" for pre-releases). Both beta and stable releases overwrite it, so a beta user
-      # is also offered a stable release that supersedes the beta they run. It is updated only now, when
-      # the installer it points to is public.
-      - name: Point the beta channel at it
+      # Only now, with the installer public, the update channels move: stable.json and beta.json live in the
+      # orphan `updates` branch (no code in it) and the app reads them from raw.githubusercontent.com.
+      # A beta updates beta.json; a stable release updates both, so a beta user also gets a newer stable.
+      - name: Update the channel files (updates branch)
         if: env.SIGNED == 'true'
+        env:
+          BRANCH: updates
         run: |
-          channel=updater-beta
-          if ! gh release view "$channel" --repo "$REPO" >/dev/null 2>&1; then
-            gh release create "$channel" --repo "$REPO" --prerelease --latest=false --target "$GITHUB_SHA" \
-              --title 'Beta channel manifest' \
-              --notes 'Holds latest.json for the PacketWard beta update channel. Not a release: do not download from here.'
-          fi
-          gh release upload "$channel" manifest/latest.json --clobber --repo "$REPO"
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          for attempt in 1 2 3 4 5; do
+            rm -rf channels && mkdir channels && cd channels
+            git init -q
+            git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
+            if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
+              git fetch -q --depth 1 origin "$BRANCH"
+              git checkout -q -B "$BRANCH" FETCH_HEAD
+            else
+              git checkout -q --orphan "$BRANCH"
+              printf '%s\n' '# Update channels' '' 'Only the JSON files the PacketWard updater reads live in this branch: `stable.json` and `beta.json`.' 'They are written by the release workflow after a release is published. There is no code here.' > README.md
+            fi
+            cd ..
+            MANIFEST=proof/manifest.json DIR=channels node .github/scripts/release.mjs update-channels
+            cd channels
+            git add -A
+            if git diff --cached --quiet; then echo "Channel files already up to date."; exit 0; fi
+            git commit -q -m "updates: $TAG"
+            if git push -q origin "$BRANCH"; then echo "Channels updated for $TAG."; exit 0; fi
+            echo "push failed (attempt $attempt): another release moved the branch, retrying"
+            cd ..; sleep $((attempt * 3))
+          done
+          echo "::error::could not update the channel files"; exit 1

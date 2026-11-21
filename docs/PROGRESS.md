@@ -36,7 +36,7 @@ Read this first when resuming after a stop or a context compaction.
 
 ## Packaging (M12) — status
 Merged into `dev`: NSIS release config (`tauri.release.conf.json`) + `installer/hooks.nsh`, two-channel updater that fails closed
-with the placeholder public key, tag-driven `release.yml` (unsigned build without secrets; no `latest.json` without the signing key),
+with the placeholder public key, tag-driven `release.yml` (unsigned build without secrets; no channel files without the signing key),
 docs ARCHITECTURE §9 and TESTING §F11. The installer was **built** on the dev VPS (setup .exe) but **never run**: install,
 upgrade, uninstall, the raw-socket firewall rule, RDP reset on uninstall, signed updates and the release workflow itself are
 pending (needs Windows Server 2019/2022 test VMs and the owner's keys, docs/RELEASE-KEYS.md). Known caveats are in ARCHITECTURE §9.1

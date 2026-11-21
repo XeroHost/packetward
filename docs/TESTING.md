@@ -366,8 +366,8 @@ when you have no signing key. Output: `target\release\bundle\nsis\PacketWard_<ve
 8. **Updater** (needs the keys of docs/RELEASE-KEYS.md; without a public key the Updates section says *not configured* and
    no request is made — verify that first with a build from this repository):
    - With a real public key in `tauri.conf.json` and the secrets loaded, tag `v0.0.1-beta.1`, then `v0.0.1-beta.2`. The
-     pre-release `updater-beta` exists and its `latest.json` names beta.2; the stable `releases/latest/download/latest.json`
-     does not exist yet (404) until a normal tag.
+     branch `updates` has `beta.json` naming beta.2 (check it at the raw.githubusercontent.com URL) and no `stable.json` yet (404) until a normal tag.
+     Each release carries only the installer, with no `.sig` or checksum file.
    - Install beta.1, Settings → Updates: channel *Beta*, *Check for updates* offers beta.2; *Download and install*: the
      installer runs passively (UAC prompt), the app closes, the service is stopped and started again, the app can be started
      again and shows beta.2. Switch to *Stable*: *Check* answers "latest version" or a not-found error, not beta.2.

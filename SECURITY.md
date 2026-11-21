@@ -6,12 +6,12 @@ PacketWard is pre-1.0. Security fixes go to the latest release (stable channel) 
 ## Reporting a vulnerability
 Please **do not open a public issue** for security problems.
 
-Use GitHub's private vulnerability reporting: open the repository's **Security** tab →
+Use GitHub's private vulnerability reporting, **the only channel for now**: open the repository's **Security** tab →
 **Report a vulnerability** (<https://github.com/XeroHost/packetward/security/advisories/new>).
 Include the PacketWard version, Windows version, what you did, what you expected and what happened. If the issue
 involves a crafted IPC message, packet capture or blocklist file, attach it (it stays private).
 
-A dedicated security email address will be published here once it exists (placeholder: `security@REPLACE-ME`).
+A dedicated security email address will be added here once it exists.
 
 ## What to expect
 - Acknowledgement within a few days; a fix or a mitigation plan for confirmed issues, coordinated with you before

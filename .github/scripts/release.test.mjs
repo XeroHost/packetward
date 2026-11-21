@@ -5,7 +5,9 @@ import { test } from 'node:test'
 import {
   PUBKEY_PLACEHOLDER,
   assertChannel,
+  channelUpdates,
   checkDraft,
+  compareVersions,
   manifest,
   parseTag,
   plan,
@@ -111,79 +113,96 @@ test('a stable manifest never carries a pre-release version and a beta one alway
 import { createHash } from 'node:crypto'
 
 const sha = (data) => createHash('sha256').update(data).digest('hex')
+const NAME = 'PacketWard_0.1.0_x64-setup.exe'
 function draft({ signed = true, prerelease = false, mutate } = {}) {
-  const installerName = 'PacketWard_0.1.0_x64-setup.exe'
+  const version = prerelease ? '0.1.0-beta.1' : '0.1.0'
+  const tag = `v${version}`
+  const name = `PacketWard_${version}_x64-setup.exe`
   const installer = Buffer.from('installer bytes')
-  const sig = Buffer.from('c2lnbmF0dXJl\n')
-  const files = new Map([[installerName, installer]])
-  if (signed) files.set(`${installerName}.sig`, sig)
-  if (signed && !prerelease) {
-    const version = '0.1.0'
-    files.set(
-      'latest.json',
-      Buffer.from(
-        JSON.stringify({
+  const d = {
+    files: new Map([[name, installer]]),
+    expectedSha256: sha(installer),
+    manifest: signed
+      ? {
           version,
           platforms: {
             'windows-x86_64': {
-              signature: sig.toString().trim(),
-              url: `https://github.com/XeroHost/packetward/releases/download/v${version}/${encodeURIComponent(installerName)}`,
+              signature: 'c2ln',
+              url: `https://github.com/XeroHost/packetward/releases/download/${tag}/${encodeURIComponent(name)}`,
             },
           },
-        }),
-      ),
-    )
-  }
-  const lines = [...files].map(([name, data]) => `${sha(data)}  ${name}`)
-  files.set('SHA256SUMS.txt', Buffer.from(lines.join('\n') + '\n'))
-  mutate?.(files)
-  return {
-    files,
-    tag: prerelease ? 'v0.1.0-beta.1' : 'v0.1.0',
-    version: prerelease ? '0.1.0-beta.1' : '0.1.0',
+        }
+      : null,
+    tag,
+    version,
     repo: 'XeroHost/packetward',
-    installerName,
+    installerName: name,
     signed,
     prerelease,
   }
+  mutate?.(d)
+  return d
 }
+const problems = (opts) => checkDraft(draft(opts)).join(' | ')
 
-test('a complete stable draft, a complete beta draft and an unsigned one are publishable', () => {
+test('a stable draft, a beta draft and an unsigned one with only the installer are publishable', () => {
   assert.deepEqual(checkDraft(draft()), [])
   assert.deepEqual(checkDraft(draft({ prerelease: true })), [])
   assert.deepEqual(checkDraft(draft({ signed: false })), [])
 })
 
-test('a draft that is incomplete or inconsistent is not publishable', () => {
-  const problems = (opts) => checkDraft(draft(opts)).join(' | ')
-  assert.match(problems({ mutate: (f) => f.delete('latest.json') }), /latest.json is missing/)
-  assert.match(problems({ mutate: (f) => f.delete('PacketWard_0.1.0_x64-setup.exe.sig') }), /signature .* is missing/)
-  assert.match(problems({ mutate: (f) => f.set('PacketWard_0.1.0_x64-setup.exe', Buffer.from('changed')) }), /hash of/)
-  assert.match(problems({ mutate: (f) => f.delete('PacketWard_0.1.0_x64-setup.exe') }), /installer .* is missing/)
-  assert.match(problems({ mutate: (f) => f.delete('SHA256SUMS.txt') }), /SHA256SUMS.txt is missing/)
-  assert.match(
-    problems({
-      mutate: (f) => {
-        const m = JSON.parse(f.get('latest.json'))
-        m.platforms['windows-x86_64'].signature = 'other'
-        f.set('latest.json', Buffer.from(JSON.stringify(m)))
-      },
-    }),
-    /different signature/,
-  )
+test('a release carries only the installer: no .sig, no SHA256SUMS, nothing else', () => {
+  for (const extra of [`${NAME}.sig`, 'SHA256SUMS.txt', 'latest.json']) {
+    assert.match(
+      problems({ mutate: (d) => d.files.set(extra, Buffer.from('x')) }),
+      /only the installer/,
+      extra,
+    )
+  }
 })
 
-test('a beta draft must not carry latest.json, and no stable manifest names a pre-release', () => {
+test('the installer must be the one that was built', () => {
+  assert.match(problems({ mutate: (d) => d.files.set(d.installerName, Buffer.from('changed')) }), /hash mismatch/)
+  assert.match(problems({ mutate: (d) => d.files.clear() }), /installer .* is missing/)
+  assert.match(problems({ mutate: (d) => (d.expectedSha256 = '') }), /no hash/)
+})
+
+test('the manifest must name this release, and a stable one never a pre-release', () => {
+  assert.match(problems({ mutate: (d) => (d.manifest = null) }), /manifest is missing/)
+  assert.match(problems({ mutate: (d) => (d.manifest.version = '9.9.9') }), /says version 9.9.9/)
+  assert.match(problems({ mutate: (d) => (d.manifest.platforms['windows-x86_64'].url = 'https://evil/x.exe') }), /different installer URL/)
+  assert.match(problems({ mutate: (d) => (d.manifest.platforms['windows-x86_64'].signature = '') }), /no signature/)
   assert.match(
-    checkDraft(draft({ prerelease: true, mutate: (f) => f.set('latest.json', Buffer.from('{}')) })).join(' | '),
-    /must not carry latest.json/,
+    problems({ mutate: (d) => { d.manifest.version = '0.1.0-beta.1'; d.version = '0.1.0-beta.1' } }),
+    /must never carry a pre-release/,
   )
-  const wrong = draft({
-    mutate: (f) => {
-      const m = JSON.parse(f.get('latest.json'))
-      m.version = '0.1.0-beta.1'
-      f.set('latest.json', Buffer.from(JSON.stringify(m)))
-    },
-  })
-  assert.match(checkDraft(wrong).join(' | '), /pre-release version/)
+  assert.match(problems({ signed: false, mutate: (d) => (d.manifest = { version: '0.1.0' }) }), /unsigned release must not/)
+})
+
+// ---- channel files of the `updates` branch
+test('versions compare like semver: a beta is below its release, betas by number', () => {
+  assert.equal(compareVersions('0.1.0', '0.1.0-beta.9'), 1)
+  assert.equal(compareVersions('0.1.0-beta.2', '0.1.0-beta.10'), -1)
+  assert.equal(compareVersions('0.2.0-beta.1', '0.1.9'), 1)
+  assert.equal(compareVersions('1.0.0', '1.0.0'), 0)
+  assert.equal(compareVersions('nonsense', '0.0.1'), -1)
+})
+
+test('a beta release only updates beta.json; a stable one updates both', () => {
+  const beta = draft({ prerelease: true }).manifest
+  const stable = draft().manifest
+  assert.deepEqual(Object.keys(channelUpdates({ existing: {}, manifest: beta, prerelease: true })), ['beta'])
+  assert.deepEqual(Object.keys(channelUpdates({ existing: {}, manifest: stable, prerelease: false })).sort(), ['beta', 'stable'])
+})
+
+test('a channel file is never moved backwards', () => {
+  const old = JSON.stringify({ version: '0.2.0' })
+  const betaOld = JSON.stringify({ version: '0.2.0-beta.3' })
+  // A stable 0.1.0 published after 0.2.0: neither file moves.
+  assert.deepEqual(channelUpdates({ existing: { stable: old, beta: old }, manifest: draft().manifest, prerelease: false }), {})
+  // A newer beta replaces beta.json only.
+  const newer = { ...draft({ prerelease: true }).manifest, version: '0.2.0-beta.4' }
+  assert.deepEqual(Object.keys(channelUpdates({ existing: { stable: old, beta: betaOld }, manifest: newer, prerelease: true })), ['beta'])
+  // A damaged file is replaced.
+  assert.deepEqual(Object.keys(channelUpdates({ existing: { beta: '{not json' }, manifest: newer, prerelease: true })), ['beta'])
 })

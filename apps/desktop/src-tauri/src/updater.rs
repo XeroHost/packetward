@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! In-app updates (Tauri updater against GitHub Releases), with two channels.
 //!
-//! * `stable`: `latest.json` of the newest non-pre-release GitHub release.
-//! * `beta`: `latest.json` attached to the rolling `updater-beta` pre-release, which the release
+//! * `stable`: `stable.json` in the orphan `updates` branch (raw.githubusercontent.com), written by the release
+//!   workflow after a stable release is published.
+//! * `beta`: `beta.json` in the same branch, which the release
 //!   workflow overwrites on every beta *and* every stable release, so a beta user also sees a stable
 //!   release that supersedes the beta they run.
 //!
@@ -22,9 +23,9 @@ use tauri::{AppHandle, State};
 use tauri_plugin_updater::{Update, UpdaterExt};
 
 const STABLE_ENDPOINT: &str =
-    "https://github.com/XeroHost/packetward/releases/latest/download/latest.json";
+    "https://raw.githubusercontent.com/XeroHost/packetward/updates/stable.json";
 const BETA_ENDPOINT: &str =
-    "https://github.com/XeroHost/packetward/releases/download/updater-beta/latest.json";
+    "https://raw.githubusercontent.com/XeroHost/packetward/updates/beta.json";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -293,9 +294,9 @@ mod tests {
         for channel in [UpdateChannel::Stable, UpdateChannel::Beta] {
             let url = tauri::Url::parse(channel.endpoint()).expect("valid url");
             assert_eq!(url.scheme(), "https");
-            assert_eq!(url.host_str(), Some("github.com"));
-            assert!(url.path().starts_with("/XeroHost/packetward/releases/"));
-            assert!(url.path().ends_with("/latest.json"));
+            assert_eq!(url.host_str(), Some("raw.githubusercontent.com"));
+            assert!(url.path().starts_with("/XeroHost/packetward/updates/"));
+            assert!(url.path().ends_with(".json"));
         }
         assert_ne!(
             UpdateChannel::Stable.endpoint(),

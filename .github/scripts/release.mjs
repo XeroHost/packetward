@@ -1,13 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Helpers of .github/workflows/release.yml, kept in a script so they can be run and tested locally.
 //
-//   node .github/scripts/release.mjs prepare   validate the tag, stamp the version and the signing
-//                                              options into the (uncommitted) release config
-//   node .github/scripts/release.mjs manifest  write latest.json for the Tauri updater
+//   node .github/scripts/release.mjs guard            check the tag shape
+//   node .github/scripts/release.mjs prepare          validate the tag, stamp the version and the signing
+//                                                     options into the (uncommitted) release config
+//   node .github/scripts/release.mjs manifest         write the updater JSON of one release (not uploaded as a file)
+//   node .github/scripts/release.mjs check-draft      check the draft release and the proof before publishing
+//   node .github/scripts/release.mjs update-channels  write stable.json / beta.json in the `updates` branch checkout
 //
 // Inputs come from environment variables (see each command).
 import { createHash } from 'node:crypto'
-import { appendFileSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { appendFileSync, existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 export const PUBKEY_PLACEHOLDER = 'REPLACE_WITH_UPDATER_PUBLIC_KEY'
@@ -120,55 +123,84 @@ export function assertChannel(version, prerelease) {
 }
 
 /**
- * What the last job checks in the DRAFT release before it is published: every file listed in SHA256SUMS.txt
- * is there with that hash, a signed release carries the signature and (stable only) a latest.json that names
- * this version, this tag, this installer and exactly that signature, and a beta carries no latest.json. The
- * cryptographic check of the signature is verify-sig.mjs. `files` maps a file name to its bytes.
- * Returns the list of problems; empty means publishable.
+ * What the last job checks before the DRAFT release is published. The release carries ONLY the installer
+ * (`files` = the draft's assets by name), and everything else travels as a private workflow artifact, the
+ * "proof": `expectedSha256` (computed when the installer was built) and, for a signed release, the updater
+ * `manifest` (the JSON that will be committed to the `updates` branch; the signature lives only in it).
+ * Checks: nothing but the installer is attached; its hash is the one that was built; a signed release has a
+ * manifest that names this version, this tag, this installer and a signature, and never a pre-release version
+ * on a stable one; an unsigned release has no manifest. The cryptographic check of the signature against the
+ * public key is verify-sig.mjs. Returns the list of problems; empty means publishable.
  */
-export function checkDraft({ files, tag, version, repo, installerName, signed, prerelease }) {
+export function checkDraft({ files, expectedSha256, manifest: updater, tag, version, repo, installerName, signed, prerelease }) {
   const problems = []
-  const sums = files.get('SHA256SUMS.txt')
-  if (!files.has(installerName)) problems.push(`the installer ${installerName} is missing`)
-  if (!sums) problems.push('SHA256SUMS.txt is missing')
-  for (const line of sums ? sums.toString('utf8').split('\n').filter(Boolean) : []) {
-    const [hash, name] = line.split(/\s+/)
-    const data = files.get(name)
-    if (!data) problems.push(`SHA256SUMS.txt lists ${name} but it is not in the release`)
-    else if (createHash('sha256').update(data).digest('hex') !== hash) problems.push(`the hash of ${name} does not match SHA256SUMS.txt`)
+  const names = [...files.keys()]
+  const extra = names.filter((n) => n !== installerName)
+  if (extra.length > 0) problems.push(`the release must carry only the installer, but it also has: ${extra.join(', ')}`)
+  const installer = files.get(installerName)
+  if (!installer) problems.push(`the installer ${installerName} is missing`)
+  else if (!expectedSha256) problems.push('the proof has no hash of the installer')
+  else if (createHash('sha256').update(installer).digest('hex') !== expectedSha256.trim()) {
+    problems.push('the installer in the release is not the one that was built (hash mismatch)')
   }
-  const sigName = `${installerName}.sig`
-  const manifestFile = files.get('latest.json')
   if (!signed) {
-    if (files.has(sigName) || manifestFile) problems.push('an unsigned release must not carry a .sig or a latest.json')
+    if (updater) problems.push('an unsigned release must not have an updater manifest')
     return problems
   }
-  if (!files.has(sigName)) problems.push(`the updater signature ${sigName} is missing`)
-  if (prerelease) {
-    if (manifestFile) problems.push('a pre-release must not carry latest.json: the stable channel reads it')
+  if (!updater) {
+    problems.push('the updater manifest is missing')
     return problems
   }
-  if (!manifestFile) {
-    problems.push('latest.json is missing')
-    return problems
+  const entry = updater.platforms?.['windows-x86_64']
+  const url = `https://github.com/${repo}/releases/download/${tag}/${encodeURIComponent(installerName)}`
+  if (updater.version !== version) problems.push(`the manifest says version ${updater.version}, the release is ${version}`)
+  if (/-/.test(updater.version ?? '') !== prerelease) {
+    problems.push('the manifest version does not fit the channel: a stable manifest must never carry a pre-release version')
   }
-  try {
-    const m = JSON.parse(manifestFile.toString('utf8'))
-    const entry = m.platforms?.['windows-x86_64']
-    const url = `https://github.com/${repo}/releases/download/${tag}/${encodeURIComponent(installerName)}`
-    if (m.version !== version) problems.push(`latest.json says version ${m.version}, the release is ${version}`)
-    if (/-/.test(m.version ?? '')) problems.push('latest.json carries a pre-release version')
-    if (entry?.url !== url) problems.push('latest.json points to a different installer URL')
-    if (files.has(sigName) && entry?.signature !== files.get(sigName).toString('utf8').trim()) {
-      problems.push('latest.json carries a different signature than the .sig file')
-    }
-  } catch {
-    problems.push('latest.json is not valid JSON')
-  }
+  if (entry?.url !== url) problems.push('the manifest points to a different installer URL')
+  if (!entry?.signature) problems.push('the manifest has no signature')
   return problems
 }
 
-/** latest.json in the format of the Tauri updater (static manifest, one Windows target). */
+/**
+ * Compares two versions `X.Y.Z` or `X.Y.Z-beta.N` (semver: a pre-release is lower than its release, betas
+ * compare by number). Returns -1, 0 or 1; an unreadable version counts as lower than any valid one.
+ */
+export function compareVersions(a, b) {
+  const parse = (v) => {
+    const match = /^(\d+)\.(\d+)\.(\d+)(?:-beta\.(\d+))?$/.exec(v ?? '')
+    return match ? { n: [match[1], match[2], match[3]].map(Number), beta: match[4] === undefined ? Infinity : Number(match[4]) } : null
+  }
+  const [x, y] = [parse(a), parse(b)]
+  if (!x || !y) return x ? 1 : y ? -1 : 0
+  for (let i = 0; i < 3; i++) if (x.n[i] !== y.n[i]) return x.n[i] < y.n[i] ? -1 : 1
+  return x.beta === y.beta ? 0 : x.beta < y.beta ? -1 : 1
+}
+
+/**
+ * Which channel files a published release writes in the `updates` branch. A beta only updates `beta.json`;
+ * a stable release updates both, so somebody on beta also receives a stable that is newer. A file is never
+ * moved backwards: it is only replaced by a version that is the same or newer. `existing` holds the current
+ * content of the files (a JSON string, or undefined when the file does not exist yet).
+ */
+export function channelUpdates({ existing, manifest: updater, prerelease }) {
+  const targets = prerelease ? ['beta'] : ['stable', 'beta']
+  const out = {}
+  for (const name of targets) {
+    let current
+    try {
+      current = existing?.[name] ? JSON.parse(existing[name]).version : undefined
+    } catch {
+      current = undefined
+    }
+    if (current === undefined || compareVersions(updater.version, current) >= 0) {
+      out[name] = JSON.stringify(updater, null, 2) + '\n'
+    }
+  }
+  return out
+}
+
+/** The updater JSON in the format of the Tauri updater (static manifest, one Windows target). */
 export function manifest({ version, repo, tag, installerName, signature, notes, now }) {
   return {
     version,
@@ -211,11 +243,15 @@ function main(command) {
     setOutput('prerelease', String(p.prerelease))
     setOutput('signed', String(p.signed))
   } else if (command === 'check-draft') {
-    // DIR holds the files downloaded from the draft release.
+    // DIR holds the assets downloaded from the draft release, PROOF the private artifact of the build job.
     const dir = env.DIR
+    const proof = env.PROOF
     const files = new Map(readdirSync(dir).map((name) => [name, readFileSync(join(dir, name))]))
+    const manifestPath = join(proof, 'manifest.json')
     const problems = checkDraft({
       files,
+      expectedSha256: readFileSync(join(proof, 'sha256.txt'), 'utf8'),
+      manifest: existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath, 'utf8')) : null,
       tag: env.TAG,
       version: env.VERSION,
       repo: env.REPO,
@@ -225,6 +261,18 @@ function main(command) {
     })
     if (problems.length > 0) throw new Error(`The draft release is not publishable:\n - ${problems.join('\n - ')}`)
     console.log(`The draft release of ${env.TAG} is complete and consistent.`)
+  } else if (command === 'update-channels') {
+    // DIR is a checkout of the `updates` branch; MANIFEST is the updater JSON of the release just published.
+    const dir = env.DIR
+    const updater = JSON.parse(readFileSync(env.MANIFEST, 'utf8'))
+    const read = (name) => (existsSync(join(dir, `${name}.json`)) ? readFileSync(join(dir, `${name}.json`), 'utf8') : undefined)
+    const writes = channelUpdates({
+      existing: { stable: read('stable'), beta: read('beta') },
+      manifest: updater,
+      prerelease: env.PRERELEASE === 'true',
+    })
+    for (const [name, text] of Object.entries(writes)) writeFileSync(join(dir, `${name}.json`), text)
+    console.log(`Channels updated: ${Object.keys(writes).join(', ') || 'none (nothing newer)'}`)
   } else if (command === 'guard') {
     // A release tag is vX.Y.Z (stable) or vX.Y.Z-beta.N (beta); anything else never publishes.
     const parsed = parseTag(env.TAG)
@@ -243,7 +291,7 @@ function main(command) {
     })
     writeFileSync(env.OUT ?? 'latest.json', JSON.stringify(out, null, 2) + '\n')
   } else {
-    throw new Error('Usage: release.mjs guard|prepare|check-draft|manifest')
+    throw new Error('Usage: release.mjs guard|prepare|manifest|check-draft|update-channels')
   }
 }
 

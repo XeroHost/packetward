@@ -642,16 +642,17 @@ shell permissions, for example with Claude Code's permission deny rules, so the 
 ### 9.2 Updater (`tauri-plugin-updater`, `src-tauri/src/updater.rs`)
 - Two channels against GitHub Releases, chosen in Settings → Updates and stored in `ui.json` (`updates.channel`,
   default `stable`; `updates.checkOnStart`, default **off**).
-  - `stable`: `https://github.com/XeroHost/packetward/releases/latest/download/latest.json` (GitHub's `latest` skips
-    pre-releases). Published by tags `vX.Y.Z`.
-  - `beta`: `https://github.com/XeroHost/packetward/releases/download/updater-beta/latest.json`, an asset of one fixed
-    pre-release (`updater-beta`) that holds only the manifest. The release workflow overwrites it on every beta **and**
-    every stable release, because the updater takes the first endpoint that answers (not the highest version): a beta
-    user is therefore also offered a stable release that supersedes the beta they run. Published by tags
-    `vX.Y.Z-beta.N` (a GitHub pre-release with the installer).
-    Known gap: a stable hotfix lower than the newest beta (0.1.1 after 0.2.0-beta.1) replaces the beta manifest with
-    the lower version until the next beta is tagged; a beta user already on the newer beta is simply not offered it.
-  - The channel is selected per call (`.endpoints(...)`), not in `tauri.conf.json`. Versions are compared by semver
+  - `stable`: `https://raw.githubusercontent.com/XeroHost/packetward/updates/stable.json`, written by the release workflow after a
+    stable release (tag `vX.Y.Z`) is published.
+  - `beta`: `https://raw.githubusercontent.com/XeroHost/packetward/updates/beta.json`. A beta release only writes this file; a stable
+    release writes **both**, because the updater takes the first endpoint that answers (not the highest version): a beta user is therefore
+    also offered a stable release that supersedes the beta they run. A file is never moved backwards (a stable 0.1.1 after 0.2.0-beta.1
+    leaves `beta.json` alone), which removes the old "stable hotfix replaces the beta manifest" gap.
+  - Both files live in the **orphan `updates` branch** (no code, a README, nothing else) and are the static Tauri manifest
+    (`version`, `notes`, `pub_date`, `platforms.windows-x86_64.{url,signature}`). **The updater signature exists only inside this JSON**: it is
+    not a release asset. The installer URL points to the release asset. raw.githubusercontent.com caches for about 5 minutes, so a new
+    release shows up in the apps a few minutes after it is published.
+  - The channel is selected per call (`.endpoints(...)`); `tauri.conf.json` only carries the stable URL as the plugin default. Versions are compared by semver
     (`0.2.0-beta.1 < 0.2.0`); downgrades are never offered (`allowDowngrades` stays off).
 - **Fail closed**: `plugins.updater.pubkey` in `tauri.conf.json` was a placeholder (`REPLACE_WITH_UPDATER_PUBLIC_KEY`) until the
   updater key was generated (2026-11-21, docs/RELEASE-KEYS.md); it now holds the real public key, and a build or fork without a valid one still
@@ -660,8 +661,8 @@ shell permissions, for example with Claude Code's permission deny rules, so the 
   answer "not configured" without any network call otherwise. No `updater:*` permission is granted to the webview, so
   only the three app commands below are reachable from the UI. The config file must still carry the `pubkey` entry
   (the plugin needs it to initialise).
-- Commands: `update_info` (version + configured, no network), `update_check(channel)` (one GET of the channel's
-  `latest.json`), `update_install(on_event)` (downloads, verifies the minisign signature against the pinned key and
+- Commands: `update_info` (version + configured, no network), `update_check(channel)` (one GET of the
+  channel JSON), `update_install(on_event)` (downloads, verifies the minisign signature against the pinned key and
   starts the NSIS installer in `passive` mode; Windows ends the app; progress is streamed on a `Channel`). Frontend:
   `src/api/update.ts` (only caller of `invoke`), Pinia store `stores/update.ts`, "Updates" section of Settings.
 - No automatic check without consent (a check is an allowed network call, but it is still the user's choice): the
@@ -671,9 +672,11 @@ shell permissions, for example with Claude Code's permission deny rules, so the 
   other so one failure stops everything after it: `guard` (the tag is `vX.Y.Z` or `vX.Y.Z-beta.N` and its commit is an ancestor of
   `origin/main`; the branch can be changed with the repository variable `RELEASE_BRANCH`) → `ci` (the whole `ci.yml`, called as a reusable
   workflow with `full: true`: Linux, Windows, frontend, cargo deny + audit and the desktop build) → `build` (installer, signing, **a draft
-  release** with all files; a draft is invisible to clients and to "latest") → `publish` (downloads the draft, checks every file against
-  `SHA256SUMS.txt`, the `latest.json` contents and the updater signature against the public key, and only then publishes it: a pre-release for
-  `-beta.N` tags, the "latest" release otherwise, and finally points the beta channel at it). A `-beta.N` release never carries `latest.json`.
+  release** with **only the installer**; a draft is invisible to clients and to "latest") → `publish` (downloads the draft and checks it against the
+  build's private "proof" artifact: the installer is the one that was built and nothing else is attached, the updater JSON names this release;
+  verifies the updater signature against the public key; publishes it (pre-release for `-beta.N` tags, the "latest" release otherwise); and
+  **only then** commits `stable.json` / `beta.json` to the `updates` branch. If anything fails before that, no channel file is touched).
+  A release carries only `PacketWard_<version>_x64-setup.exe` (plus the "Source code" archives GitHub adds): no `.sig`, no checksum file.
   A release in progress is never cancelled (`concurrency` group `release`, `cancel-in-progress: false`).
 - **CI** (`ci.yml`, also reusable): the Rust cache is saved only on one branch (repository variable `CACHE_BRANCH`, default `main`; every other
   branch only restores it), debug information is off, the Windows job runs clippy for the whole workspace but tests only the crates with Windows code
@@ -682,9 +685,9 @@ shell permissions, for example with Claude Code's permission deny rules, so the 
 - Release workflow `.github/workflows/release.yml` (tag `v*`): validates the tag against the app and workspace
   versions, stamps the full version (beta suffix included) into the CI copy of the release config and `package.json` (About page), builds the agent and `pwctl` in release mode, imports the Authenticode certificate when
   `WINDOWS_CERTIFICATE` exists (signs the exes and, through `bundle.windows.signCommand`, the installer — before the
-  updater `.sig` is made), builds the installer, writes `SHA256SUMS.txt`, creates the release (pre-release for beta
-  tags) with the installer and, **only when `TAURI_SIGNING_PRIVATE_KEY` exists and the public key is real**, the `.sig`
-  and `latest.json`. Without the secret it builds unsigned (visible warning) and publishes no manifest. If the secret
+  updater `.sig` is made), builds the installer, keeps its hash and (**only when `TAURI_SIGNING_PRIVATE_KEY` exists and the public key is
+  real**) the `.sig` and the updater JSON as the private proof, and creates the draft release (pre-release for beta tags) with the installer
+  alone. Without the secret it builds unsigned (visible warning) and no channel file is written. If the secret
   exists but the public key is still the placeholder the job fails. The helpers are in `.github/scripts/release.mjs`
   with `node --test` tests.
 - Code signing: no certificate yet. Releases start unsigned (README documents the SmartScreen prompt); the release
