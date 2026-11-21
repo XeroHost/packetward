@@ -56,7 +56,10 @@ jobs:
           if [ "$FULL" = "true" ] || [ -z "$base" ] || [[ "$base" =~ ^0+$ ]] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
             echo "code=true" >> "$GITHUB_OUTPUT"; echo "Running everything (release, new branch or unknown base)."; exit 0
           fi
-          if git diff --name-only "$base" "$GITHUB_SHA" | grep -vE '^(docs/|.*\.md$)' | grep -q .; then
+          # Not "grep -q" at the end of a pipe: under pipefail it closes the pipe early and a big diff then
+          # reads as "no code" (that skipped the Windows job on the first push to main).
+          changed=$(git diff --name-only "$base" "$GITHUB_SHA" | grep -vE '^(docs/|.*\.md$)' || true)
+          if [ -n "$changed" ]; then
             echo "code=true" >> "$GITHUB_OUTPUT"
           else
             echo "code=false" >> "$GITHUB_OUTPUT"; echo "Only docs/ and *.md changed: the Windows job is skipped."
