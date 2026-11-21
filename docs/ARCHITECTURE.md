@@ -68,7 +68,7 @@ PacketWard/
 │  ├─ pw-store/     # SQLite: audit log, blocks, settings, intel cache, migrations
 │  ├─ pw-ipc/       # transport (named pipe + in-memory), framing, client/server, subscriptions,
 │  │                #   pipe ACL, operators group and service-state helpers (Windows)
-│  ├─ pw-mcp/       # (milestone M11, not built yet) MCP server library for `pwctl mcp`: tool catalog, schemas, envelope, prompts. No engine dependency
+│  ├─ pw-mcp/       # MCP server library for `pwctl mcp`: tool catalog, schemas, untrusted-field envelope, prompts, rmcp stdio server. No engine dependency
 │  └─ pw-engine/    # orchestrator: wires everything, owns tasks and state, exposes the API
 ├─ apps/
 │  ├─ agent/        # Windows service host for pw-engine (+ install/uninstall subcommands)
@@ -525,6 +525,16 @@ need a human approval and the protected set stays in force.
 but do not execute it), `diagnose-latency` (args: host; MTR, ping, port check and interface counters; say where the loss starts and whether it
 is the machine or the route), `rdp-security-review` (RDP audit, trusted logons, failed-logon incidents, exposure findings; recommendations
 only). All three end with a reminder about untrusted fields.
+
+**Integration (M11, crate).** `crates/pw-mcp` is the library behind `pwctl mcp` and depends only on `pw-proto`, `pw-ipc` and `rmcp`.
+`catalog.rs` is the client-side mirror of the table above — name, group, level class, IPC method, schemars input schema and untrusted
+output paths — and lists the **full** catalog even when a tool is disabled: the agent applies the master switch, the levels, the limits
+and the protected set at call time and answers `Forbidden`, which becomes a tool error. `envelope.rs` wraps every success as
+`{data, untrusted_fields, notice}` and sanitizes the listed strings (control characters removed, 256 characters) before the AI sees
+them; `prompts.rs` holds the three prompts. `server.rs` implements the rmcp stdio server: job tools (`ping`, `mtr`, `speed_test`)
+subscribe before starting, filter events by job id, wait with 30 s / 180 s / 600 s deadlines and cancel on timeout; an approval-level
+call is sent to the agent like any write and its `pending` reply is returned as `{status: "pending_approval", id, expires_in_secs: 300}`.
+`serve(client)` is the entry point, after the caller has handshaken a `pw_ipc::Client` as `ClientKind::Mcp`.
 
 **Settings → MCP (desktop, milestone M12).** Master switch (off), the level of each execution tool (approval-only tools offer disabled /
 approval), the write limit, and **Copy configuration** buttons that put on the clipboard the entry for each client, using the installed
