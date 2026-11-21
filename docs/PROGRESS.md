@@ -11,17 +11,18 @@ Read this first when resuming after a stop or a context compaction.
   follow. `main` was fast-forwarded so the default branch carries it too. The published `v0.1.0-beta.1` stays
   GPL-3.0-or-later; the new terms apply from the next version. New dependencies only need a permissive,
   redistributable license (see `deny.toml`).
-- **Releases (public):** `v0.1.0-beta.1` (pre-release, only its installer left) and `v0.1.0-beta.2` (pre-release, published by the new
-  workflow, only `PacketWard_0.1.0-beta.2_x64-setup.exe`). The old `updater-beta` release/tag is **deleted** (owner approved). Do not create or
-  delete public releases, tags or the `updates` branch without asking the owner first.
-- **Release pipeline is DONE and proven by beta.2** (`.github/workflows/release.yml`, `.github/scripts/release.mjs`): tag-only, guard (tag on main),
+- **Releases (public):** `v0.1.0-beta.1` (pre-release, only its installer left), `v0.1.0-beta.2` (pre-release, published by the new
+  workflow, only `PacketWard_0.1.0-beta.2_x64-setup.exe`) and **`v0.1.0-beta.3`** (pre-release, published 2026-11-21 from `0fdc172`,
+  `PacketWard_0.1.0-beta.3_x64-setup.exe`; first release with the PolyForm Shield license, the MCP server and the Settings → MCP page).
+  The old `updater-beta` release/tag is **deleted** (owner approved). Do not create or delete public releases, tags or the `updates` branch without asking the owner first.
+- **Release pipeline is DONE and proven by beta.2 and beta.3** (`.github/workflows/release.yml`, `.github/scripts/release.mjs`): tag-only, guard (tag on main),
   full CI, draft with only the installer, private `release-proof` artifact (hash, `.sig`, manifest), verify against the public key, publish,
-  then commit `beta.json` / `stable.json` to the orphan **`updates`** branch (exists now; has README + `beta.json` for 0.1.0-beta.2;
+  then commit `beta.json` / `stable.json` to the orphan **`updates`** branch (exists now; has README + `beta.json` pointing at 0.1.0-beta.3;
   `stable.json` 404 until the first stable tag). Endpoints in `tauri.conf.json` / `updater.rs` = raw.githubusercontent.com `updates/*.json`.
 - **Updater signing key:** generated, public key in `tauri.conf.json`, secrets `TAURI_SIGNING_PRIVATE_KEY(_PASSWORD)` set in GitHub; private
   key backed up by the owner and deleted from the VPS. Never print/log it; change secrets only with `gh secret set` from a file.
-- beta.1 has the old endpoint compiled in → cannot auto-update; users install beta.2 by hand. First real auto-update test = publish beta.3
-  and check beta.2 offers it (not done yet).
+- beta.1 has the old endpoint compiled in → cannot auto-update; users install beta.2 by hand. beta.3 is published and `beta.json` points at it:
+  the first real auto-update test (beta.2 offers beta.3, installs it and verifies the signature) is now possible and still pending (TESTING §F11).
 - **Pipe ACL fix (`fa25739`)**: the agent adds each `PacketWard Operators` member's own SID to the pipe ACL, so the installing user connects
   without signing out (owner hit the "Cierra sesión" screen on a desktop PC). Unit-tested only; **not yet verified on a real install of beta.2**.
 - SECURITY.md: GitHub private vulnerability reporting is the only channel; owner will provide a security email later.
