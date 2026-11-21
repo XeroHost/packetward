@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
   PUBKEY_PLACEHOLDER,
+  assertChannel,
   manifest,
   parseTag,
   plan,
@@ -96,4 +97,11 @@ test('latest.json has the shape the updater reads', () => {
     target.url,
     'https://github.com/XeroHost/packetward/releases/download/v1.2.3-beta.1/PacketWard_1.2.3-beta.1_x64-setup.exe',
   )
+})
+
+test('a stable manifest never carries a pre-release version and a beta one always does', () => {
+  assertChannel('0.1.0', false)
+  assertChannel('0.1.0-beta.2', true)
+  assert.throws(() => assertChannel('0.1.0-beta.2', false), /never put a pre-release/)
+  assert.throws(() => assertChannel('0.1.0', true), /does not fit/)
 })

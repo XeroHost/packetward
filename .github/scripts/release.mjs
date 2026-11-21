@@ -104,6 +104,19 @@ export function stampConfig(releaseConf, p) {
   return conf
 }
 
+/**
+ * A stable release must carry a plain X.Y.Z version and a beta one X.Y.Z-beta.N: the stable channel
+ * reads the latest.json of the newest stable release, so a pre-release version in it would reach everybody.
+ */
+export function assertChannel(version, prerelease) {
+  const isBetaVersion = /-/.test(version ?? '')
+  if (prerelease !== isBetaVersion) {
+    throw new Error(
+      `Version ${version} does not fit a ${prerelease ? 'pre-release' : 'stable release'}: a manifest must never put a pre-release version on the stable channel.`,
+    )
+  }
+}
+
 /** latest.json in the format of the Tauri updater (static manifest, one Windows target). */
 export function manifest({ version, repo, tag, installerName, signature, notes, now }) {
   return {
@@ -147,6 +160,7 @@ function main(command) {
     setOutput('prerelease', String(p.prerelease))
     setOutput('signed', String(p.signed))
   } else if (command === 'manifest') {
+    assertChannel(env.VERSION, env.PRERELEASE === 'true')
     const out = manifest({
       version: env.VERSION,
       repo: env.REPO,

@@ -34,6 +34,16 @@ pub enum UpdateChannel {
 }
 
 impl UpdateChannel {
+    /// Whether a version found on this channel may be offered. The stable channel never offers a pre-release
+    /// (a semver pre-release always has a `-`), even if a wrong manifest ever named one: a beta must not reach
+    /// somebody who is on stable. Beta users are offered betas and stable releases alike.
+    fn accepts(self, version: &str) -> bool {
+        match self {
+            UpdateChannel::Stable => !version.contains('-'),
+            UpdateChannel::Beta => true,
+        }
+    }
+
     fn endpoint(self) -> &'static str {
         match self {
             UpdateChannel::Stable => STABLE_ENDPOINT,
@@ -169,7 +179,11 @@ pub async fn update_check(
         .endpoints(vec![endpoint])?
         .timeout(std::time::Duration::from_secs(30))
         .build()?;
-    let found = updater.check().await?;
+    // A pre-release on the stable channel is ignored, not offered.
+    let found = updater
+        .check()
+        .await?
+        .filter(|update| channel.accepts(&update.version));
     let current_version = app.package_info().version.to_string();
     let result = match &found {
         Some(update) => UpdateCheck::Available {
@@ -287,6 +301,18 @@ mod tests {
             UpdateChannel::Stable.endpoint(),
             UpdateChannel::Beta.endpoint()
         );
+    }
+
+    #[test]
+    fn stable_never_offers_a_pre_release_and_beta_offers_everything_newer() {
+        for version in ["0.1.0-beta.1", "1.2.3-beta.10", "2.0.0-rc.1"] {
+            assert!(!UpdateChannel::Stable.accepts(version), "{version}");
+            assert!(UpdateChannel::Beta.accepts(version), "{version}");
+        }
+        for version in ["0.1.0", "1.2.3", "10.20.30"] {
+            assert!(UpdateChannel::Stable.accepts(version), "{version}");
+            assert!(UpdateChannel::Beta.accepts(version), "{version}");
+        }
     }
 
     #[test]

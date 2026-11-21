@@ -4,6 +4,8 @@
 #
 #   tag vX.Y.Z         -> normal GitHub release (the "stable" update channel)
 #   tag vX.Y.Z-beta.N  -> GitHub pre-release (the "beta" update channel)
+#   branch release-dryrun/* -> DRY RUN: the same build, signing and signature check, but nothing is published
+#                              (the installer, its .sig and latest.json are kept 1 day as a workflow artifact)
 #
 # Secrets (all optional; without them the build still runs and publishes an UNSIGNED installer):
 #   TAURI_SIGNING_PRIVATE_KEY (+ _PASSWORD)  signed updater artifacts (.sig) and latest.json
@@ -13,6 +15,7 @@ name: Release
 on:
   push:
     tags: ['v*']
+    branches: ['release-dryrun/**']
 
 permissions:
   contents: write
@@ -49,7 +52,22 @@ jobs:
       - run: pnpm install --frozen-lockfile
         working-directory: apps/desktop
       - name: Release helper tests
-        run: node --test .github/scripts/
+        run: node --test .github/scripts/release.test.mjs .github/scripts/installer.test.mjs .github/scripts/verify-sig.test.mjs
+
+      # A tag publishes. A dry-run branch builds with a stand-in tag (v<version>-beta.0) and publishes nothing.
+      - name: Resolve the release tag
+        id: tag
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "name=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            version=$(node -p "require('./apps/desktop/package.json').version")
+            echo "name=v${version}-beta.0" >> "$GITHUB_OUTPUT"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Dry run::Nothing will be published from this run."
+          fi
 
       # The tauri-build step of the desktop shell requires the bundled resources to exist, so the
       # service and the CLI are built first.
@@ -88,7 +106,7 @@ jobs:
         id: prep
         shell: bash
         env:
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ steps.tag.outputs.name }}
         run: node .github/scripts/release.mjs prepare
 
       - name: Notice - unsigned build
@@ -136,24 +154,43 @@ jobs:
           [IO.File]::WriteAllText((Join-Path $out 'SHA256SUMS.txt'), (($lines -join "`n") + "`n"))
           "installer_name=$($installer.Name)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
+      # The app verifies this signature against the public key in tauri.conf.json before it installs anything.
+      # Checking it here, with the same key and format, keeps an installer the app would refuse out of the release.
+      - name: Verify the updater signature with the public key
+        if: steps.prep.outputs.signed == 'true'
+        shell: bash
+        env:
+          INSTALLER_NAME: ${{ steps.files.outputs.installer_name }}
+        run: node .github/scripts/verify-sig.mjs "dist-release/$INSTALLER_NAME" "dist-release/$INSTALLER_NAME.sig"
+
       - name: Write latest.json (only with signed artifacts)
         if: steps.prep.outputs.signed == 'true'
         shell: bash
         env:
           VERSION: ${{ steps.prep.outputs.version }}
           REPO: ${{ github.repository }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ steps.tag.outputs.name }}
+          PRERELEASE: ${{ steps.prep.outputs.prerelease }}
           INSTALLER_NAME: ${{ steps.files.outputs.installer_name }}
           SIG_PATH: dist-release/${{ steps.files.outputs.installer_name }}.sig
-          NOTES: See https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}
+          NOTES: See https://github.com/${{ github.repository }}/releases/tag/${{ steps.tag.outputs.name }}
           OUT: dist-release/latest.json
         run: node .github/scripts/release.mjs manifest
 
+      - name: Keep the dry-run files for a day (not a release)
+        if: steps.tag.outputs.publish != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-dry-run
+          path: dist-release
+          retention-days: 1
+
       - name: Publish the GitHub release
+        if: steps.tag.outputs.publish == 'true'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ steps.tag.outputs.name }}
           VERSION: ${{ steps.prep.outputs.version }}
           PRERELEASE: ${{ steps.prep.outputs.prerelease }}
           SIGNED: ${{ steps.prep.outputs.signed }}
@@ -179,7 +216,7 @@ jobs:
       # "releases/latest" for pre-releases). Both beta and stable releases overwrite it, so a beta user
       # is also offered a stable release that supersedes the beta they run.
       - name: Update the beta channel manifest
-        if: steps.prep.outputs.signed == 'true'
+        if: steps.prep.outputs.signed == 'true' && steps.tag.outputs.publish == 'true'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}

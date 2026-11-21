@@ -653,8 +653,9 @@ shell permissions, for example with Claude Code's permission deny rules, so the 
     the lower version until the next beta is tagged; a beta user already on the newer beta is simply not offered it.
   - The channel is selected per call (`.endpoints(...)`), not in `tauri.conf.json`. Versions are compared by semver
     (`0.2.0-beta.1 < 0.2.0`); downgrades are never offered (`allowDowngrades` stays off).
-- **Fail closed**: `plugins.updater.pubkey` in `tauri.conf.json` is a placeholder (`REPLACE_WITH_UPDATER_PUBLIC_KEY`)
-  until the owner generates the key (docs/RELEASE-KEYS.md). At start `updater::register` validates it (base64 of a
+- **Fail closed**: `plugins.updater.pubkey` in `tauri.conf.json` was a placeholder (`REPLACE_WITH_UPDATER_PUBLIC_KEY`) until the
+  updater key was generated (2026-11-21, docs/RELEASE-KEYS.md); it now holds the real public key, and a build or fork without a valid one still
+  fails closed. At start `updater::register` validates it (base64 of a
   minisign public key); the plugin is registered only when valid, and `update_info/update_check/update_install`
   answer "not configured" without any network call otherwise. No `updater:*` permission is granted to the webview, so
   only the three app commands below are reachable from the UI. The config file must still carry the `pubkey` entry

@@ -86,7 +86,7 @@ Developer agent without installing the service: `cargo run -p packetward-agent -
 
 ## Notes for the final summary
 - **The working tree contains changes to `branding-kit/` that I did not make (deleted and modified files).** I never commit them (commits use `git add -A -- . ':!branding-kit'`). Earlier, one commit accidentally included them and was pushed to `dev`; it was undone with a revert-style commit (the history keeps both). Tell the user.
-- Keys to generate on the user's own PC: updater key and blocklist minisign key (docs/RELEASE-KEYS.md). Until then the updater and the XeroHost blocklist are disabled (fail closed).
+- Updater key: generated 2026-11-21, public key committed, secrets loaded; the VPS copy is deleted once the owner confirms the backup (docs/RELEASE-KEYS.md §1.4). Blocklist minisign key: still to generate on the owner's PC; until then the XeroHost blocklist stays disabled (fail closed).
 - RDP Shield calls `restore_snapshot` before any purge/uninstall/`pwctl rdp reset`; the ORIGINAL pre-shield snapshot is persisted once.
 - Live check on the dev VPS (agent in Monitor, read-only): real RDP brute-force bots hit this server; the Guardian protected set listed gateway, DNS, 127/8 and the trusted RDP client, and a Medium RdpBruteForce alert became a `would_block` decision. Nothing was blocked.
 - pw-store holds the defense state, the audit log and the alert inbox. RDP Shield state, the country policy (`rdp_country.json`), intel lists and `settings.json` stay JSON files (decision recorded: they are tiny, human-readable and the agent must start even if the database is broken).
