@@ -1,0 +1,11 @@
+{
+  "version": "0.1.0-beta.2",
+  "notes": "See https://github.com/XeroHost/packetward/releases/tag/v0.1.0-beta.2",
+  "pub_date": "2026-11-21T03:39:10Z",
+  "platforms": {
+    "windows-x86_64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeWYrc0tRejgyaHNXTzZYS1FTZkFXTHVRUlQ1dW5WMXVVY1N2am5lRHdZM092UmY2QklST21LeXhkdkU5N3RVbWttd0k4UWFyNWdSL0F2eE9RWmRrSVZDalF1cmkyRGc4PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzk1MjMyMzQ5CWZpbGU6UGFja2V0V2FyZF8wLjEuMC1iZXRhLjJfeDY0LXNldHVwLmV4ZQl2ZXJzaW9uOjAuMS4wLWJldGEuMgpYdTVWUkZ5ZmlyOUt4SnpjUGNQd2M2SnZ0NXRPRTZ5OVpicGlIb2NsVy9LNlM3SVVpSzVKNnZzQ3BFSWFuUk5pVWNjN3l3bEttMzBlT1JkSTd2WnBBQT09Cg==",
+      "url": "https://github.com/XeroHost/packetward/releases/download/v0.1.0-beta.2/PacketWard_0.1.0-beta.2_x64-setup.exe"
+    }
+  }
+}
