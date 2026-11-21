@@ -61,7 +61,13 @@ the app's stable channel ignores any offered version that contains `-` (`UpdateC
 > The endpoints are on github.com: the repository must be **public** before an installed app can read them (a private repo
 > answers 404 to anonymous requests).
 
-### 1.4 Hand-over and deletion of the VPS copy
+### 1.4 Hand-over and deletion of the VPS copy (done 2026-11-21)
+
+The owner confirmed the backup; the VPS copies were then overwritten with random bytes twice and removed, and their absence verified:
+`packetward.key`, `packetward.key.password.txt` and a `packetward.zip` the owner had made to download them. Only `packetward.key.pub` (public)
+remains. The private key now exists in the owner's password manager and as the GitHub secret `TAURI_SIGNING_PRIVATE_KEY` (write-only).
+Further edits of the secrets must be done with `gh secret set`, not by hand in the web page (a manual save on 2026-11-21 replaced the values
+and they had to be uploaded again). The original steps follow, kept for a future rotation.
 
 1. Copy `packetward.key` and `packetward.key.password.txt` from `%USERPROFILE%\.tauri\` of the VPS to your PC and store them in
    your password manager (**two separate entries**: the key, and its password). `packetward.key.pub` is public.
@@ -157,7 +163,7 @@ only when they exist.
 
 ## 5. Checklist before tagging `v1.0.0`
 
-- [x] Updater key generated (2026-11-21), public key in `tauri.conf.json`, secrets loaded. [ ] Key and password backed up by the owner and the VPS copy deleted (section 1.4).
+- [x] Updater key generated (2026-11-21), public key in `tauri.conf.json`, secrets loaded, key and password backed up by the owner, VPS copy deleted (section 1.4).
 - [ ] Blocklist key generated, pinned in `pinned_key.rs`, secret loaded in the blocklist repo, backed up.
 - [ ] `nodes.json` has the real hostnames; the speed-server is deployed on those nodes.
 - [ ] `SECURITY.md` has the real security contact (GitHub private vulnerability reporting is enabled in the meantime).
