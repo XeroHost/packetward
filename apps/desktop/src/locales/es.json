@@ -134,11 +134,12 @@
     },
     "mcp": {
       "title": "Servidor MCP (clientes de IA)",
-      "description": "Permite que un cliente de IA —Claude Desktop, Claude Code, OpenCode o Cursor— lea el estado de este servidor y, solo si lo autorizas, ejecute acciones a través del agente. Está desactivado por defecto.",
+      "description": "Permite que un cliente de IA como Claude Code, Claude Desktop, OpenCode o Cursor lea el estado de este servidor y, solo si lo autorizas, ejecute acciones a través del agente. Está desactivado por defecto.",
       "switch": "Activar el servidor MCP",
       "switchHint": "Mientras esté desactivado se rechaza toda petición MCP, incluso de un cliente ya configurado.",
       "offNote": "El servidor está desactivado. Los niveles se guardan, pero no se puede ejecutar nada hasta que lo actives.",
       "loadError": "No se pudo leer la política MCP: {reason}",
+      "oldAgent": "El agente instalado no es compatible con los ajustes MCP. Actualiza PacketWard a la última versión.",
       "saveError": "No se pudo guardar la política MCP: {reason}",
       "level": {
         "disabled": "Desactivada",
@@ -709,9 +710,9 @@
       "distributed": "Desde muchas direcciones"
     },
     "tray": {
-      "neutral": "PacketWard — sin alertas activas",
-      "warning": "PacketWard — alerta en curso",
-      "alert": "PacketWard — ataque en curso"
+      "neutral": "PacketWard: sin alertas activas",
+      "warning": "PacketWard: alerta en curso",
+      "alert": "PacketWard: ataque en curso"
     },
     "summary": {
       "syn_flood": "Flood SYN",
@@ -1129,7 +1130,7 @@
       "state": {
         "missing": "No instalada",
         "ready": "Instalada",
-        "corrupt": "Dañada — descárguela de nuevo"
+        "corrupt": "Dañada. Descárguela de nuevo."
       },
       "built": "generada",
       "updating": "Descargando…",

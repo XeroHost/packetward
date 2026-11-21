@@ -2,6 +2,7 @@
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { i18n } from '@/app/i18n'
+import { AgentCallError } from '@/api/call'
 import PwSelect from '@/components/pw/PwSelect.vue'
 import { Switch } from '@/components/ui/switch'
 import type { McpSettingsView } from '@/types/generated/McpSettingsView'
@@ -162,6 +163,7 @@ describe('McpSettings', () => {
   it('builds a snippet with the installed pwctl.exe for every client', async () => {
     const wrapper = await mountPage()
     const snippet = () => wrapper.find('[data-testid="mcp-snippet"]').text()
+    expect(select(wrapper, 'Client').props('modelValue')).toBe('claudeCode')
     expect(snippet()).toContain(JSON.stringify(PWCTL))
     expect(snippet()).toContain('"mcpServers"')
 
@@ -205,6 +207,15 @@ describe('McpSettings', () => {
     expect(wrapper.find('[data-testid="mcp-check-result"]').text()).toContain(
       'Reinstall PacketWard',
     )
+  })
+
+  it('explains an old agent instead of printing a raw "forbidden" code', async () => {
+    api.fetchMcpSettings.mockRejectedValue(new AgentCallError('unsupported', 'forbidden'))
+    const wrapper = mount(McpSettings, { global: { plugins: [i18n] } })
+    await flushPromises()
+    const text = wrapper.text()
+    expect(text).toContain('does not support MCP settings')
+    expect(text).not.toContain('forbidden')
   })
 
   it('shows the agent error instead of pretending the change was saved', async () => {

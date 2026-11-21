@@ -37,7 +37,7 @@ const APPROVAL_ONLY = new Set([
 ])
 
 type ClientId = 'claudeDesktop' | 'claudeCode' | 'opencode' | 'cursor'
-const CLIENTS: readonly ClientId[] = ['claudeDesktop', 'claudeCode', 'opencode', 'cursor']
+const CLIENTS: readonly ClientId[] = ['claudeCode', 'claudeDesktop', 'opencode', 'cursor']
 
 /** Where each client keeps its configuration file (shown under the snippet). */
 const CLIENT_FILES: Record<ClientId, string> = {
@@ -57,7 +57,7 @@ const saving = ref(false)
 const limit = ref('6')
 const limitError = ref<string | null>(null)
 const dialog = ref<HTMLDialogElement | null>(null)
-const client = ref<ClientId>('claudeDesktop')
+const client = ref<ClientId>('claudeCode')
 const copied = ref(false)
 const check = ref<McpSelfCheck | null>(null)
 const checking = ref(false)
@@ -65,8 +65,23 @@ const checking = ref(false)
 const enabled = computed(() => view.value?.enabled ?? false)
 const tools = computed(() => view.value?.tools ?? [])
 
+/** The "old agent" sentence already says what happened; other errors keep the reason prefix. */
+function message(prefix: string, reason: string | null): string {
+  if (!reason) return ''
+  const friendly = t('settings.mcp.oldAgent')
+  return reason === friendly ? reason : t(prefix, { reason })
+}
+
+const loadMessage = computed(() => message('settings.mcp.loadError', loadError.value))
+const saveMessage = computed(() => message('settings.mcp.saveError', saveError.value))
+
 function failure(err: unknown): string {
-  if (err instanceof AgentCallError) return err.message
+  if (err instanceof AgentCallError) {
+    // The bridge maps `forbidden` to `unsupported`; the old agent has no MCP methods at all.
+    // Showing that raw code in a settings page is not useful to the owner.
+    if (err.kind === 'unsupported') return t('settings.mcp.oldAgent')
+    return err.message
+  }
   return String(err)
 }
 
@@ -244,10 +259,10 @@ const checkMessage = computed(() => {
       {{ t('settings.mcp.offNote') }}
     </p>
     <p v-if="loadError" class="text-danger text-sm" role="alert">
-      {{ t('settings.mcp.loadError', { reason: loadError }) }}
+      {{ loadMessage }}
     </p>
     <p v-if="saveError" class="text-danger text-sm" role="alert" data-testid="mcp-save-error">
-      {{ t('settings.mcp.saveError', { reason: saveError }) }}
+      {{ saveMessage }}
     </p>
   </SettingRow>
 

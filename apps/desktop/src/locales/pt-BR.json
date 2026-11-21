@@ -134,11 +134,12 @@
     },
     "mcp": {
       "title": "Servidor MCP (clientes de IA)",
-      "description": "Permite que um cliente de IA — Claude Desktop, Claude Code, OpenCode ou Cursor — leia o estado deste servidor e, somente se você autorizar, execute ações através do agente. Fica desativado por padrão.",
+      "description": "Permite que um cliente de IA como Claude Code, Claude Desktop, OpenCode ou Cursor leia o estado deste servidor e, somente se você autorizar, execute ações através do agente. Fica desativado por padrão.",
       "switch": "Ativar o servidor MCP",
       "switchHint": "Enquanto estiver desativado, toda solicitação MCP é recusada, mesmo de um cliente já configurado.",
       "offNote": "O servidor está desativado. Os níveis são salvos, mas nada pode ser executado até você ativá-lo.",
       "loadError": "Não foi possível ler a política MCP: {reason}",
+      "oldAgent": "O agente instalado não é compatível com as configurações MCP. Atualize o PacketWard para a versão mais recente.",
       "saveError": "Não foi possível salvar a política MCP: {reason}",
       "level": {
         "disabled": "Desativada",
@@ -709,9 +710,9 @@
       "distributed": "De muitos endereços"
     },
     "tray": {
-      "neutral": "PacketWard — sem alertas ativos",
-      "warning": "PacketWard — alerta em andamento",
-      "alert": "PacketWard — ataque em andamento"
+      "neutral": "PacketWard: sem alertas ativos",
+      "warning": "PacketWard: alerta em andamento",
+      "alert": "PacketWard: ataque em andamento"
     },
     "summary": {
       "syn_flood": "Flood SYN",
@@ -1129,7 +1130,7 @@
       "state": {
         "missing": "Não instalado",
         "ready": "Instalado",
-        "corrupt": "Danificado — baixe novamente"
+        "corrupt": "Danificado. Baixe novamente."
       },
       "built": "gerado",
       "updating": "Baixando…",
@@ -1255,7 +1256,7 @@
   },
   "mcp": {
     "approval": {
-      "banner": "Um cliente de IA solicita uma ação — revise antes que ela seja executada.",
+      "banner": "Um cliente de IA solicita uma ação. Revise antes que ela seja executada.",
       "bannerCount": "{count} aguardando sua decisão.",
       "open": "Revisar",
       "dialogTitle": "Um cliente de IA solicita uma ação",
@@ -1266,7 +1267,7 @@
       "error": "A ação não pôde ser concluída: {message}",
       "toast": {
         "title": "Um cliente de IA solicita uma ação",
-        "body": "{summary} — revise no PacketWard."
+        "body": "{summary}. Revise no PacketWard."
       },
       "consequence": {
         "block_ip": "Bloqueia um endereço no firewall.",

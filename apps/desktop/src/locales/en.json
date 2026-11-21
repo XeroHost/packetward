@@ -134,11 +134,12 @@
     },
     "mcp": {
       "title": "MCP server (AI clients)",
-      "description": "Lets an AI client — Claude Desktop, Claude Code, OpenCode or Cursor — read this server's state and, only if you allow it, run actions through the agent. It is off by default.",
+      "description": "Lets an AI client such as Claude Code, Claude Desktop, OpenCode or Cursor read this server's state and, only if you allow it, run actions through the agent. It is off by default.",
       "switch": "Enable the MCP server",
       "switchHint": "While it is off, every MCP request is refused, even from a configured client.",
       "offNote": "The server is off. Levels are saved but nothing can run until you turn it on.",
       "loadError": "Could not read the MCP policy: {reason}",
+      "oldAgent": "The installed agent does not support MCP settings. Update PacketWard to the latest version.",
       "saveError": "Could not save the MCP policy: {reason}",
       "level": {
         "disabled": "Off",
@@ -709,9 +710,9 @@
       "distributed": "From many addresses"
     },
     "tray": {
-      "neutral": "PacketWard — no active alerts",
-      "warning": "PacketWard — alert in progress",
-      "alert": "PacketWard — attack in progress"
+      "neutral": "PacketWard: no active alerts",
+      "warning": "PacketWard: alert in progress",
+      "alert": "PacketWard: attack in progress"
     },
     "summary": {
       "syn_flood": "SYN flood",
@@ -1129,7 +1130,7 @@
       "state": {
         "missing": "Not installed",
         "ready": "Installed",
-        "corrupt": "Damaged — download it again"
+        "corrupt": "Damaged. Download it again."
       },
       "built": "built",
       "updating": "Downloading…",
@@ -1255,7 +1256,7 @@
   },
   "mcp": {
     "approval": {
-      "banner": "An AI client requests an action — review it before it runs.",
+      "banner": "An AI client requests an action. Review it before it runs.",
       "bannerCount": "{count} waiting for your decision.",
       "open": "Review",
       "dialogTitle": "An AI client requests an action",
@@ -1266,7 +1267,7 @@
       "error": "The action could not be completed: {message}",
       "toast": {
         "title": "An AI client requests an action",
-        "body": "{summary} — review it in PacketWard."
+        "body": "{summary}. Review it in PacketWard."
       },
       "consequence": {
         "block_ip": "Blocks an address in the firewall.",

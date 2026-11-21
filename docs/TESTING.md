@@ -409,7 +409,7 @@ approval queue, protected set, rate limits, audit, `mcp.pending` topic, pipe han
    `%ProgramData%\PacketWard\mcp.json` as an administrator (the folder is SYSTEM/Administrators only), start it and verify every tool
    is off and the switch is off; then set the policy again from the page.
 1. **Client configuration from Settings → MCP:** pick each client and press **Copy configuration**; paste the snippet into
-   `claude_desktop_config.json`, `.mcp.json`, `opencode.json` or `.cursor/mcp.json`. Its path must be the installed
+   `claude_desktop_config.json`, `.mcp.json`, `opencode.json` or `.cursor/mcp.json`. By default the picker shows Claude Code. Its path must be the installed
    `<install dir>\pwctl.exe`. Press **Check pwctl.exe** and confirm the smoke test succeeds. The client must run as a
    `PacketWard Operators` member.
 2. **Switch off (default):** the client connects and lists the 23 tools, but every call answers `forbidden`; the Logs page shows

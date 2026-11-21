@@ -548,9 +548,8 @@ Guardian settings), and the agent still refuses those methods for `ClientKind::M
 
 **Settings → MCP (desktop, milestone M12, implemented 2026-11-21).** `features/settings/McpSettings.vue` shows the master switch (off),
 the level of each execution tool (approval-only tools offer disabled / approval), the write limit and a **Copy configuration** control
-with the installed `pwctl.exe` path from the new `mcp_install_info` command. The snippets are JSON entries: Claude Desktop and Cursor
-(`mcpServers` in `claude_desktop_config.json` / `.cursor/mcp.json`), Claude Code (`.mcp.json` with `type: "stdio"`) and OpenCode
-(`mcp` entry with `type: "local"` in `opencode.json`). The new `mcp_self_check` command starts `pwctl.exe mcp` with stdin closed and a
+with the installed `pwctl.exe` path from the new `mcp_install_info` command. The snippets are JSON entries: Claude Code (default, `.mcp.json` with `type: "stdio"`), Claude Desktop and Cursor
+(`mcpServers` in `claude_desktop_config.json` / `.cursor/mcp.json`) and OpenCode (`mcp` entry with `type: "local"` in `opencode.json`). The new `mcp_self_check` command starts `pwctl.exe mcp` with stdin closed and a
 bounded 8 s timeout to prove the installed binary works; the page also warns that the client's shell must deny `pwctl` directly.
 
 **IPC (protocol minor 15; 13 is the speed-test providers, 14 the start-up capture switch).** Methods `mcp.settings.get`, `mcp.settings.set`, `mcp.pending.list`, `mcp.approve`, `mcp.reject`, `mcp.action.status`
