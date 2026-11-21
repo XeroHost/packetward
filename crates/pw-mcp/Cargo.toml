@@ -1,0 +1,28 @@
+[package]
+name = "pw-mcp"
+description = "MCP server library for `pwctl mcp`: tool catalog, schemas, result envelope, prompts."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+pw-ipc = { path = "../pw-ipc" }
+pw-proto = { path = "../pw-proto" }
+rmcp.workspace = true
+schemars = "1"
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["io-util", "macros", "rt", "sync", "time"] }
+tracing.workspace = true
+
+[dev-dependencies]
+# The in-memory transport lets the tests drive a fake agent without a named pipe.
+pw-ipc = { path = "../pw-ipc", features = ["memory"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+
+[lints]
+workspace = true
