@@ -537,6 +537,13 @@ call is sent to the agent like any write and its `pending` reply is returned as 
 `serve(client)` is the entry point, after the caller has handshaken a `pw_ipc::Client` as `ClientKind::Mcp`.
 `apps/cli` exposes it as `pwctl mcp` (stdio; the pipe client handshakes as `Mcp`, stdout stays pure JSON-RPC).
 
+**Integration (M11, desktop).** The shell subscribes to `mcp.pending` and forwards every snapshot as `BridgeEvent::McpPending`;
+`AppShell` mounts a global banner and a dialog that lists each waiting request with its **full arguments**, a consequence line, a live
+countdown and Approve / Reject (the dialog is the confirmation; risky tools use the danger tone). A new request raises a Windows toast
+through `notify_action_request`; clicking it restores the window and opens the dialog (`mcp-pending-open`). Until the Settings → MCP
+page (M12) the toast follows the alert inbox's high-severity mute switch, and the first snapshot after a (re)connect shows the banner
+without a toast. The bridge allowlist gains `mcp.pending.list`, `mcp.approve`, `mcp.reject`, `mcp.action.status` — never `mcp.settings.*`.
+
 **Settings → MCP (desktop, milestone M12).** Master switch (off), the level of each execution tool (approval-only tools offer disabled /
 approval), the write limit, and **Copy configuration** buttons that put on the clipboard the entry for each client, using the installed
 `pwctl.exe` path (the installer already ships it): Claude Desktop (`mcpServers` entry for `claude_desktop_config.json`), Claude Code (the

@@ -399,6 +399,45 @@ when you have no signing key. Output: `target\release\bundle\nsis\PacketWard_<ve
    nothing is ever downloaded or installed until the button is pressed. A `ui.json` from an older build keeps the switch OFF.
 5. **Idle CPU** (`tools\dev\measure-idle.ps1`, release agent, UI closed, 1 vCPU test VPS): target below 1 % of one core and below 60 MB.
 
+## F13. MCP server (M11) — TEST VPS ONLY (real AI client + real agent; never the working VPS)
+
+Automated coverage: `pw-mcp` tests (catalog, envelope, prompts, fake agent) and `pw-engine` tests (switch, allowlist, levels,
+approval queue, protected set, rate limits, audit, `mcp.pending` topic, pipe handshake kind). This section is the live half.
+
+0. **Enable MCP (interim until the Settings → MCP page of M12):** stop the PacketWard service, edit
+   `%ProgramData%\PacketWard\mcp.json` as an administrator (the folder is SYSTEM/Administrators only), e.g.
+   `{"enabled":true,"write_limit_per_min":6,"tools":[{"tool":"block_ip","level":"automatic"},{"tool":"unblock_ip","level":"approval"}]}`
+   (absent tools stay disabled), start the service. A corrupt file must fail closed: everything off.
+1. **Client configuration** (the Copy buttons arrive with M12): Claude Desktop `mcpServers` entry
+   `{"command":"<install dir>\\pwctl.exe","args":["mcp"]}`; Claude Code `claude mcp add packetward -- <install dir>\\pwctl.exe mcp`;
+   OpenCode `mcp` entry `type: "local"`; Cursor `mcp.json`. The client must run as a `PacketWard Operators` member.
+2. **Switch off (default):** the client connects and lists the 23 tools, but every call answers `forbidden`; the Logs page shows
+   actor `mcp`, result `refused`. Nothing runs.
+3. **Reads with the switch on:** `live_stats`, `connections`, `top_remote_ips`, `alerts`, `guardian_decisions`, `captures_summary`,
+   `firewall_rules`, `rdp_audit`, `audit_log`, `ip_lookup` answer with the envelope (`data`, `untrusted_fields`, `notice`);
+   `ping`/`mtr`/`dns_lookup`/`port_check` run and return their result. Every read is audited as `mcp`.
+4. **block_ip (automatic):** without `ttl_secs` or with more than 604800 → error; a TEST address (never your RDP client) is blocked
+   with its TTL (Firewall → Blocks, source `mcp`) and expires; `pwctl unblock --all` cleans up.
+5. **Protected set:** `block_ip` of the current RDP client address, the gateway, a DNS server or an allowlist entry → `forbidden`
+   ("protected"), **no pending action created**, audited `refused`.
+6. **Approval flow:** with `unblock_ip` at `approval`, a call returns `pending_approval` + id at once; the desktop shows a toast and
+   the global banner; the dialog lists the full arguments, the consequence and the countdown. Approve from the desktop → the action
+   runs and `action_status` says `approved` with the result; Reject → `rejected`; wait five minutes → `expired` and the banner clears.
+   The AI calling `mcp.approve` through its own connection → `forbidden`. An agent restart drops pending actions (by design).
+7. **Rate limits:** seven `block_ip` calls within a minute (limit 6) → the seventh `rate_limited`; thirteen probe calls
+   (ping/DNS/MTR/port check mix) → `rate_limited` while reads still work.
+8. **Bounds:** `start_capture` records headers only for ≤ 60 s (open the pcapng: 128-byte snapshots); `speed_test` accepts the quick
+   test and the 1 GiB bin, refuses 10/50 GiB; `support_bundle` returns a path + manifest, never contents, and uploads nothing.
+9. **Rules:** `create_firewall_rule` lands in group `PacketWard` even if the AI asks for another group; `delete_firewall_rule` of a
+   foreign rule → refused; deleting a PacketWard rule that allows RDP without the typed phrase → refused (lockout guard).
+10. **set_guardian_mode:** only the mode changes (compare the Guardian policy before/after); switching to Active needs the desktop
+    approval, which is the confirmation.
+11. **Never exposed:** the tool list has no purge, no RDP Shield action, no allowlist/protected-set read or write, no settings;
+    a modified client calling those methods directly over the pipe as `Mcp` gets `forbidden` (enforcement is in the agent).
+12. **Untrusted data:** results carrying hostnames/process names list them in `untrusted_fields`; control characters are gone and
+    strings are capped at 256 characters; the notice sentence is present.
+13. **Cleanup:** switch MCP off (or delete `mcp.json`), unblock test addresses, delete test recordings and bundles, then §G.
+
 ## G. Leave-no-trace check
 
 After testing, all of these must be empty / `False`:

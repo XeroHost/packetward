@@ -134,27 +134,30 @@ is rejected; works offline except AbuseIPDB and list refresh.
 **Accept:** TCP mode reaches hosts that drop ICMP (with Npcap) — **not measured**: needs a test VPS and Npcap installed by hand, see TESTING §F10. Everything else is fake-tested.
 
 ## M11 — MCP server
-Design: ARCHITECTURE §6.14. Decisions: DECISIONS "MCP server". Nothing of this milestone is implemented yet.
-- [ ] `crates/pw-mcp` (new): tool catalog, JSON schemas, result envelope with untrusted-field marking, prompts; `rmcp` (official Rust SDK),
+Design: ARCHITECTURE §6.14. Decisions: DECISIONS "MCP server". Implemented on `dev` 2026-11-21 (protocol 1.15);
+live client↔agent checks are TESTING §F13 (test VPS).
+- [x] `crates/pw-mcp` (new): tool catalog, JSON schemas, result envelope with untrusted-field marking, prompts; `rmcp` (official Rust SDK),
       stdio transport, launched as `pwctl mcp`. No network transport in v1.
-- [ ] Agent: `ClientKind::Mcp`, MCP policy (master switch off by default, one level per tool: disabled / automatic / approval), pending-action
+- [x] Agent: `ClientKind::Mcp`, MCP policy (master switch off by default, one level per tool: disabled / automatic / approval), pending-action
       queue with a 5-minute expiry, write rate limit, `AuditActor::Mcp`, protocol 1.15 (`mcp.*` methods and the `mcp.pending` topic; 1.13 is the speed-test providers, 1.14 the start-up capture switch).
       Enforcement lives in the agent, not only in `pwctl mcp`: an `Mcp` connection can only call the methods of the catalog.
-- [ ] Read tools (always available once the switch is on): live stats, connections, top remote IPs, alerts, Guardian decisions, capture summary,
+      (The `Handler` trait carries the connection kind as `ConnCtx`; probes share a 12/min budget; see DECISIONS.)
+- [x] Read tools (always available once the switch is on): live stats, connections, top remote IPs, alerts, Guardian decisions, capture summary,
       MTR / ping / DNS / port check, IP lookup (GeoIP/ASN, AbuseIPDB only with the user's key), firewall rules, RDP Shield audit, audit log.
-- [ ] Execution tools, all disabled by default and set one by one: automatic-capable (`block_ip` with TTL, `start_capture`, `speed_test` ≤ 1 GB,
+      (`live.stats.get` is the one-shot getter added for them.)
+- [x] Execution tools, all disabled by default and set one by one: automatic-capable (`block_ip` with TTL, `start_capture`, `speed_test` ≤ 1 GB,
       `support_bundle`) and approval-only (`unblock_ip`, `set_guardian_mode`, `create_firewall_rule`, `delete_firewall_rule`). Never exposed:
       disabling the firewall, firewall purge, any RDP Shield action, the allowlist and the protected set.
-- [ ] Approval flow: pending action in the agent → desktop notification and an in-app banner/dialog with the full detail and Approve / Reject →
+- [x] Approval flow: pending action in the agent → desktop notification and an in-app banner/dialog with the full detail and Approve / Reject →
       expires after 5 minutes; the AI cannot approve over MCP.
-- [ ] Guardian protected set applies to every MCP action; write actions are rate limited per minute; every call goes to the audit log as "mcp".
-- [ ] MCP prompts: `analyze-attack`, `diagnose-latency`, `rdp-security-review`.
-- [ ] Pending-approval UI in the desktop: notification, banner/dialog with the full detail and Approve / Reject, `mcp.pending` subscription (the Settings → MCP page is part of M12).
-- [ ] Tests with the fake agent: a "never exposed" action is not in the tool list; an approval-level action does not run without the UI's
+- [x] Guardian protected set applies to every MCP action; write actions are rate limited per minute; every call goes to the audit log as "mcp".
+- [x] MCP prompts: `analyze-attack`, `diagnose-latency`, `rdp-security-review`.
+- [x] Pending-approval UI in the desktop: notification, banner/dialog with the full detail and Approve / Reject, `mcp.pending` subscription (the Settings → MCP page is part of M12).
+- [x] Tests with the fake agent: a "never exposed" action is not in the tool list; an approval-level action does not run without the UI's
       approval; the protected set refuses an MCP request to block the trusted RDP client IP; plus rate limit, expiry, master switch, the
       method allowlist of `Mcp` connections, and sanitization of untrusted fields.
 **Accept:** with the switch off the agent refuses every MCP request; with it on, an MCP client (Claude Desktop / Claude Code) can read the
-state, and every write path behaves as specified above on a test VPS (TESTING §F13, to be written with the implementation).
+state, and every write path behaves as specified above on a test VPS (TESTING §F13). *(Fake-tested half met on dev; the live half pending.)*
 
 ## M12 — Settings, logs, proxy, updates, installer
 - [x] Settings UI: language/appearance/notifications/autostart (earlier), proxy applied to all outbound HTTP (speed test, GeoIP and blocklist
