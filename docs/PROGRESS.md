@@ -2,7 +2,30 @@
 
 Read this first when resuming after a stop or a context compaction.
 
-**Branch:** `dev` (never touch `main`). **Rules:** see the Phase 2 brief summarized below.
+## Handoff — state on 2026-11-21 (read before doing anything)
+- Repo is **public**. `main` = `dev` = `fa25739` (main is moved only by fast-forward, on the owner's explicit OK; never force-push).
+- **Releases (public):** `v0.1.0-beta.1` (pre-release, only its installer left) and `v0.1.0-beta.2` (pre-release, published by the new
+  workflow, only `PacketWard_0.1.0-beta.2_x64-setup.exe`). The old `updater-beta` release/tag is **deleted** (owner approved). Do not create or
+  delete public releases, tags or the `updates` branch without asking the owner first.
+- **Release pipeline is DONE and proven by beta.2** (`.github/workflows/release.yml`, `.github/scripts/release.mjs`): tag-only, guard (tag on main),
+  full CI, draft with only the installer, private `release-proof` artifact (hash, `.sig`, manifest), verify against the public key, publish,
+  then commit `beta.json` / `stable.json` to the orphan **`updates`** branch (exists now; has README + `beta.json` for 0.1.0-beta.2;
+  `stable.json` 404 until the first stable tag). Endpoints in `tauri.conf.json` / `updater.rs` = raw.githubusercontent.com `updates/*.json`.
+- **Updater signing key:** generated, public key in `tauri.conf.json`, secrets `TAURI_SIGNING_PRIVATE_KEY(_PASSWORD)` set in GitHub; private
+  key backed up by the owner and deleted from the VPS. Never print/log it; change secrets only with `gh secret set` from a file.
+- beta.1 has the old endpoint compiled in → cannot auto-update; users install beta.2 by hand. First real auto-update test = publish beta.3
+  and check beta.2 offers it (not done yet).
+- **Pipe ACL fix (`fa25739`)**: the agent adds each `PacketWard Operators` member's own SID to the pipe ACL, so the installing user connects
+  without signing out (owner hit the "Cierra sesión" screen on a desktop PC). Unit-tested only; **not yet verified on a real install of beta.2**.
+- SECURITY.md: GitHub private vulnerability reporting is the only channel; owner will provide a security email later.
+- CI: reusable `ci.yml`, docs-only detection fixed, Windows job tests only Windows crates, cache saved from `main`. Known flaky test:
+  `IpDetailDrawer.test.ts` "closes when the user goes to another page" (failed once in CI, passed on rerun and 6/6 locally).
+- Still open (owner's call): Authenticode certificate, blocklist minisign key, `main` branch protection, M11 MCP (designed, not implemented),
+  live tests of TESTING §F4–F12 on a test VPS, restart of the agent on this VPS (needs owner OK).
+
+**Branch:** `dev` (`main` only by fast-forward with the owner's OK; **pushing `dev` also needs the owner's OK**,
+owner rule 2026-11-21 — commit locally, ask before pushing; never create/delete releases, tags or the `updates`
+branch without asking). **Rules:** see the Phase 2 brief summarized below.
 - Commit per completed task; push `dev` at the end of each milestone; CI of `dev` must be green (check with `gh`).
 - A milestone is done only if fmt, clippy (Windows + Linux target), tests, cargo deny, lint, typecheck, build pass
   and CI is green. Advisor once at the end of each milestone.
@@ -37,11 +60,11 @@ Read this first when resuming after a stop or a context compaction.
 ## Packaging (M12) — status
 Merged into `dev`: NSIS release config (`tauri.release.conf.json`) + `installer/hooks.nsh`, two-channel updater that fails closed
 with the placeholder public key, tag-driven `release.yml` (unsigned build without secrets; no channel files without the signing key),
-docs ARCHITECTURE §9 and TESTING §F11. The installer was **built** on the dev VPS (setup .exe) but **never run**: install,
-upgrade, uninstall, the raw-socket firewall rule, RDP reset on uninstall, signed updates and the release workflow itself are
-pending (needs Windows Server 2019/2022 test VMs and the owner's keys, docs/RELEASE-KEYS.md). Known caveats are in ARCHITECTURE §9.1
-(manual "uninstall first" upgrade path resets RDP Shield; a stable hotfix lower than the newest beta overwrites the beta manifest;
-the updater uses the Windows system proxy, not the agent-config proxy).
+docs ARCHITECTURE §9 and TESTING §F11. Update 2026-11-21: the release workflow ran for real (`v0.1.0-beta.2`, see Handoff above) and the
+owner installed beta.1 on a desktop PC (that is how the sign-out bug was found). Still pending: upgrade/uninstall on test VMs, RDP reset on
+uninstall, an end-to-end signed auto-update (beta.2 → beta.3). Known caveats in ARCHITECTURE §9.1 (manual "uninstall first" upgrade path resets
+RDP Shield; the updater uses the Windows system proxy, not the agent-config proxy). The old "stable hotfix overwrites the beta manifest" gap is gone
+(channel files never move backwards).
 
 ## Resource budget (M13 acceptance: idle < 1 % CPU, < 60 MB RAM)
 Measured on the dev VPS (16 logical cores; release build; `run --console`; capture on, 1 s poll, ~60 connections, ~3 Mbps):
