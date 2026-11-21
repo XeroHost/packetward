@@ -253,6 +253,16 @@ pub fn current_user_sid_string() -> io::Result<String> {
 /// Whether `sid` is a member of the local group, according to the account database (not the
 /// current token). `None` when the group does not exist.
 pub fn local_group_has_member(group: &str, sid: &str) -> io::Result<Option<bool>> {
+    Ok(local_group_member_sids(group)?.map(|members| {
+        members
+            .iter()
+            .any(|member| member.eq_ignore_ascii_case(sid))
+    }))
+}
+
+/// SIDs of the members of the local group, according to the account database (not any token).
+/// `None` when the group does not exist.
+pub fn local_group_member_sids(group: &str) -> io::Result<Option<Vec<String>>> {
     let name = wide(group);
     let mut buffer: *mut u8 = std::ptr::null_mut();
     let mut read = 0u32;
@@ -275,16 +285,20 @@ pub fn local_group_has_member(group: &str, sid: &str) -> io::Result<Option<bool>
         NERR_GROUP_NOT_FOUND => return Ok(None),
         other => return Err(io::Error::from_raw_os_error(other as i32)),
     }
-    let mut found = false;
+    let mut sids = Vec::new();
+    let mut failure = None;
     if !buffer.is_null() {
         // SAFETY: on success `buffer` holds `read` LOCALGROUP_MEMBERS_INFO_0 entries.
         let members = unsafe {
             std::slice::from_raw_parts(buffer.cast::<LOCALGROUP_MEMBERS_INFO_0>(), read as usize)
         };
         for member in members {
-            if sid_to_string(member.lgrmi0_sid)?.eq_ignore_ascii_case(sid) {
-                found = true;
-                break;
+            match sid_to_string(member.lgrmi0_sid) {
+                Ok(sid) => sids.push(sid),
+                Err(err) => {
+                    failure = Some(err);
+                    break;
+                }
             }
         }
         // SAFETY: `buffer` was allocated by NetLocalGroupGetMembers and is freed once.
@@ -292,7 +306,10 @@ pub fn local_group_has_member(group: &str, sid: &str) -> io::Result<Option<bool>
             NetApiBufferFree(Some(buffer.cast_const().cast()));
         }
     }
-    Ok(Some(found))
+    match failure {
+        Some(err) => Err(err),
+        None => Ok(Some(sids)),
+    }
 }
 
 const ERROR_SERVICE_DOES_NOT_EXIST: u32 = 1060;

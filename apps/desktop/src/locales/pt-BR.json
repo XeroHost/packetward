@@ -176,7 +176,7 @@
       },
       "signOutRequired": {
         "title": "Saia do Windows e entre novamente",
-        "body": "Sua conta está no grupo “PacketWard Operators”, mas o Windows só aplica isso ao iniciar a sessão. Desconectar e reconectar a Área de Trabalho Remota não basta: encerre a sessão por completo e abra o PacketWard de novo."
+        "body": "Sua conta está no grupo “PacketWard Operators”, mas esta sessão do Windows ainda não o tem: o Windows só aplica isso ao iniciar a sessão. Encerre a sessão do Windows por completo (bloquear, ou desconectar e reconectar a Área de Trabalho Remota, não basta) e abra o PacketWard de novo. Se você acabou de instalar, reparar a instalação também resolve sem encerrar a sessão."
       },
       "unexplained": {
         "title": "O agente recusou a conexão",

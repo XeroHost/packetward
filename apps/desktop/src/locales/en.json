@@ -176,7 +176,7 @@
       },
       "signOutRequired": {
         "title": "Sign out of Windows and sign back in",
-        "body": "Your account is in the “PacketWard Operators” group, but Windows only applies this when you sign in. Disconnecting and reconnecting Remote Desktop is not enough: sign out completely, then open PacketWard again."
+        "body": "Your account is in the “PacketWard Operators” group, but this Windows session does not have it yet: Windows only applies it when you sign in. Sign out of Windows completely (locking, or disconnecting and reconnecting Remote Desktop, is not enough), then open PacketWard again. If you have just installed it, repairing the installation also fixes it without signing out."
       },
       "unexplained": {
         "title": "The agent refused the connection",

@@ -7,7 +7,8 @@ use std::io;
 use crate::pipe::OPERATORS_GROUP;
 use crate::sys::windows::{
     account_sid_string, current_user_sid_string, local_group_add, local_group_add_member,
-    local_group_delete, local_group_has_member, local_group_remove_member, token_has_group,
+    local_group_delete, local_group_has_member, local_group_member_sids, local_group_remove_member,
+    token_has_group,
 };
 
 /// Why the pipe refused this user.
@@ -17,9 +18,11 @@ pub enum AccessProblem {
     GroupMissing,
     /// The group exists but this user is not a member. An administrator must add them.
     NotMember,
-    /// The user was added to the group, but this session's token predates it. Windows only
-    /// applies group membership at logon: the user must **sign out and back in** (disconnecting
-    /// and reconnecting an RDP session is not enough).
+    /// The user is in the group but still cannot connect: either the agent was started before the
+    /// user was added (it puts the members' own SIDs in the pipe ACL when it starts; restart the
+    /// service) or, for an agent that predates that, this session's token predates the membership
+    /// and the user must **sign out and back in** (disconnecting and reconnecting an RDP session
+    /// is not enough).
     SignOutRequired,
     /// Member and the token has the group, yet access was denied: something else is wrong.
     Unexplained,
@@ -44,6 +47,14 @@ pub fn diagnose() -> io::Result<AccessProblem> {
 /// SID of the operators group, if it exists. Used to build the pipe ACL.
 pub fn operators_group_sid() -> io::Result<Option<String>> {
     account_sid_string(OPERATORS_GROUP)
+}
+
+/// SIDs of the current members of the operators group (empty when the group does not exist).
+/// The agent puts each one in the pipe ACL next to the group itself: an ACE for the user's own SID
+/// matches the token they already have, so a member added during the current session can connect
+/// without signing out (the group ACE only matches tokens created after the membership change).
+pub fn operator_member_sids() -> io::Result<Vec<String>> {
+    Ok(local_group_member_sids(OPERATORS_GROUP)?.unwrap_or_default())
 }
 
 /// SID string of the user running this process.

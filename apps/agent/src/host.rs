@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use pw_engine::{Engine, EngineConfig};
-use pw_ipc::pipe::{pipe_sddl, PipeListener, PIPE_NAME};
+use pw_ipc::pipe::{pipe_sddl_with_members, PipeListener, PIPE_NAME};
 use pw_ipc::{access, serve};
 use pw_netstat::WindowsNetStat;
 
@@ -32,9 +32,19 @@ pub async fn run_agent(
         }
     };
 
+    // The members' own SIDs go in the ACL too: a user added to the group in the session they are in
+    // has no group in their token yet, but their own SID is there, so they connect without signing out.
+    let members = access::operator_member_sids().unwrap_or_else(|err| {
+        tracing::warn!(%err, "could not list the operators; relying on the group alone");
+        Vec::new()
+    });
+
     // Fails if another process already owns the pipe name; never serve on a squatted pipe.
-    let listener = PipeListener::bind(PIPE_NAME, &pipe_sddl(operators.as_deref()))
-        .with_context(|| format!("could not create the IPC pipe {PIPE_NAME}"))?;
+    let listener = PipeListener::bind(
+        PIPE_NAME,
+        &pipe_sddl_with_members(operators.as_deref(), &members),
+    )
+    .with_context(|| format!("could not create the IPC pipe {PIPE_NAME}"))?;
 
     // The data folder holds the Guardian state, the allowlist and the alerts: only SYSTEM and
     // Administrators may write there, before anything is read from it.

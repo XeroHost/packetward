@@ -176,7 +176,7 @@
       },
       "signOutRequired": {
         "title": "Cierra sesión en Windows y vuelve a entrar",
-        "body": "Tu cuenta está en el grupo “PacketWard Operators”, pero Windows solo lo aplica al iniciar sesión. Desconectar y volver a conectar Escritorio remoto no basta: cierra la sesión por completo y abre PacketWard de nuevo."
+        "body": "Tu cuenta está en el grupo “PacketWard Operators”, pero esta sesión de Windows todavía no lo tiene: Windows solo lo aplica al iniciar sesión. Cierra la sesión de Windows por completo (bloquear, o desconectar y volver a conectar Escritorio remoto, no basta) y abre PacketWard de nuevo. Si acabas de instalarlo, reparar la instalación también lo soluciona sin cerrar sesión."
       },
       "unexplained": {
         "title": "El agente rechazó la conexión",

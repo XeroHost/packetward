@@ -36,11 +36,35 @@ const OPERATOR_ACE_MASK: u32 = CLIENT_ACCESS | 0x0002_0000;
 /// Operators must not get FILE_CREATE_PIPE_INSTANCE: with it, a member could create extra
 /// instances of the pipe and answer clients in place of the agent.
 pub fn pipe_sddl(operators_sid: Option<&str>) -> String {
+    pipe_sddl_with_members(operators_sid, &[])
+}
+
+/// Like [`pipe_sddl`], plus one ACE with the same rights for each member's own SID.
+///
+/// Windows puts a group in a token only when the token is created (at sign-in), so the group ACE
+/// alone leaves a user who was added to the group during their current session locked out until
+/// they sign out and back in. The member's own SID is in the token they already have. Members have
+/// the same trust as the group, so this grants nobody anything new; an entry that is not a plain
+/// SID is ignored rather than put into the descriptor text.
+pub fn pipe_sddl_with_members(operators_sid: Option<&str>, member_sids: &[String]) -> String {
     let mut sddl = String::from("D:P(A;;GA;;;SY)(A;;GA;;;BA)");
     if let Some(sid) = operators_sid {
         sddl.push_str(&format!("(A;;0x{OPERATOR_ACE_MASK:x};;;{sid})"));
     }
+    for sid in member_sids.iter().filter(|sid| is_plain_sid(sid)) {
+        if operators_sid.is_some_and(|group| group.eq_ignore_ascii_case(sid)) {
+            continue;
+        }
+        sddl.push_str(&format!("(A;;0x{OPERATOR_ACE_MASK:x};;;{sid})"));
+    }
     sddl
+}
+
+fn is_plain_sid(sid: &str) -> bool {
+    sid.starts_with("S-1-")
+        && sid
+            .bytes()
+            .all(|b| b.is_ascii_digit() || b == b'-' || b == b'S')
 }
 
 /// Accepts connections on a named pipe. Each accepted client gets its own server instance; a
@@ -187,6 +211,22 @@ mod tests {
             pipe_sddl(Some("S-1-5-21-1-2-3-1001")),
             "D:P(A;;GA;;;SY)(A;;GA;;;BA)(A;;0x120083;;;S-1-5-21-1-2-3-1001)"
         );
+    }
+
+    #[test]
+    fn sddl_adds_the_members_own_sids_with_the_same_rights() {
+        let group = "S-1-5-21-1-2-3-1001";
+        let members = vec![
+            "S-1-5-21-1-2-3-1500".to_string(),
+            "S-1-5-21-1-2-3-1001".to_string(), // the group itself: not repeated
+            "S-1-5-21-1-2-3-1500)(A;;GA;;;WD".to_string(), // not a plain SID: ignored
+        ];
+        assert_eq!(
+            pipe_sddl_with_members(Some(group), &members),
+            "D:P(A;;GA;;;SY)(A;;GA;;;BA)(A;;0x120083;;;S-1-5-21-1-2-3-1001)\
+             (A;;0x120083;;;S-1-5-21-1-2-3-1500)"
+        );
+        assert_eq!(pipe_sddl_with_members(None, &[]), pipe_sddl(None));
     }
 
     #[tokio::test]

@@ -52,12 +52,14 @@ describe('AgentUnavailable', () => {
     expect(run).toHaveBeenCalledWith('start')
   })
 
-  it('tells the user to sign out when the group membership is not in their token yet', () => {
-    const { wrapper } = show({ state: 'access_denied', reason: 'sign_out_required' })
+  it('tells the user to sign out when the group membership is not in their token yet, or to repair', async () => {
+    const { wrapper, run } = show({ state: 'access_denied', reason: 'sign_out_required' })
     expect(wrapper.text()).toContain('Sign out of Windows and sign back in')
-    expect(wrapper.text()).toContain('Disconnecting and reconnecting Remote Desktop is not enough')
-    // Nothing elevated can fix this one: only the support link remains.
-    expect(buttons(wrapper)).toEqual(['Contact XeroHost support'])
+    expect(wrapper.text()).toContain('is not enough')
+    // Repair restarts the agent with the member's own SID in the pipe ACL: no sign-out needed.
+    expect(buttons(wrapper)).toContain('Repair installation')
+    await wrapper.findAll('button')[0]?.trigger('click')
+    expect(run).toHaveBeenCalledWith('repair')
   })
 
   it.each([

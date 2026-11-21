@@ -45,7 +45,9 @@ const view = computed<View>(() => {
         case 'not_member':
           return { key: 'notMember', icon: KeyRound, action: 'repair' }
         case 'sign_out_required':
-          return { key: 'signOutRequired', icon: LogOut, action: null }
+          // Repair restarts the agent, which then lists the members' own SIDs in the pipe ACL: that
+          // matches the token this session already has, so no sign-out is needed.
+          return { key: 'signOutRequired', icon: LogOut, action: 'repair' }
         default:
           return { key: 'unexplained', icon: KeyRound, action: 'repair' }
       }

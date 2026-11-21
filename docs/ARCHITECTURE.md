@@ -555,9 +555,14 @@ shell permissions, for example with Claude Code's permission deny rules, so the 
   `SECURITY_IDENTIFICATION`, so a rogue server cannot impersonate them.
   The server creates the first instance with `FILE_FLAG_FIRST_PIPE_INSTANCE` (nobody can squat the name) and
   rejects remote clients. An in-memory transport exists for tests only.
-- Windows applies group membership when a logon token is created: after a user is added to the group they must
-  **sign out and back in** (disconnecting/reconnecting RDP is not enough). `repair` prints this, and the desktop
-  tells the user when it detects "member of the group, but not in this token" (`access_denied: sign_out_required`).
+- Windows applies group membership when a logon token is created, so the group ACE alone would lock out a user
+  who was added during the session they are in (the installer does exactly that for the installing user, on a
+  VPS and on a desktop PC alike). The agent therefore also puts **each member's own SID** in the pipe ACL when it
+  starts (`pipe_sddl_with_members`, same rights, same trust as the group; non-plain SIDs are ignored): a user SID
+  is already in the token they have, so they connect with no sign-out. A member added while the agent runs is
+  picked up on the next start (`install` and `repair` start/restart it). If the desktop still detects "member of
+  the group, but not in this token" (`access_denied: sign_out_required`, an agent that started before the user was
+  added) it offers **Repair** (restarts the agent) and explains that signing out of Windows also works.
 - Framing: 4-byte little-endian length + JSON (`serde_json`). Max frame 4 MB.
 - Envelope: `{ v: 1, id?: u64, kind: "req" | "res" | "event" | "err", method|topic, payload }`.
 - Request/response: `capture.start`, `firewall.list`, `guardian.setMode`, `diag.mtr.start`, …

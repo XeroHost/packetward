@@ -358,9 +358,8 @@ fn ensure_operators(operator_sid: Option<String>) -> anyhow::Result<()> {
     if access::add_operator(&sid).context("could not add the user to 'PacketWard Operators'")? {
         println!("Added {sid} to 'PacketWard Operators'.");
         println!(
-            "If that user is signed in right now, they must SIGN OUT and sign back in before \
-             PacketWard can connect: Windows only applies group membership at sign-in, and \
-             disconnecting/reconnecting an RDP session is not enough."
+            "The agent lists the group's members in its pipe permissions when it starts, so the \
+             user can connect right away once the service is (re)started; no sign-out is needed."
         );
     } else {
         println!("{sid} is already in 'PacketWard Operators'.");

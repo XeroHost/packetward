@@ -68,7 +68,7 @@ Elevated PowerShell:
 
 | Step | Command | Expected |
 |---|---|---|
-| Install | `packetward-agent.exe install` | Creates the service and the group `PacketWard Operators`, adds you to it, starts the agent. Prints the **sign out and back in** notice. |
+| Install | `packetward-agent.exe install` | Creates the service and the group `PacketWard Operators`, adds you to it, starts the agent. You can use the app and `pwctl` right away, without signing out: the agent lists the group members' own SIDs in its pipe ACL. |
 | Registered | `Get-Service PacketWard` | `Running`, start type `Automatic`. |
 | Status | `pwctl.exe status` | `running (service)`; exit `0`. |
 | Logs | `%ProgramData%\PacketWard\logs\agent.log.<date>` | Contains `agent started ... service_mode=true`. |
@@ -100,8 +100,8 @@ Create a standard local user `pwtest` (not an administrator). Undo at the end: `
    → `Access to the agent was denied` and the hint that the account is not in `PacketWard Operators`; exit code `3`.
    **This is the "non-admin cannot open the pipe" acceptance check.**
 2. As an administrator: `net localgroup "PacketWard Operators" pwtest /add`. While `pwtest` stays signed in,
-   `pwctl status` still fails with the **sign out and back in** message (the token predates the group).
-3. Sign `pwtest` out and in again → `pwctl status` works, and so does the desktop app, **unelevated**.
+   `pwctl status` still fails with the **sign out and back in** message (the running agent was started before `pwtest` was added, and the token predates the group). Restarting the service (`packetward-agent.exe repair`, or **Repair installation** in the app) makes it work without signing out.
+3. After the repair, or after signing `pwtest` out and in again → `pwctl status` works, and so does the desktop app, **unelevated**.
 4. Remove `pwtest` from the group → after the next sign-in access is denied again.
 
 ## E. Desktop app
@@ -116,7 +116,7 @@ Run it **unelevated** as a user that is in the operators group (see D3).
    dashboard on its own. Decline the prompt → a message says nothing changed.
 4. `packetward-agent.exe uninstall`: the app shows *The PacketWard agent is not installed*. Click **Repair
    installation** → service and group are recreated, the invoking user is added, and the app connects or, if the
-   token is stale, shows *Sign out of Windows and sign back in*.
+   token is stale, shows *Sign out of Windows and sign back in* with a **Repair installation** button; on a fresh install the app connects without it.
 5. Kill the agent process with Task Manager: the app shows the unavailable screen and reconnects after the service
    restarts.
 6. Switch the language in Settings: the tray menu labels change too.
