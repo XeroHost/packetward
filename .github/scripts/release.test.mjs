@@ -5,6 +5,7 @@ import { test } from 'node:test'
 import {
   PUBKEY_PLACEHOLDER,
   assertChannel,
+  checkDraft,
   manifest,
   parseTag,
   plan,
@@ -104,4 +105,85 @@ test('a stable manifest never carries a pre-release version and a beta one alway
   assertChannel('0.1.0-beta.2', true)
   assert.throws(() => assertChannel('0.1.0-beta.2', false), /never put a pre-release/)
   assert.throws(() => assertChannel('0.1.0', true), /does not fit/)
+})
+
+// ---- the checks before a draft release is published
+import { createHash } from 'node:crypto'
+
+const sha = (data) => createHash('sha256').update(data).digest('hex')
+function draft({ signed = true, prerelease = false, mutate } = {}) {
+  const installerName = 'PacketWard_0.1.0_x64-setup.exe'
+  const installer = Buffer.from('installer bytes')
+  const sig = Buffer.from('c2lnbmF0dXJl\n')
+  const files = new Map([[installerName, installer]])
+  if (signed) files.set(`${installerName}.sig`, sig)
+  if (signed && !prerelease) {
+    const version = '0.1.0'
+    files.set(
+      'latest.json',
+      Buffer.from(
+        JSON.stringify({
+          version,
+          platforms: {
+            'windows-x86_64': {
+              signature: sig.toString().trim(),
+              url: `https://github.com/XeroHost/packetward/releases/download/v${version}/${encodeURIComponent(installerName)}`,
+            },
+          },
+        }),
+      ),
+    )
+  }
+  const lines = [...files].map(([name, data]) => `${sha(data)}  ${name}`)
+  files.set('SHA256SUMS.txt', Buffer.from(lines.join('\n') + '\n'))
+  mutate?.(files)
+  return {
+    files,
+    tag: prerelease ? 'v0.1.0-beta.1' : 'v0.1.0',
+    version: prerelease ? '0.1.0-beta.1' : '0.1.0',
+    repo: 'XeroHost/packetward',
+    installerName,
+    signed,
+    prerelease,
+  }
+}
+
+test('a complete stable draft, a complete beta draft and an unsigned one are publishable', () => {
+  assert.deepEqual(checkDraft(draft()), [])
+  assert.deepEqual(checkDraft(draft({ prerelease: true })), [])
+  assert.deepEqual(checkDraft(draft({ signed: false })), [])
+})
+
+test('a draft that is incomplete or inconsistent is not publishable', () => {
+  const problems = (opts) => checkDraft(draft(opts)).join(' | ')
+  assert.match(problems({ mutate: (f) => f.delete('latest.json') }), /latest.json is missing/)
+  assert.match(problems({ mutate: (f) => f.delete('PacketWard_0.1.0_x64-setup.exe.sig') }), /signature .* is missing/)
+  assert.match(problems({ mutate: (f) => f.set('PacketWard_0.1.0_x64-setup.exe', Buffer.from('changed')) }), /hash of/)
+  assert.match(problems({ mutate: (f) => f.delete('PacketWard_0.1.0_x64-setup.exe') }), /installer .* is missing/)
+  assert.match(problems({ mutate: (f) => f.delete('SHA256SUMS.txt') }), /SHA256SUMS.txt is missing/)
+  assert.match(
+    problems({
+      mutate: (f) => {
+        const m = JSON.parse(f.get('latest.json'))
+        m.platforms['windows-x86_64'].signature = 'other'
+        f.set('latest.json', Buffer.from(JSON.stringify(m)))
+      },
+    }),
+    /different signature/,
+  )
+})
+
+test('a beta draft must not carry latest.json, and no stable manifest names a pre-release', () => {
+  assert.match(
+    checkDraft(draft({ prerelease: true, mutate: (f) => f.set('latest.json', Buffer.from('{}')) })).join(' | '),
+    /must not carry latest.json/,
+  )
+  const wrong = draft({
+    mutate: (f) => {
+      const m = JSON.parse(f.get('latest.json'))
+      m.version = '0.1.0-beta.1'
+      f.set('latest.json', Buffer.from(JSON.stringify(m)))
+    },
+  })
+  assert.match(checkDraft(wrong).join(' | '), /pre-release version/)
 })

@@ -2,45 +2,97 @@
 #
 # Release workflow (docs/ARCHITECTURE.md section 9, docs/RELEASE-KEYS.md).
 #
+# It runs ONLY for a pushed tag, never for a push to a branch:
 #   tag vX.Y.Z         -> normal GitHub release (the "stable" update channel)
 #   tag vX.Y.Z-beta.N  -> GitHub pre-release (the "beta" update channel)
-#   branch release-dryrun/* -> DRY RUN: the same build, signing and signature check, but nothing is published
-#                              (the installer, its .sig and latest.json are kept 1 day as a workflow artifact)
 #
-# Secrets (all optional; without them the build still runs and publishes an UNSIGNED installer):
+# Jobs, in order. Each one needs the previous, so a failure anywhere stops everything after it:
+#   guard    the tag has the right shape and points to a commit that is on the release branch (main)
+#   ci       the whole CI workflow (Linux, Windows, frontend, cargo deny + audit, the desktop build)
+#   build    builds and signs the installer and uploads everything to a DRAFT release (invisible to clients)
+#   publish  re-downloads the draft, checks every file and the updater signature, and only then publishes it
+#            and points the beta channel at it. No client ever sees a half-finished release.
+#
+# Secrets (optional; without them the build still runs and publishes an UNSIGNED installer):
 #   TAURI_SIGNING_PRIVATE_KEY (+ _PASSWORD)  signed updater artifacts (.sig) and latest.json
 #   WINDOWS_CERTIFICATE (+ _PASSWORD)        Authenticode signing of the executables and the installer
+# Repository variable (optional): RELEASE_BRANCH, the branch a release tag must be on (default: main).
 name: Release
 
 on:
   push:
     tags: ['v*']
-    branches: ['release-dryrun/**']
 
 permissions:
   contents: write
 
+# A release in progress is never cancelled.
 concurrency:
   group: release
   cancel-in-progress: false
 
 env:
   CARGO_TERM_COLOR: always
-  # Secrets cannot be used in step conditions; these booleans can.
-  HAS_UPDATER_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
-  HAS_AUTHENTICODE: ${{ secrets.WINDOWS_CERTIFICATE != '' }}
+  CARGO_INCREMENTAL: 0
+  CARGO_PROFILE_DEV_DEBUG: 0
 
 jobs:
-  release:
-    name: Build and publish
+  guard:
+    name: Check the tag
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.shape.outputs.version }}
+      prerelease: ${{ steps.shape.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: The tag is vX.Y.Z or vX.Y.Z-beta.N
+        id: shape
+        env:
+          TAG: ${{ github.ref_name }}
+        run: node .github/scripts/release.mjs guard
+      - name: The tagged commit is on the release branch
+        env:
+          BRANCH: ${{ vars.RELEASE_BRANCH || 'main' }}
+        run: |
+          git fetch --no-tags origin "$BRANCH"
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" "origin/$BRANCH"; then
+            echo "::error title=Tag not on $BRANCH::Commit $GITHUB_SHA is not on $BRANCH. Merge it to $BRANCH first and tag that commit; nothing was built or published."
+            exit 1
+          fi
+          echo "Commit $GITHUB_SHA is on $BRANCH."
+
+  ci:
+    name: CI
+    needs: guard
+    uses: ./.github/workflows/ci.yml
+    with:
+      full: true
+
+  build:
+    name: Build and draft
+    needs: [guard, ci]
     runs-on: windows-latest
+    env:
+      # Secrets cannot be used in step conditions; these booleans can.
+      HAS_UPDATER_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
+      HAS_AUTHENTICODE: ${{ secrets.WINDOWS_CERTIFICATE != '' }}
+    outputs:
+      signed: ${{ steps.prep.outputs.signed }}
+      installer_name: ${{ steps.files.outputs.installer_name }}
     steps:
       - uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
+      # Restores the cache the CI job saved (same key); a release never saves it.
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: windows
+          save-if: false
       - uses: pnpm/action-setup@v4
         with:
           package_json_file: apps/desktop/package.json
@@ -51,23 +103,6 @@ jobs:
           cache-dependency-path: apps/desktop/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
         working-directory: apps/desktop
-      - name: Release helper tests
-        run: node --test .github/scripts/release.test.mjs .github/scripts/installer.test.mjs .github/scripts/verify-sig.test.mjs
-
-      # A tag publishes. A dry-run branch builds with a stand-in tag (v<version>-beta.0) and publishes nothing.
-      - name: Resolve the release tag
-        id: tag
-        shell: bash
-        run: |
-          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            echo "name=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
-            echo "publish=true" >> "$GITHUB_OUTPUT"
-          else
-            version=$(node -p "require('./apps/desktop/package.json').version")
-            echo "name=v${version}-beta.0" >> "$GITHUB_OUTPUT"
-            echo "publish=false" >> "$GITHUB_OUTPUT"
-            echo "::notice title=Dry run::Nothing will be published from this run."
-          fi
 
       # The tauri-build step of the desktop shell requires the bundled resources to exist, so the
       # service and the CLI are built first.
@@ -100,13 +135,13 @@ jobs:
             target\release\packetward-agent.exe target\release\pwctl.exe
           if ($LASTEXITCODE -ne 0) { throw 'signtool failed' }
 
-      # Validates the tag (vX.Y.Z or vX.Y.Z-beta.N) against the app version, stamps the version and the
-      # signing options into the release config (not committed) and decides signed or unsigned.
+      # Validates the tag against the app version, stamps the version and the signing options into the
+      # release config (not committed) and decides signed or unsigned.
       - name: Prepare the release config
         id: prep
         shell: bash
         env:
-          TAG: ${{ steps.tag.outputs.name }}
+          TAG: ${{ github.ref_name }}
         run: node .github/scripts/release.mjs prepare
 
       - name: Notice - unsigned build
@@ -163,71 +198,113 @@ jobs:
           INSTALLER_NAME: ${{ steps.files.outputs.installer_name }}
         run: node .github/scripts/verify-sig.mjs "dist-release/$INSTALLER_NAME" "dist-release/$INSTALLER_NAME.sig"
 
-      - name: Write latest.json (only with signed artifacts)
+      # latest.json is written for every signed release, but it only goes INTO a stable release (it is what the
+      # stable channel reads through "releases/latest/download": a beta must never carry one). A beta's
+      # manifest travels to the last job as a workflow artifact and only feeds the beta channel.
+      - name: Write latest.json (signed releases)
         if: steps.prep.outputs.signed == 'true'
         shell: bash
         env:
           VERSION: ${{ steps.prep.outputs.version }}
           REPO: ${{ github.repository }}
-          TAG: ${{ steps.tag.outputs.name }}
+          TAG: ${{ github.ref_name }}
           PRERELEASE: ${{ steps.prep.outputs.prerelease }}
           INSTALLER_NAME: ${{ steps.files.outputs.installer_name }}
           SIG_PATH: dist-release/${{ steps.files.outputs.installer_name }}.sig
-          NOTES: See https://github.com/${{ github.repository }}/releases/tag/${{ steps.tag.outputs.name }}
+          NOTES: See https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}
           OUT: dist-release/latest.json
         run: node .github/scripts/release.mjs manifest
 
-      - name: Keep the dry-run files for a day (not a release)
-        if: steps.tag.outputs.publish != 'true'
+      - name: Keep the channel manifest for the last job
+        if: steps.prep.outputs.signed == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: release-dry-run
-          path: dist-release
+          name: channel-manifest
+          path: dist-release/latest.json
           retention-days: 1
 
-      - name: Publish the GitHub release
-        if: steps.tag.outputs.publish == 'true'
+      # A DRAFT: nobody (no client, no "latest" lookup) can see it until the last job publishes it.
+      - name: Upload everything to a draft release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ steps.tag.outputs.name }}
+          TAG: ${{ github.ref_name }}
           VERSION: ${{ steps.prep.outputs.version }}
           PRERELEASE: ${{ steps.prep.outputs.prerelease }}
-          SIGNED: ${{ steps.prep.outputs.signed }}
-          INSTALLER_NAME: ${{ steps.files.outputs.installer_name }}
         run: |
-          $assets = @("dist-release/$($env:INSTALLER_NAME)", 'dist-release/SHA256SUMS.txt')
-          if ($env:SIGNED -eq 'true') { $assets += "dist-release/$($env:INSTALLER_NAME).sig" }
-          # latest.json goes to the stable channel through "releases/latest/download": only a normal
-          # release may carry it, so a beta never becomes the stable manifest.
-          if ($env:SIGNED -eq 'true' -and $env:PRERELEASE -ne 'true') { $assets += 'dist-release/latest.json' }
-
-          gh release view $env:TAG *> $null
-          if ($LASTEXITCODE -eq 0) {
+          $assets = @(Get-ChildItem dist-release -File |
+            Where-Object { -not ($env:PRERELEASE -eq 'true' -and $_.Name -eq 'latest.json') } |
+            ForEach-Object { $_.FullName })
+          $state = gh release view $env:TAG --json isDraft 2>$null | ConvertFrom-Json
+          if ($state) {
+            if (-not $state.isDraft) { throw "release $($env:TAG) is already published: refusing to touch it" }
             gh release upload $env:TAG @assets --clobber
           } else {
-            $create = @('release', 'create', $env:TAG, '--title', "PacketWard $($env:VERSION)", '--generate-notes')
-            if ($env:PRERELEASE -eq 'true') { $create += '--prerelease' } else { $create += '--latest' }
+            $create = @('release', 'create', $env:TAG, '--draft', '--title', "PacketWard $($env:VERSION)", '--generate-notes')
+            if ($env:PRERELEASE -eq 'true') { $create += '--prerelease' }
             gh @create @assets
           }
           if ($LASTEXITCODE -ne 0) { throw 'gh release failed' }
 
+  publish:
+    name: Verify and publish
+    needs: [guard, build]
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ github.ref_name }}
+      VERSION: ${{ needs.guard.outputs.version }}
+      PRERELEASE: ${{ needs.guard.outputs.prerelease }}
+      SIGNED: ${{ needs.build.outputs.signed }}
+      INSTALLER_NAME: ${{ needs.build.outputs.installer_name }}
+      REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Download the channel manifest
+        if: env.SIGNED == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: channel-manifest
+          path: manifest
+
+      - name: Download the draft release
+        run: |
+          mkdir draft
+          gh release download "$TAG" --dir draft --repo "$REPO"
+          ls -l draft
+
+      # Every file, its hash, the manifest and the signature, as the clients will see them.
+      - name: Check the files of the draft
+        env:
+          DIR: draft
+        run: node .github/scripts/release.mjs check-draft
+      - name: Verify the updater signature with the public key
+        if: env.SIGNED == 'true'
+        run: node .github/scripts/verify-sig.mjs "draft/$INSTALLER_NAME" "draft/$INSTALLER_NAME.sig"
+
+      - name: Publish the release
+        run: |
+          if [ "$PRERELEASE" = "true" ]; then
+            gh release edit "$TAG" --repo "$REPO" --draft=false --prerelease
+          else
+            gh release edit "$TAG" --repo "$REPO" --draft=false --prerelease=false --latest
+          fi
+
       # The beta channel reads latest.json from one fixed pre-release (the updater cannot use
       # "releases/latest" for pre-releases). Both beta and stable releases overwrite it, so a beta user
-      # is also offered a stable release that supersedes the beta they run.
-      - name: Update the beta channel manifest
-        if: steps.prep.outputs.signed == 'true' && steps.tag.outputs.publish == 'true'
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
+      # is also offered a stable release that supersedes the beta they run. It is updated only now, when
+      # the installer it points to is public.
+      - name: Point the beta channel at it
+        if: env.SIGNED == 'true'
         run: |
-          $channel = 'updater-beta'
-          gh release view $channel *> $null
-          if ($LASTEXITCODE -ne 0) {
-            gh release create $channel --prerelease --latest=false --target $env:GITHUB_SHA `
-              --title 'Beta channel manifest' `
+          channel=updater-beta
+          if ! gh release view "$channel" --repo "$REPO" >/dev/null 2>&1; then
+            gh release create "$channel" --repo "$REPO" --prerelease --latest=false --target "$GITHUB_SHA" \
+              --title 'Beta channel manifest' \
               --notes 'Holds latest.json for the PacketWard beta update channel. Not a release: do not download from here.'
-            if ($LASTEXITCODE -ne 0) { throw 'could not create the beta channel release' }
-          }
-          gh release upload $channel dist-release/latest.json --clobber
-          if ($LASTEXITCODE -ne 0) { throw 'could not upload the beta channel manifest' }
+          fi
+          gh release upload "$channel" manifest/latest.json --clobber --repo "$REPO"

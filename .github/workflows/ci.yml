@@ -1,15 +1,67 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
+#
+# CI. Also a reusable workflow: release.yml calls it (with `full: true`) as the first job, and nothing is built
+# or published unless every job here passes.
+#
+# Cache policy: only one branch SAVES the Rust cache (the repository variable CACHE_BRANCH, default `main`);
+# every other branch and pull request only restores it. A save of the Windows cache alone took almost 9 minutes.
 name: CI
 
 on:
   push:
     branches: [main, dev]
   pull_request:
+  workflow_call:
+    inputs:
+      full:
+        description: 'Also build the desktop app (release.yml sets this)'
+        type: boolean
+        default: false
+
+# A newer push to the same branch cancels the older run, but a run called by Release is never cancelled.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ !inputs.full }}
 
 env:
   CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  # Debug information is useless in CI and makes every artifact, the cache and the links bigger and slower.
+  CARGO_PROFILE_DEV_DEBUG: 0
+  CARGO_PROFILE_TEST_DEBUG: 0
+  # Only the cache branch saves the Rust cache.
+  SAVE_CACHE: ${{ github.ref == format('refs/heads/{0}', vars.CACHE_BRANCH || 'main') }}
 
 jobs:
+  # Documentation-only changes do not need the 15-minute Windows job. A release always runs everything.
+  changes:
+    name: What changed
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: diff
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+          FULL: ${{ inputs.full }}
+          BEFORE: ${{ github.event.before }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          base=""
+          if [ "$EVENT" = "pull_request" ]; then base="$BASE_SHA"; elif [ "$EVENT" = "push" ]; then base="$BEFORE"; fi
+          if [ "$FULL" = "true" ] || [ -z "$base" ] || [[ "$base" =~ ^0+$ ]] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
+            echo "code=true" >> "$GITHUB_OUTPUT"; echo "Running everything (release, new branch or unknown base)."; exit 0
+          fi
+          if git diff --name-only "$base" "$GITHUB_SHA" | grep -vE '^(docs/|.*\.md$)' | grep -q .; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "code=false" >> "$GITHUB_OUTPUT"; echo "Only docs/ and *.md changed: the Windows job is skipped."
+          fi
+
   rust-linux:
     name: Rust (Linux, core crates)
     runs-on: ubuntu-latest
@@ -19,6 +71,9 @@ jobs:
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: linux
+          save-if: ${{ env.SAVE_CACHE == 'true' }}
       # The desktop shell needs webkit2gtk and the agent is a Windows service host: Windows job builds them.
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --exclude packetward-desktop --exclude packetward-agent --all-targets -- -D warnings
@@ -80,6 +135,8 @@ jobs:
 
   windows:
     name: Windows (full build)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -87,19 +144,43 @@ jobs:
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: windows
+          save-if: ${{ env.SAVE_CACHE == 'true' }}
+
+      # The desktop shell embeds the built frontend, so the real one is only needed to build the app
+      # (main and releases). Clippy and the tests of a dev push only need the folder to exist.
+      - name: Placeholder frontend (clippy and tests only)
+        if: github.ref != 'refs/heads/main' && !inputs.full
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force apps/desktop/dist | Out-Null
+          Set-Content apps/desktop/dist/index.html '<!doctype html><title>PacketWard</title>'
       - uses: pnpm/action-setup@v4
+        if: github.ref == 'refs/heads/main' || inputs.full
         with:
           package_json_file: apps/desktop/package.json
       - uses: actions/setup-node@v4
+        if: github.ref == 'refs/heads/main' || inputs.full
         with:
           node-version: 24
           cache: pnpm
           cache-dependency-path: apps/desktop/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+        if: github.ref == 'refs/heads/main' || inputs.full
         working-directory: apps/desktop
-      - run: pnpm build
-        working-directory: apps/desktop
+
+      # Clippy of the whole workspace (it also compiles the desktop shell and the agent, which Linux cannot).
       - run: cargo clippy --workspace --all-targets -- -D warnings
-      - run: cargo test --workspace
-      - run: pnpm tauri build --no-bundle
+      # Only the crates that have Windows-specific code: the pure crates (core, detect, proto, store, the
+      # speed server) are tested on Linux. One invocation, so the agent's features apply to the engine too.
+      - name: Tests of the crates with Windows code
+        run: >
+          cargo test
+          -p pw-netstat -p pw-firewall -p pw-capture -p pw-ipc -p pw-engine -p pw-diag -p pw-intel
+          -p packetward-agent -p packetward-cli -p packetward-desktop
+      # The full app build: main and releases only (about 4 minutes).
+      - name: Build the desktop app (no installer)
+        if: github.ref == 'refs/heads/main' || inputs.full
+        run: pnpm tauri build --no-bundle
         working-directory: apps/desktop

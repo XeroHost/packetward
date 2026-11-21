@@ -6,7 +6,9 @@
 //   node .github/scripts/release.mjs manifest  write latest.json for the Tauri updater
 //
 // Inputs come from environment variables (see each command).
-import { appendFileSync, readFileSync, writeFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { appendFileSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 
 export const PUBKEY_PLACEHOLDER = 'REPLACE_WITH_UPDATER_PUBLIC_KEY'
 const TAG_PATTERN = /^v(\d+\.\d+\.\d+)(-beta\.\d+)?$/
@@ -117,6 +119,55 @@ export function assertChannel(version, prerelease) {
   }
 }
 
+/**
+ * What the last job checks in the DRAFT release before it is published: every file listed in SHA256SUMS.txt
+ * is there with that hash, a signed release carries the signature and (stable only) a latest.json that names
+ * this version, this tag, this installer and exactly that signature, and a beta carries no latest.json. The
+ * cryptographic check of the signature is verify-sig.mjs. `files` maps a file name to its bytes.
+ * Returns the list of problems; empty means publishable.
+ */
+export function checkDraft({ files, tag, version, repo, installerName, signed, prerelease }) {
+  const problems = []
+  const sums = files.get('SHA256SUMS.txt')
+  if (!files.has(installerName)) problems.push(`the installer ${installerName} is missing`)
+  if (!sums) problems.push('SHA256SUMS.txt is missing')
+  for (const line of sums ? sums.toString('utf8').split('\n').filter(Boolean) : []) {
+    const [hash, name] = line.split(/\s+/)
+    const data = files.get(name)
+    if (!data) problems.push(`SHA256SUMS.txt lists ${name} but it is not in the release`)
+    else if (createHash('sha256').update(data).digest('hex') !== hash) problems.push(`the hash of ${name} does not match SHA256SUMS.txt`)
+  }
+  const sigName = `${installerName}.sig`
+  const manifestFile = files.get('latest.json')
+  if (!signed) {
+    if (files.has(sigName) || manifestFile) problems.push('an unsigned release must not carry a .sig or a latest.json')
+    return problems
+  }
+  if (!files.has(sigName)) problems.push(`the updater signature ${sigName} is missing`)
+  if (prerelease) {
+    if (manifestFile) problems.push('a pre-release must not carry latest.json: the stable channel reads it')
+    return problems
+  }
+  if (!manifestFile) {
+    problems.push('latest.json is missing')
+    return problems
+  }
+  try {
+    const m = JSON.parse(manifestFile.toString('utf8'))
+    const entry = m.platforms?.['windows-x86_64']
+    const url = `https://github.com/${repo}/releases/download/${tag}/${encodeURIComponent(installerName)}`
+    if (m.version !== version) problems.push(`latest.json says version ${m.version}, the release is ${version}`)
+    if (/-/.test(m.version ?? '')) problems.push('latest.json carries a pre-release version')
+    if (entry?.url !== url) problems.push('latest.json points to a different installer URL')
+    if (files.has(sigName) && entry?.signature !== files.get(sigName).toString('utf8').trim()) {
+      problems.push('latest.json carries a different signature than the .sig file')
+    }
+  } catch {
+    problems.push('latest.json is not valid JSON')
+  }
+  return problems
+}
+
 /** latest.json in the format of the Tauri updater (static manifest, one Windows target). */
 export function manifest({ version, repo, tag, installerName, signature, notes, now }) {
   return {
@@ -159,6 +210,26 @@ function main(command) {
     setOutput('version', p.version)
     setOutput('prerelease', String(p.prerelease))
     setOutput('signed', String(p.signed))
+  } else if (command === 'check-draft') {
+    // DIR holds the files downloaded from the draft release.
+    const dir = env.DIR
+    const files = new Map(readdirSync(dir).map((name) => [name, readFileSync(join(dir, name))]))
+    const problems = checkDraft({
+      files,
+      tag: env.TAG,
+      version: env.VERSION,
+      repo: env.REPO,
+      installerName: env.INSTALLER_NAME,
+      signed: env.SIGNED === 'true',
+      prerelease: env.PRERELEASE === 'true',
+    })
+    if (problems.length > 0) throw new Error(`The draft release is not publishable:\n - ${problems.join('\n - ')}`)
+    console.log(`The draft release of ${env.TAG} is complete and consistent.`)
+  } else if (command === 'guard') {
+    // A release tag is vX.Y.Z (stable) or vX.Y.Z-beta.N (beta); anything else never publishes.
+    const parsed = parseTag(env.TAG)
+    setOutput('version', parsed.version)
+    setOutput('prerelease', String(parsed.beta))
   } else if (command === 'manifest') {
     assertChannel(env.VERSION, env.PRERELEASE === 'true')
     const out = manifest({
@@ -172,7 +243,7 @@ function main(command) {
     })
     writeFileSync(env.OUT ?? 'latest.json', JSON.stringify(out, null, 2) + '\n')
   } else {
-    throw new Error('Usage: release.mjs prepare|manifest')
+    throw new Error('Usage: release.mjs guard|prepare|check-draft|manifest')
   }
 }
 

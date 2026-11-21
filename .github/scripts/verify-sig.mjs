@@ -59,7 +59,8 @@ export function verifyMinisign({ pubkeyB64, sigB64, data }) {
   if (!ed25519(publicKey, Buffer.concat([signature, Buffer.from(trusted, 'utf8')]), globalSig)) {
     throw new Error('the trusted comment of the signature was tampered with')
   }
-  return keyId.toString('hex')
+  // minisign shows the key id with the bytes reversed (as in "minisign public key: 86363F43…").
+  return Buffer.from(keyId).reverse().toString('hex')
 }
 
 function main() {
