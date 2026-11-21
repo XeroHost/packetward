@@ -84,11 +84,16 @@ cmd /c "gh secret set TAURI_SIGNING_PRIVATE_KEY_PASSWORD --repo XeroHost/packetw
 
 Then put the content of `packetward.key.pub` in `tauri.conf.json` and back both files up.
 
-### 1.6 Testing a release without publishing
+### 1.6 How a release is published (and why it cannot go out half-done)
 
-Push a branch named `release-dryrun/<anything>`: the release workflow builds the installer, signs it with the secrets, verifies the
-signature and writes `latest.json`, then keeps the files **for one day as a workflow artifact** (`release-dry-run`) and publishes
-nothing (no release, no tag). Only a pushed `vX.Y.Z` / `vX.Y.Z-beta.N` tag publishes.
+Push a tag `vX.Y.Z` (stable) or `vX.Y.Z-beta.N` (beta) **on a commit that is on `main`**. Nothing else starts a release (a branch push never does).
+`guard` → `ci` (all checks, Windows included) → `build` (signs, writes a **draft**) → `publish` (re-checks the draft: file hashes, `latest.json`, and
+the updater signature against the public key; then publishes). If any check fails, the release stops there: before `build` nothing exists, after it
+only a draft that no client can see (delete it with `gh release delete <tag>`; re-running the workflow reuses it). Never create or edit the release by hand.
+
+There is no "dry-run" branch any more: a failing check stops the run, and the only thing a passing run leaves before the last job is a draft.
+To test the gates without publishing, push a test tag from a throwaway branch with the repository variable `RELEASE_BRANCH` set to that branch
+and a deliberately broken test (or leave the variable unset to see the guard refuse a tag that is not on `main`).
 
 The release workflow (`.github/workflows/release.yml`, M12) reads the two secrets. Without them it builds **unsigned** artifacts and skips
 publishing `latest.json`, so no update channel is advertised by accident.

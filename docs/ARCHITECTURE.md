@@ -667,6 +667,18 @@ shell permissions, for example with Claude Code's permission deny rules, so the 
 - No automatic check without consent (a check is an allowed network call, but it is still the user's choice): the
   start-up check runs only when `updates.checkOnStart` is on, five seconds after the UI opened. The updater uses the
   system proxy of Windows (reqwest `system-proxy`); the agent-config proxy of ARCHITECTURE §10 is not applied to it yet.
+- **Release pipeline** (2026-11-21). `release.yml` runs **only for a pushed `v*` tag**, never for a branch push, and its jobs depend on each
+  other so one failure stops everything after it: `guard` (the tag is `vX.Y.Z` or `vX.Y.Z-beta.N` and its commit is an ancestor of
+  `origin/main`; the branch can be changed with the repository variable `RELEASE_BRANCH`) → `ci` (the whole `ci.yml`, called as a reusable
+  workflow with `full: true`: Linux, Windows, frontend, cargo deny + audit and the desktop build) → `build` (installer, signing, **a draft
+  release** with all files; a draft is invisible to clients and to "latest") → `publish` (downloads the draft, checks every file against
+  `SHA256SUMS.txt`, the `latest.json` contents and the updater signature against the public key, and only then publishes it: a pre-release for
+  `-beta.N` tags, the "latest" release otherwise, and finally points the beta channel at it). A `-beta.N` release never carries `latest.json`.
+  A release in progress is never cancelled (`concurrency` group `release`, `cancel-in-progress: false`).
+- **CI** (`ci.yml`, also reusable): the Rust cache is saved only on one branch (repository variable `CACHE_BRANCH`, default `main`; every other
+  branch only restores it), debug information is off, the Windows job runs clippy for the whole workspace but tests only the crates with Windows code
+  (the pure ones are tested on Linux) and builds the desktop app (`tauri build --no-bundle`) only on `main` and in releases, docs-only changes skip
+  the Windows job, and a newer push cancels the older run of the same ref (never a run called by Release).
 - Release workflow `.github/workflows/release.yml` (tag `v*`): validates the tag against the app and workspace
   versions, stamps the full version (beta suffix included) into the CI copy of the release config and `package.json` (About page), builds the agent and `pwctl` in release mode, imports the Authenticode certificate when
   `WINDOWS_CERTIFICATE` exists (signs the exes and, through `bundle.windows.signCommand`, the installer — before the
