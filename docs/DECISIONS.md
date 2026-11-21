@@ -4,7 +4,7 @@ These are settled. Do not re-open them in code; if one blocks you, ask.
 
 | Topic | Decision |
 |---|---|
-| License | **PolyForm Shield 1.0.0** (source-available; changed 2026-11-21 from GPL-3.0-or-later). All dependencies must be redistributable under permissive licenses (MIT, Apache-2.0, BSD, ISC, Zlib, MPL-2.0, Unicode, OFL for fonts). See "License change" below. |
+| License | **PolyForm Shield 1.0.0** (source-available; changed 2026-11-21 from GPL-3.0-or-later). All dependencies must be redistributable under permissive licenses (MIT, Apache-2.0, BSD, ISC, Zlib, MPL-2.0, Unicode, OFL for fonts). See the 2026-11-21 row under "Autonomous decisions". |
 | Minimum OS | **Windows Server 2019+ / Windows 10 1809+**, x64. |
 | Run model | **Agent service + desktop UI only. No portable mode.** The UI requires the agent service; if it is missing or stopped, the UI shows a screen to start/repair it. |
 | Branding | **Discreet**: "by XeroHost" in sidebar footer and About, a "Contact XeroHost support" link, XeroHost speed-test nodes as defaults. No upsell or plan promotion in the app. Useful to anyone, not only XeroHost customers. |

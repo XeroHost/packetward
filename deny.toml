@@ -18,6 +18,9 @@ unmaintained = "workspace"
 [licenses]
 version = 2
 confidence-threshold = 0.93
+# The allow list is the standing policy for new dependencies, so entries nobody uses yet are fine
+# (BSD-2-Clause, Unicode-DFS-2016 and OFL-1.1 are kept on purpose; the last one is for fonts).
+unused-allowed-license = "allow"
 allow = [
   "MIT",
   "Apache-2.0",

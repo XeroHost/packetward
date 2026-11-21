@@ -3,7 +3,14 @@
 Read this first when resuming after a stop or a context compaction.
 
 ## Handoff — state on 2026-11-21 (read before doing anything)
-- Repo is **public**. `main` = `dev` = `fa25739` (main is moved only by fast-forward, on the owner's explicit OK; never force-push).
+- Repo is **public**. `main` is fast-forwarded to `dev` on the owner's explicit OK (never force-push).
+- **License (2026-11-21):** **PolyForm Shield 1.0.0** replaces GPL-3.0-or-later (source-available: use, modify
+  and redistribute freely, including commercially; no selling it or offering a competing product). `LICENSE`
+  carries the official text plus the Required Notice, every file has the SPDX line
+  `LicenseRef-PolyForm-Shield-1.0.0`, and the Cargo/npm/Tauri metadata, About strings (en/es/pt-BR) and docs
+  follow. `main` was fast-forwarded so the default branch carries it too. The published `v0.1.0-beta.1` stays
+  GPL-3.0-or-later; the new terms apply from the next version. New dependencies only need a permissive,
+  redistributable license (see `deny.toml`).
 - **Releases (public):** `v0.1.0-beta.1` (pre-release, only its installer left) and `v0.1.0-beta.2` (pre-release, published by the new
   workflow, only `PacketWard_0.1.0-beta.2_x64-setup.exe`). The old `updater-beta` release/tag is **deleted** (owner approved). Do not create or
   delete public releases, tags or the `updates` branch without asking the owner first.
@@ -20,8 +27,8 @@ Read this first when resuming after a stop or a context compaction.
 - SECURITY.md: GitHub private vulnerability reporting is the only channel; owner will provide a security email later.
 - CI: reusable `ci.yml`, docs-only detection fixed, Windows job tests only Windows crates, cache saved from `main`. Known flaky test:
   `IpDetailDrawer.test.ts` "closes when the user goes to another page" (failed once in CI, passed on rerun and 6/6 locally).
-- Still open (owner's call): Authenticode certificate, blocklist minisign key, `main` branch protection, M11 MCP (designed, not implemented),
-  live tests of TESTING §F4–F12 on a test VPS, restart of the agent on this VPS (needs owner OK).
+- Still open (owner's call): Authenticode certificate, blocklist minisign key, `main` branch protection,
+  live tests of TESTING §F4–F13 on a test VPS, restart of the agent on this VPS (needs owner OK).
 
 **Branch:** `dev` (`main` only by fast-forward with the owner's OK; **pushing `dev` also needs the owner's OK**,
 owner rule 2026-11-21 — commit locally, ask before pushing; never create/delete releases, tags or the `updates`
