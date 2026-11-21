@@ -241,7 +241,9 @@ pub static TOOLS: &[ToolSpec] = &[
         level: ToolLevel::Read,
         method: method::MCP_ACTION_STATUS,
         summary: "Outcome of a call that returned pending_approval: pending, approved (with the result), rejected, expired or failed.",
-        untrusted: &["error"],
+        // The approved result is the tool's own output (capture status, block refusal reasons...),
+        // so every string inside it is sanitized too.
+        untrusted: &["result", "error"],
         schema: schema::<ActionStatusArgs>,
     },
     // ---- Execution, automatic allowed -----------------------------------------------------------

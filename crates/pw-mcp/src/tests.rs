@@ -376,6 +376,36 @@ fn the_envelope_lists_and_sanitizes_the_untrusted_paths() {
 }
 
 #[test]
+fn a_container_path_sanitizes_every_string_inside_it() {
+    // `entries[].detail` is a JSON object: nested strings (audit reasons, hostnames) are untrusted too.
+    let mut data = json!({
+        "entries": [
+            { "detail": { "args": "block\u{0} 203.0.113.9", "nested": { "why": "x".repeat(300) } } }
+        ]
+    });
+    envelope::sanitize_path(&mut data, "entries[].detail");
+    let detail = &data["entries"][0]["detail"];
+    assert_eq!(detail["args"], json!("block 203.0.113.9"));
+    assert_eq!(
+        detail["nested"]["why"]
+            .as_str()
+            .expect("string")
+            .chars()
+            .count(),
+        256
+    );
+}
+
+#[test]
+fn action_status_marks_the_approved_result_untrusted() {
+    let spec = catalog::tool("action_status").expect("the tool exists");
+    assert!(
+        spec.untrusted.contains(&"result"),
+        "an approved result carries the tool's own untrusted output"
+    );
+}
+
+#[test]
 fn every_tool_is_wrapped_with_its_own_paths() {
     for tool in catalog::tools() {
         let wrapped = envelope::wrap(tool, json!({ "data": true }));
@@ -465,7 +495,12 @@ impl Handler for FakeAgent {
         }
     }
 
-    async fn handle(&self, method_name: &str, _payload: Value) -> Result<Value, ErrorPayload> {
+    async fn handle(
+        &self,
+        _ctx: pw_ipc::ConnCtx,
+        method_name: &str,
+        _payload: Value,
+    ) -> Result<Value, ErrorPayload> {
         self.record_call(method_name);
         if self.forced_forbidden.load(Ordering::SeqCst) {
             return Err(ErrorPayload::new(
@@ -498,7 +533,11 @@ impl Handler for FakeAgent {
         }
     }
 
-    async fn subscribe(&self, topic_name: &str) -> Result<EventReceiver, ErrorPayload> {
+    async fn subscribe(
+        &self,
+        _ctx: pw_ipc::ConnCtx,
+        topic_name: &str,
+    ) -> Result<EventReceiver, ErrorPayload> {
         match topic_name {
             topic::DIAG_PROGRESS | topic::SPEED_PROGRESS => {
                 let (_tx, rx) = mpsc::channel(1);

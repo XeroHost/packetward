@@ -48,8 +48,21 @@ pub fn sanitize_path(value: &mut Value, path: &str) {
 
 fn walk(value: &mut Value, segments: &[&str]) {
     let Some((segment, rest)) = segments.split_first() else {
-        if let Value::String(text) = value {
-            *text = sanitize(text);
+        match value {
+            Value::String(text) => *text = sanitize(text),
+            // A path ending at a container (e.g. `entries[].detail`, `result`) sanitizes every
+            // string inside it: the whole subtree is network- or program-derived.
+            Value::Object(map) => {
+                for child in map.values_mut() {
+                    walk(child, &[]);
+                }
+            }
+            Value::Array(items) => {
+                for child in items.iter_mut() {
+                    walk(child, &[]);
+                }
+            }
+            _ => {}
         }
         return;
     };
