@@ -1517,7 +1517,9 @@ mod tests {
             .await
             .expect("must not wait a full poll interval")
             .unwrap();
-        assert_eq!(stats.seq, 1);
+        // The subscriber wakes the idle-paced poll loop, which may take one more snapshot at once: the
+        // contract is a snapshot right away, not which number it has.
+        assert!(stats.seq >= 1, "seq {}", stats.seq);
     }
 
     async fn first_poll_done(client: &Client) -> ConnectionsResponse {
