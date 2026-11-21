@@ -5,9 +5,10 @@ import type { CaptureLive } from "./CaptureLive";
 import type { DiagEvent } from "./DiagEvent";
 import type { Heartbeat } from "./Heartbeat";
 import type { LiveStats } from "./LiveStats";
+import type { McpPendingList } from "./McpPendingList";
 import type { SpeedEvent } from "./SpeedEvent";
 
 /**
  * One message on the `agent_watch` channel.
  */
-export type BridgeEvent = { "type": "status", "data": AgentConnection } | { "type": "heartbeat", "data": Heartbeat } | { "type": "stats", "data": LiveStats } | { "type": "diag", "data": DiagEvent } | { "type": "capture", "data": CaptureLive } | { "type": "alert", "data": AlertView } | { "type": "speed", "data": SpeedEvent };
+export type BridgeEvent = { "type": "status", "data": AgentConnection } | { "type": "heartbeat", "data": Heartbeat } | { "type": "stats", "data": LiveStats } | { "type": "diag", "data": DiagEvent } | { "type": "capture", "data": CaptureLive } | { "type": "alert", "data": AlertView } | { "type": "speed", "data": SpeedEvent } | { "type": "mcp_pending", "data": McpPendingList };

@@ -1168,5 +1168,33 @@
     "allow": "Add to allowlist",
     "allowed": "Added to the allowlist",
     "noGeo": "No GeoIP database: download it in Threat intelligence"
+  },
+  "mcp": {
+    "approval": {
+      "banner": "An AI client requests an action — review it before it runs.",
+      "bannerCount": "{count} waiting for your decision.",
+      "open": "Review",
+      "dialogTitle": "An AI client requests an action",
+      "dialogExplain": "Check the full request below. Anything you do not approve within five minutes is dropped.",
+      "expiresIn": "Expires in {seconds} s",
+      "approve": "Approve",
+      "reject": "Reject",
+      "error": "The action could not be completed: {message}",
+      "toast": {
+        "title": "An AI client requests an action",
+        "body": "{summary} — review it in PacketWard."
+      },
+      "consequence": {
+        "block_ip": "Blocks an address in the firewall.",
+        "unblock_ip": "Removes an address from the block list.",
+        "set_guardian_mode": "Switches the Guardian on, off or to monitor-only.",
+        "create_firewall_rule": "Creates a new firewall rule.",
+        "delete_firewall_rule": "Deletes a firewall rule.",
+        "start_capture": "Starts a short packet capture.",
+        "speed_test": "Runs a speed test from this server.",
+        "support_bundle": "Builds a support bundle on disk.",
+        "generic": "Runs an action through the agent."
+      }
+    }
   }
 }

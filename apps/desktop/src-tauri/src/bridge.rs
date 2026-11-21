@@ -12,7 +12,7 @@ use pw_ipc::{Client, ClientError};
 use pw_proto::{
     method, topic, AccessReason, AgentConnection, AlertView, BridgeEvent, CaptureLive, ClientKind,
     ConnectionsRequest, ConnectionsResponse, DiagEvent, ElevatedAction, ElevationOutcome,
-    ErrorCode, Heartbeat, LiveStats, SavedBundle, SpeedEvent, SupportBundleInfo,
+    ErrorCode, Heartbeat, LiveStats, McpPendingList, SavedBundle, SpeedEvent, SupportBundleInfo,
     SupportBundleRequest, SupportChunk, SupportDiscardRequest, SupportReadRequest,
 };
 use tauri::ipc::Channel;
@@ -81,6 +81,10 @@ impl Emitter {
 
     fn capture(&self, stats: CaptureLive) -> bool {
         self.channel.send(BridgeEvent::Capture(stats)).is_ok()
+    }
+
+    fn mcp_pending(&self, pending: McpPendingList) -> bool {
+        self.channel.send(BridgeEvent::McpPending(pending)).is_ok()
     }
 }
 
@@ -180,6 +184,15 @@ async fn run_connected(client: Client, out: &mut Emitter, slot: &ClientSlot) -> 
             None
         }
     };
+    // The MCP approval queue; the agent sends the current queue as the first snapshot. Older agents
+    // have no MCP server and there is then nothing to approve.
+    let mut mcp_pending = match client.subscribe(topic::MCP_PENDING).await {
+        Ok(subscription) => Some(subscription),
+        Err(err) => {
+            tracing::info!(%err, "the agent does not publish mcp.pending");
+            None
+        }
+    };
     *slot.lock().unwrap_or_else(|e| e.into_inner()) = Some(client.clone());
     let _clear_on_exit = SlotGuard(slot);
 
@@ -228,6 +241,14 @@ async fn run_connected(client: Client, out: &mut Emitter, slot: &ClientSlot) -> 
             stats = next_capture(&mut capture) => match stats {
                 Some(stats) => {
                     if !out.capture(stats) {
+                        return false;
+                    }
+                }
+                None => return true,
+            },
+            pending = next_mcp_pending(&mut mcp_pending) => match pending {
+                Some(pending) => {
+                    if !out.mcp_pending(pending) {
                         return false;
                     }
                 }
@@ -282,6 +303,16 @@ async fn next_capture(subscription: &mut Option<pw_ipc::Subscription>) -> Option
 async fn next_diag(subscription: &mut Option<pw_ipc::Subscription>) -> Option<DiagEvent> {
     match subscription {
         Some(subscription) => subscription.recv_as::<DiagEvent>().await,
+        None => std::future::pending().await,
+    }
+}
+
+/// The next `mcp.pending` snapshot; never completes when the agent offers none.
+async fn next_mcp_pending(
+    subscription: &mut Option<pw_ipc::Subscription>,
+) -> Option<McpPendingList> {
+    match subscription {
+        Some(subscription) => subscription.recv_as::<McpPendingList>().await,
         None => std::future::pending().await,
     }
 }
@@ -349,6 +380,10 @@ const CALLABLE_METHODS: &[&str] = &[
     method::SETTINGS_SET_PROXY,
     method::SETTINGS_SET_CAPTURE_ON_START,
     method::LOGS_AUDIT,
+    method::MCP_PENDING_LIST,
+    method::MCP_APPROVE,
+    method::MCP_REJECT,
+    method::MCP_ACTION_STATUS,
 ];
 
 fn is_callable(method_name: &str) -> bool {
@@ -601,6 +636,7 @@ mod tests {
                     || allowed.starts_with("intel.")
                     || allowed.starts_with("settings.")
                     || allowed.starts_with("logs.")
+                    || allowed.starts_with("mcp.")
                     || *allowed == method::SUPPORT_PREVIEW,
                 "{allowed}"
             );

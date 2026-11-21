@@ -10,13 +10,18 @@ mod sys;
 mod tray;
 mod updater;
 
-use tauri::{Manager, WindowEvent};
+use std::sync::{Arc, Mutex, Once};
+use tauri::{Emitter, Manager, WindowEvent};
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 
 use prefs::{Language, PrefsError, UiPrefs};
 
 /// Passed by the autostart entry so the app opens straight into the tray.
 const MINIMIZED_FLAG: &str = "--minimized";
+/// Event the webview listens for when the user clicks the MCP approval notification.
+const MCP_PENDING_OPEN: &str = "mcp-pending-open";
+/// Identifier of the notification that announces a pending MCP approval.
+const MCP_NOTIFICATION_ID: i32 = 7_100;
 
 fn prefs_file(app: &tauri::AppHandle) -> Result<std::path::PathBuf, PrefsError> {
     prefs::prefs_path(app.path().config_dir().ok())
@@ -123,6 +128,53 @@ fn notify_alert(app: tauri::AppHandle, title: String, body: String) -> Result<()
         .map_err(|err| err.to_string())
 }
 
+/// The notification that asks the owner to approve an MCP action. A click brings the window back
+/// and tells the UI to open the approval dialog (ARCHITECTURE 6.14).
+#[derive(Clone, Default)]
+struct ApprovalToast {
+    /// The click handler is registered once; the plugin cannot remove one.
+    installed: Arc<Once>,
+    /// The identifier of the notification on screen, so clicks on alert notifications are ignored.
+    last_id: Arc<Mutex<Option<i32>>>,
+}
+
+#[tauri::command]
+fn notify_action_request(
+    app: tauri::AppHandle,
+    toast: tauri::State<'_, ApprovalToast>,
+    title: String,
+    body: String,
+) -> Result<(), String> {
+    use tauri_plugin_notification::NotificationExt;
+    *toast.last_id.lock().unwrap_or_else(|err| err.into_inner()) = Some(MCP_NOTIFICATION_ID);
+    let last_id = Arc::clone(&toast.last_id);
+    let handle = app.clone();
+    let installer = app.clone();
+    toast.installed.call_once(move || {
+        let registered = installer.notification().on_action(move |action| {
+            if action.action_id() != "tap" {
+                return;
+            }
+            let shown = action.notification().map(|notification| notification.id());
+            if shown.is_none() || shown != *last_id.lock().unwrap_or_else(|err| err.into_inner()) {
+                return;
+            }
+            tray::show_main_window(&handle);
+            let _ = handle.emit(MCP_PENDING_OPEN, ());
+        });
+        if let Err(err) = registered {
+            tracing::warn!(%err, "could not listen for notification clicks");
+        }
+    });
+    app.notification()
+        .builder()
+        .id(MCP_NOTIFICATION_ID)
+        .title(title)
+        .body(body)
+        .show()
+        .map_err(|err| err.to_string())
+}
+
 fn startup_locale(app: &tauri::AppHandle) -> &'static str {
     let saved = prefs_file(app)
         .map(|path| prefs::load_from(&path).language)
@@ -151,7 +203,8 @@ fn main() -> anyhow::Result<()> {
         ))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
-        .manage(bridge::Bridge::default());
+        .manage(bridge::Bridge::default())
+        .manage(ApprovalToast::default());
     // The updater plugin is only registered with a valid public key; see updater.rs.
     updater::register(builder, context.config())
         .invoke_handler(tauri::generate_handler![
@@ -169,6 +222,7 @@ fn main() -> anyhow::Result<()> {
             bridge::support_bundle_save,
             tray_set_state,
             notify_alert,
+            notify_action_request,
             bridge::agent_elevate,
             updater::update_info,
             updater::update_check,
