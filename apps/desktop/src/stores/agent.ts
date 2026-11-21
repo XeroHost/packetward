@@ -15,6 +15,7 @@ import { useDefenseStore } from './defense'
 import { useRdpStore } from './rdp'
 import { useIntelStore } from './intel'
 import { useLogsStore } from './logs'
+import { useMcpStore } from './mcp'
 import { useSpeedStore } from './speed'
 import { useDiagStore } from './diag'
 import { useLiveStore } from './live'
@@ -75,6 +76,7 @@ export const useAgentStore = defineStore('agent', () => {
         useSpeedStore().reset()
         useIntelStore().reset()
         useLogsStore().reset()
+        useMcpStore().reset()
       } else {
         // Connecting counts as a sign of life: do not report "unresponsive" before the first beat.
         lastBeatAt.value = Date.now()
@@ -82,6 +84,9 @@ export const useAgentStore = defineStore('agent', () => {
         // The inbox starts with what the agent already knows about.
         void useAlertsStore().load()
         void useDefenseStore().loadGuardian()
+        // The approval queue is public; the first snapshot follows on its own, this covers a
+        // reconnect where that message is the one that went missing.
+        void useMcpStore().load()
         useRdpStore().startWatch()
       }
       return
@@ -104,6 +109,10 @@ export const useAgentStore = defineStore('agent', () => {
     }
     if (event.type === 'diag') {
       useDiagStore().applyEvent(event.data)
+      return
+    }
+    if (event.type === 'mcp_pending') {
+      useMcpStore().applySnapshot(event.data)
       return
     }
     heartbeat.value = event.data

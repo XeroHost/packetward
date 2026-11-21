@@ -8,6 +8,8 @@ import { RouterView, useRoute } from 'vue-router'
 import AuditBanner from '@/components/pw/AuditBanner.vue'
 import BlockDialog from '@/components/pw/BlockDialog.vue'
 import IpDetailDrawer from '@/components/pw/IpDetailDrawer.vue'
+import McpApprovalBanner from '@/components/pw/McpApprovalBanner.vue'
+import McpApprovalDialog from '@/components/pw/McpApprovalDialog.vue'
 import RdpPendingBanner from '@/components/pw/RdpPendingBanner.vue'
 import SidebarNav from '@/components/pw/SidebarNav.vue'
 import TitleBar from '@/components/pw/TitleBar.vue'
@@ -27,6 +29,7 @@ const title = computed(() => t(String(route.meta.titleKey ?? 'app.name')))
         class="pw-panel mr-[var(--gutter)] mb-[var(--gutter)] flex min-w-0 flex-1 flex-col overflow-hidden"
       >
         <RdpPendingBanner />
+        <McpApprovalBanner />
         <AuditBanner />
         <main
           class="flex min-h-0 flex-1 flex-col overflow-y-auto px-(--page-px) pt-(--page-pt) pb-(--page-pb)"
@@ -51,6 +54,7 @@ const title = computed(() => t(String(route.meta.titleKey ?? 'app.name')))
       </section>
       <BlockDialog />
       <IpDetailDrawer />
+      <McpApprovalDialog />
     </div>
   </div>
 </template>

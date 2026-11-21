@@ -1168,5 +1168,33 @@
     "allow": "Adicionar à lista permitida",
     "allowed": "Adicionado à lista permitida",
     "noGeo": "Sem banco de dados GeoIP: baixe-o em Inteligência de ameaças"
+  },
+  "mcp": {
+    "approval": {
+      "banner": "Um cliente de IA solicita uma ação — revise antes que ela seja executada.",
+      "bannerCount": "{count} aguardando sua decisão.",
+      "open": "Revisar",
+      "dialogTitle": "Um cliente de IA solicita uma ação",
+      "dialogExplain": "Revise a solicitação completa. O que não for aprovado em cinco minutos é descartado.",
+      "expiresIn": "Expira em {seconds} s",
+      "approve": "Aprovar",
+      "reject": "Rejeitar",
+      "error": "A ação não pôde ser concluída: {message}",
+      "toast": {
+        "title": "Um cliente de IA solicita uma ação",
+        "body": "{summary} — revise no PacketWard."
+      },
+      "consequence": {
+        "block_ip": "Bloqueia um endereço no firewall.",
+        "unblock_ip": "Remove um endereço da lista de bloqueios.",
+        "set_guardian_mode": "Muda o modo do Guardião (ativo, monitor ou desligado).",
+        "create_firewall_rule": "Cria uma nova regra de firewall.",
+        "delete_firewall_rule": "Exclui uma regra de firewall.",
+        "start_capture": "Inicia uma captura de pacotes curta.",
+        "speed_test": "Executa um teste de velocidade deste servidor.",
+        "support_bundle": "Gera um pacote de suporte no disco.",
+        "generic": "Executa uma ação por meio do agente."
+      }
+    }
   }
 }
