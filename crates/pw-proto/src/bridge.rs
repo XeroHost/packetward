@@ -6,7 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::{AlertView, CaptureLive, DiagEvent, Heartbeat, LiveStats, SpeedEvent};
+use crate::{AlertView, CaptureLive, DiagEvent, Heartbeat, LiveStats, McpPendingList, SpeedEvent};
 
 /// Why the agent pipe refused this Windows user.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -69,6 +69,8 @@ pub enum BridgeEvent {
     Capture(CaptureLive),
     Alert(AlertView),
     Speed(SpeedEvent),
+    /// The whole MCP approval queue, on every change (see ARCHITECTURE 6.14).
+    McpPending(McpPendingList),
 }
 
 /// What the UI may ask the agent executable to do with administrator rights.
@@ -124,6 +126,21 @@ mod tests {
         assert_eq!(
             json,
             r#"{"type":"heartbeat","data":{"seq":3,"uptime_secs":9,"unix_ms":1}}"#
+        );
+        let pending = McpPendingList {
+            actions: vec![crate::McpPendingAction {
+                id: 7,
+                tool: "block_ip".into(),
+                args: serde_json::json!({ "ip": "203.0.113.9" }),
+                summary: "Block 203.0.113.9".into(),
+                created_ts: 1_000,
+                expires_ts: 300_000_001_000,
+            }],
+        };
+        let json = serde_json::to_string(&BridgeEvent::McpPending(pending)).unwrap();
+        assert_eq!(
+            json,
+            r#"{"type":"mcp_pending","data":{"actions":[{"id":7,"tool":"block_ip","args":{"ip":"203.0.113.9"},"summary":"Block 203.0.113.9","created_ts":1000,"expires_ts":300000001000}]}}"#
         );
     }
 }
