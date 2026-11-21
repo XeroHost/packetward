@@ -36,12 +36,11 @@ const APPROVAL_ONLY = new Set([
   'delete_firewall_rule',
 ])
 
-type ClientId = 'claudeDesktop' | 'claudeCode' | 'opencode' | 'cursor'
-const CLIENTS: readonly ClientId[] = ['claudeCode', 'claudeDesktop', 'opencode', 'cursor']
+type ClientId = 'claudeCode' | 'opencode' | 'cursor'
+const CLIENTS: readonly ClientId[] = ['claudeCode', 'opencode', 'cursor']
 
 /** Where each client keeps its configuration file (shown under the snippet). */
 const CLIENT_FILES: Record<ClientId, string> = {
-  claudeDesktop: '%APPDATA%\\Claude\\claude_desktop_config.json',
   claudeCode: '.mcp.json (project) or %USERPROFILE%\\.claude.json',
   opencode: 'opencode.json (project) or %USERPROFILE%\\.config\\opencode\\opencode.json',
   cursor: '.cursor\\mcp.json (project) or %USERPROFILE%\\.cursor\\mcp.json',

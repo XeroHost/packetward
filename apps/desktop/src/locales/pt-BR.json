@@ -134,7 +134,7 @@
     },
     "mcp": {
       "title": "Servidor MCP (clientes de IA)",
-      "description": "Permite que um cliente de IA como Claude Code, Claude Desktop, OpenCode ou Cursor leia o estado deste servidor e, somente se você autorizar, execute ações através do agente. Fica desativado por padrão.",
+      "description": "Permite que um cliente de IA como Claude Code, OpenCode ou Cursor leia o estado deste servidor e, somente se você autorizar, execute ações através do agente. Fica desativado por padrão.",
       "switch": "Ativar o servidor MCP",
       "switchHint": "Enquanto estiver desativado, toda solicitação MCP é recusada, mesmo de um cliente já configurado.",
       "offNote": "O servidor está desativado. Os níveis são salvos, mas nada pode ser executado até você ativá-lo.",
@@ -194,7 +194,6 @@
         "title": "Configuração do cliente",
         "description": "Copie isto para o arquivo de configuração do cliente e reinicie-o. O caminho aponta para o pwctl.exe instalado com o PacketWard.",
         "label": "Cliente",
-        "claudeDesktop": "Claude Desktop",
         "claudeCode": "Claude Code",
         "opencode": "OpenCode",
         "cursor": "Cursor",

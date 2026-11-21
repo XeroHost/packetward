@@ -134,7 +134,7 @@
     },
     "mcp": {
       "title": "MCP server (AI clients)",
-      "description": "Lets an AI client such as Claude Code, Claude Desktop, OpenCode or Cursor read this server's state and, only if you allow it, run actions through the agent. It is off by default.",
+      "description": "Lets an AI client such as Claude Code, OpenCode or Cursor read this server's state and, only if you allow it, run actions through the agent. It is off by default.",
       "switch": "Enable the MCP server",
       "switchHint": "While it is off, every MCP request is refused, even from a configured client.",
       "offNote": "The server is off. Levels are saved but nothing can run until you turn it on.",
@@ -194,7 +194,6 @@
         "title": "Client configuration",
         "description": "Copy this into the client's configuration file and restart the client. The path points at the pwctl.exe installed with PacketWard.",
         "label": "Client",
-        "claudeDesktop": "Claude Desktop",
         "claudeCode": "Claude Code",
         "opencode": "OpenCode",
         "cursor": "Cursor",

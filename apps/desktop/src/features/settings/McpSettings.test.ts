@@ -164,6 +164,8 @@ describe('McpSettings', () => {
     const wrapper = await mountPage()
     const snippet = () => wrapper.find('[data-testid="mcp-snippet"]').text()
     expect(select(wrapper, 'Client').props('modelValue')).toBe('claudeCode')
+    const options = select(wrapper, 'Client').props('options') as { value: string }[]
+    expect(options.map((option) => option.value)).toEqual(['claudeCode', 'opencode', 'cursor'])
     expect(snippet()).toContain(JSON.stringify(PWCTL))
     expect(snippet()).toContain('"mcpServers"')
 

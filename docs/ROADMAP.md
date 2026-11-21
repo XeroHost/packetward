@@ -176,7 +176,7 @@ state, and every write path behaves as specified above on a test VPS (TESTING §
 - [x] Optional Authenticode step in CI (runs only when signing secrets exist).
       (In `release.yml`; untested until a certificate exists.)
 - [x] Settings → MCP page: master switch (off, with confirmation), level per execution tool (approval-only tools cannot be automatic),
-      write limit (1..60), Copy configuration for Claude Desktop, Claude Code, OpenCode and Cursor using the installed `pwctl.exe` path;
+      write limit (1..60), Copy configuration for Claude Code, OpenCode and Cursor using the installed `pwctl.exe` path;
       en/es/pt-BR. The installer ships `pwctl.exe`; **Check pwctl.exe** starts it with stdin closed and an 8 s bound (2026-11-21).
 **Accept:** clean install/upgrade/uninstall on Windows Server 2019 and 2022 VMs; switching channel works; the MCP page copies a working configuration.
 (Unit/component tests pass; the live half is TESTING §F13 on a test VPS, still pending.)
