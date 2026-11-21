@@ -27,6 +27,13 @@ const FLUSH_GRACE: Duration = Duration::from_secs(1);
 /// Stream of event payloads for one subscription. Dropping it tells the producer to stop.
 pub type EventReceiver = mpsc::Receiver<Value>;
 
+/// What the connection declared in its `session.hello`: the agent applies per-kind policy (an MCP
+/// connection only reaches the MCP catalog, ARCHITECTURE 6.14).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ConnCtx {
+    pub client: pw_proto::ClientKind,
+}
+
 /// The application behind the pipe. Implemented by the agent on top of `pw-engine`.
 pub trait Handler: Send + Sync + 'static {
     /// Versions reported in the handshake.
@@ -35,6 +42,7 @@ pub trait Handler: Send + Sync + 'static {
     /// Handles one request. Must return [`ErrorCode::UnknownMethod`] for methods it does not know.
     fn handle(
         &self,
+        ctx: ConnCtx,
         method: &str,
         payload: Value,
     ) -> impl Future<Output = Result<Value, ErrorPayload>> + Send;
@@ -42,6 +50,7 @@ pub trait Handler: Send + Sync + 'static {
     /// Opens a subscription. Must return [`ErrorCode::UnknownTopic`] for unknown topics.
     fn subscribe(
         &self,
+        ctx: ConnCtx,
         topic: &str,
     ) -> impl Future<Output = Result<EventReceiver, ErrorPayload>> + Send;
 }
@@ -114,6 +123,8 @@ where
 
     let mut subscriptions: HashMap<String, JoinHandle<()>> = HashMap::new();
     let mut handshaken = false;
+    // Captured from the hello; only requests that passed the handshake reach the handler.
+    let mut client_kind = None;
 
     loop {
         let envelope = match read_envelope(&mut reader).await {
@@ -205,6 +216,7 @@ where
                     break;
                 }
                 handshaken = true;
+                client_kind = Some(request.client);
             }
             method::SUBSCRIBE => {
                 let request: SubscribeRequest = match envelope.payload_as() {
@@ -218,6 +230,11 @@ where
                         continue;
                     }
                 };
+                let ctx = ConnCtx {
+                    // Only a handshaken connection gets here, so the kind is always known; the
+                    // fallback is the least privileged interactive client.
+                    client: client_kind.unwrap_or(pw_proto::ClientKind::Pwctl),
+                };
                 if subscriptions.contains_key(&request.topic) {
                     if let Ok(reply) = Envelope::response(
                         id,
@@ -229,7 +246,7 @@ where
                     }
                     continue;
                 }
-                match handler.subscribe(&request.topic).await {
+                match handler.subscribe(ctx, &request.topic).await {
                     Ok(mut events) => {
                         let topic = request.topic.clone();
                         // Reply first so the client sees the response before the first event.
@@ -286,8 +303,11 @@ where
                 let handler = Arc::clone(&handler);
                 let out = out.clone();
                 let payload = envelope.payload;
+                let ctx = ConnCtx {
+                    client: client_kind.unwrap_or(pw_proto::ClientKind::Pwctl),
+                };
                 tokio::spawn(async move {
-                    let reply = match handler.handle(&method_name, payload).await {
+                    let reply = match handler.handle(ctx, &method_name, payload).await {
                         Ok(value) => Envelope::response(id, &value),
                         Err(err) => Envelope::error(Some(id), &err),
                     };

@@ -194,10 +194,19 @@ mod tests {
                 protocol_minor: 0,
             }
         }
-        async fn handle(&self, _m: &str, payload: Value) -> Result<Value, pw_proto::ErrorPayload> {
+        async fn handle(
+            &self,
+            _ctx: crate::ConnCtx,
+            _m: &str,
+            payload: Value,
+        ) -> Result<Value, pw_proto::ErrorPayload> {
             Ok(payload)
         }
-        async fn subscribe(&self, topic: &str) -> Result<EventReceiver, pw_proto::ErrorPayload> {
+        async fn subscribe(
+            &self,
+            _ctx: crate::ConnCtx,
+            topic: &str,
+        ) -> Result<EventReceiver, pw_proto::ErrorPayload> {
             let (_tx, rx) = mpsc::channel(1);
             let _ = topic;
             Ok(rx)

@@ -27,4 +27,4 @@ mod tests;
 
 pub use client::{Client, ClientError, Subscription};
 pub use framing::FrameError;
-pub use server::{serve, serve_connection, EventReceiver, Handler, Listener};
+pub use server::{serve, serve_connection, ConnCtx, EventReceiver, Handler, Listener};

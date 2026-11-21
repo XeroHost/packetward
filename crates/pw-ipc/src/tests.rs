@@ -15,7 +15,7 @@ use tokio::sync::mpsc;
 
 use crate::framing::{read_envelope, read_frame, write_envelope, write_frame};
 use crate::memory::{memory_pair, MemoryConnector};
-use crate::{serve, Client, ClientError, EventReceiver, Handler};
+use crate::{serve, Client, ClientError, ConnCtx, EventReceiver, Handler};
 
 #[derive(Default)]
 struct Probe {
@@ -37,7 +37,12 @@ impl Handler for TestHandler {
         }
     }
 
-    async fn handle(&self, method_name: &str, payload: Value) -> Result<Value, ErrorPayload> {
+    async fn handle(
+        &self,
+        _ctx: ConnCtx,
+        method_name: &str,
+        payload: Value,
+    ) -> Result<Value, ErrorPayload> {
         match method_name {
             "echo" => Ok(payload),
             "slow" => {
@@ -53,7 +58,7 @@ impl Handler for TestHandler {
         }
     }
 
-    async fn subscribe(&self, topic: &str) -> Result<EventReceiver, ErrorPayload> {
+    async fn subscribe(&self, _ctx: ConnCtx, topic: &str) -> Result<EventReceiver, ErrorPayload> {
         match topic {
             "ticks" => {
                 let (tx, rx) = mpsc::channel(8);
@@ -127,6 +132,66 @@ async fn handshake_reports_the_agent_versions() {
     let client = client(&connector).await;
     assert_eq!(client.agent().agent_version, "test");
     assert_eq!(client.agent().protocol_major, PROTOCOL_MAJOR);
+}
+
+struct KindHandler;
+
+impl Handler for KindHandler {
+    fn hello(&self) -> HelloResponse {
+        HelloResponse {
+            agent_version: "test".into(),
+            protocol_major: PROTOCOL_MAJOR,
+            protocol_minor: PROTOCOL_MINOR,
+        }
+    }
+
+    async fn handle(
+        &self,
+        ctx: ConnCtx,
+        _method_name: &str,
+        _payload: Value,
+    ) -> Result<Value, ErrorPayload> {
+        Ok(json!(match ctx.client {
+            ClientKind::Desktop => "desktop",
+            ClientKind::Pwctl => "pwctl",
+            ClientKind::Mcp => "mcp",
+        }))
+    }
+
+    async fn subscribe(&self, ctx: ConnCtx, _topic: &str) -> Result<EventReceiver, ErrorPayload> {
+        let (tx, rx) = mpsc::channel(1);
+        let _ = tx.try_send(json!(match ctx.client {
+            ClientKind::Desktop => "desktop",
+            ClientKind::Pwctl => "pwctl",
+            ClientKind::Mcp => "mcp",
+        }));
+        Ok(rx)
+    }
+}
+
+#[tokio::test]
+async fn the_hello_client_kind_reaches_the_handler() {
+    let (listener, connector) = memory_pair();
+    tokio::spawn(serve(
+        listener,
+        Arc::new(KindHandler),
+        std::future::pending(),
+    ));
+    for (kind, expected) in [
+        (ClientKind::Mcp, "mcp"),
+        (ClientKind::Desktop, "desktop"),
+        (ClientKind::Pwctl, "pwctl"),
+    ] {
+        let stream = connector.connect().await.unwrap();
+        let client = Client::connect(stream, kind, "0.0.0").await.unwrap();
+        let seen: Value = client.request("who", &()).await.unwrap();
+        assert_eq!(seen, json!(expected));
+        let mut events = client.subscribe("who").await.unwrap();
+        let event = tokio::time::timeout(Duration::from_secs(2), events.recv())
+            .await
+            .expect("the kind event arrives");
+        assert_eq!(event, Some(json!(expected)));
+    }
 }
 
 #[tokio::test]
