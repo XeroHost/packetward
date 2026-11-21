@@ -542,12 +542,16 @@ call is sent to the agent like any write and its `pending` reply is returned as 
 countdown and Approve / Reject (the dialog is the confirmation; risky tools use the danger tone). A new request raises a Windows toast
 through `notify_action_request`; clicking it restores the window and opens the dialog (`mcp-pending-open`). Until the Settings → MCP
 page (M12) the toast follows the alert inbox's high-severity mute switch, and the first snapshot after a (re)connect shows the banner
-without a toast. The bridge allowlist gains `mcp.pending.list`, `mcp.approve`, `mcp.reject`, `mcp.action.status` — never `mcp.settings.*`.
+without a toast. The bridge allowlist gains `mcp.pending.list`, `mcp.approve`, `mcp.reject`, `mcp.action.status`. M12 adds
+`mcp.settings.get|set` for the Settings page: the caller is the trusted `desktop` connection (the webview already changes firewall and
+Guardian settings), and the agent still refuses those methods for `ClientKind::Mcp`, so the AI cannot read or change its own policy.
 
-**Settings → MCP (desktop, milestone M12).** Master switch (off), the level of each execution tool (approval-only tools offer disabled /
-approval), the write limit, and **Copy configuration** buttons that put on the clipboard the entry for each client, using the installed
-`pwctl.exe` path (the installer already ships it): Claude Desktop (`mcpServers` entry for `claude_desktop_config.json`), Claude Code (the
-`claude mcp add` command), OpenCode (`mcp` entry with `type: "local"` in `opencode.json`) and Cursor (`mcpServers` entry for `mcp.json`).
+**Settings → MCP (desktop, milestone M12, implemented 2026-11-21).** `features/settings/McpSettings.vue` shows the master switch (off),
+the level of each execution tool (approval-only tools offer disabled / approval), the write limit and a **Copy configuration** control
+with the installed `pwctl.exe` path from the new `mcp_install_info` command. The snippets are JSON entries: Claude Desktop and Cursor
+(`mcpServers` in `claude_desktop_config.json` / `.cursor/mcp.json`), Claude Code (`.mcp.json` with `type: "stdio"`) and OpenCode
+(`mcp` entry with `type: "local"` in `opencode.json`). The new `mcp_self_check` command starts `pwctl.exe mcp` with stdin closed and a
+bounded 8 s timeout to prove the installed binary works; the page also warns that the client's shell must deny `pwctl` directly.
 
 **IPC (protocol minor 15; 13 is the speed-test providers, 14 the start-up capture switch).** Methods `mcp.settings.get`, `mcp.settings.set`, `mcp.pending.list`, `mcp.approve`, `mcp.reject`, `mcp.action.status`
 (the three that change state are desktop/`Pwctl` only) and the topic `mcp.pending`; `ClientKind::Mcp`. Existing methods are reused for the

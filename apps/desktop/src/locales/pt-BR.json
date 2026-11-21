@@ -131,6 +131,90 @@
       "label": "Iniciar a captura ao vivo com o agente",
       "hint": "Ativada por padrão. Não grava nada em disco (só uma gravação que você iniciar) e sua memória é limitada. A mudança vale na próxima vez que o agente iniciar; a página Captura a inicia e a para agora mesmo.",
       "offNote": "Desativada: após o próximo início do agente não haverá captura de pacotes, então a detecção de inundações SYN, UDP e ICMP e a página de Tráfego não verão pacotes. A detecção por conexões, logons e contadores do adaptador continua funcionando."
+    },
+    "mcp": {
+      "title": "Servidor MCP (clientes de IA)",
+      "description": "Permite que um cliente de IA — Claude Desktop, Claude Code, OpenCode ou Cursor — leia o estado deste servidor e, somente se você autorizar, execute ações através do agente. Fica desativado por padrão.",
+      "switch": "Ativar o servidor MCP",
+      "switchHint": "Enquanto estiver desativado, toda solicitação MCP é recusada, mesmo de um cliente já configurado.",
+      "offNote": "O servidor está desativado. Os níveis são salvos, mas nada pode ser executado até você ativá-lo.",
+      "loadError": "Não foi possível ler a política MCP: {reason}",
+      "saveError": "Não foi possível salvar a política MCP: {reason}",
+      "level": {
+        "disabled": "Desativada",
+        "automatic": "Automática",
+        "approval": "Perguntar"
+      },
+      "tools": {
+        "title": "Ferramentas",
+        "description": "As ferramentas somente leitura (conexões, alertas, diagnóstico, regras de firewall, registro de auditoria) ficam sempre disponíveis com o servidor ativo. Estas são as que mudam algo.",
+        "approvalOnly": "Esta ferramenta só pode ficar desativada ou pedir sua permissão.",
+        "block_ip": {
+          "name": "Bloquear um endereço",
+          "description": "Adiciona um endereço à lista de bloqueio do firewall por um tempo."
+        },
+        "start_capture": {
+          "name": "Iniciar uma captura",
+          "description": "Grava pacotes em um arquivo por até 60 segundos."
+        },
+        "speed_test": {
+          "name": "Executar um teste de velocidade",
+          "description": "Mede a velocidade de download e upload a partir deste servidor."
+        },
+        "support_bundle": {
+          "name": "Criar um pacote de suporte",
+          "description": "Grava um arquivo de diagnóstico em disco; nunca é enviado."
+        },
+        "unblock_ip": {
+          "name": "Desbloquear um endereço",
+          "description": "Remove um endereço da lista de bloqueio."
+        },
+        "set_guardian_mode": {
+          "name": "Alterar o modo do Guardião",
+          "description": "Alterna o Guardião entre monitor, ativo e desligado."
+        },
+        "create_firewall_rule": {
+          "name": "Criar uma regra de firewall",
+          "description": "Adiciona uma regra ao grupo PacketWard."
+        },
+        "delete_firewall_rule": {
+          "name": "Excluir uma regra de firewall",
+          "description": "Remove uma regra do grupo PacketWard."
+        }
+      },
+      "limit": {
+        "title": "Limite de escrita",
+        "description": "Quantas ações um cliente de IA pode executar por minuto, somando todas as ferramentas. As chamadas acima do limite são recusadas, não ficam em fila.",
+        "label": "Ações por minuto",
+        "save": "Salvar",
+        "range": "Entre 1 e 60."
+      },
+      "client": {
+        "title": "Configuração do cliente",
+        "description": "Copie isto para o arquivo de configuração do cliente e reinicie-o. O caminho aponta para o pwctl.exe instalado com o PacketWard.",
+        "label": "Cliente",
+        "claudeDesktop": "Claude Desktop",
+        "claudeCode": "Claude Code",
+        "opencode": "OpenCode",
+        "cursor": "Cursor",
+        "file": "Arquivo: {path}",
+        "copy": "Copiar configuração",
+        "copied": "Copiado",
+        "check": "Verificar pwctl.exe",
+        "checking": "Verificando…",
+        "checkOk": "pwctl.exe iniciou e terminou sem erros.",
+        "checkMissing": "pwctl.exe não foi encontrado ao lado do aplicativo ({path}). Reinstale o PacketWard.",
+        "checkTimeout": "pwctl.exe não terminou em 8 segundos. O serviço PacketWard está em execução?",
+        "checkSpawn": "Não foi possível iniciar o pwctl.exe: {detail}",
+        "checkExit": "pwctl.exe terminou com erro ({detail}).",
+        "security": "Dê à IA apenas as ferramentas de que ela precisa e negue o comando pwctl nas permissões de shell ou terminal do cliente: com um shell ela poderia chamar o pwctl diretamente, fora desta política."
+      },
+      "confirm": {
+        "title": "Ativar o servidor MCP?",
+        "body": "Um cliente de IA poderá ler o estado deste servidor. Somente as ferramentas que você permitir abaixo poderão ser executadas, cada execução fica no registro de auditoria e limitada por ritmo, e as ferramentas em “Perguntar” continuam esperando seu OK nesta janela.",
+        "cancel": "Cancelar",
+        "enable": "Ativar MCP"
+      }
     }
   },
   "about": {

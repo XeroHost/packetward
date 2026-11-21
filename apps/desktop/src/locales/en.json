@@ -131,6 +131,90 @@
       "label": "Start the live capture with the agent",
       "hint": "On by default. It writes nothing to disk (only a recording you start does) and its memory is bounded. The change applies the next time the agent starts; the Capture page starts and stops it right now.",
       "offNote": "Off: after the next agent start there is no packet capture, so SYN, UDP and ICMP flood detection and the Traffic page see no packets. Detection from connections, logons and adapter counters keeps working."
+    },
+    "mcp": {
+      "title": "MCP server (AI clients)",
+      "description": "Lets an AI client — Claude Desktop, Claude Code, OpenCode or Cursor — read this server's state and, only if you allow it, run actions through the agent. It is off by default.",
+      "switch": "Enable the MCP server",
+      "switchHint": "While it is off, every MCP request is refused, even from a configured client.",
+      "offNote": "The server is off. Levels are saved but nothing can run until you turn it on.",
+      "loadError": "Could not read the MCP policy: {reason}",
+      "saveError": "Could not save the MCP policy: {reason}",
+      "level": {
+        "disabled": "Off",
+        "automatic": "Automatic",
+        "approval": "Ask me first"
+      },
+      "tools": {
+        "title": "Tools",
+        "description": "Read-only tools (connections, alerts, diagnostics, firewall rules, audit log) are always available while the server is on. These are the tools that change something.",
+        "approvalOnly": "This tool can only be off or ask you first.",
+        "block_ip": {
+          "name": "Block an address",
+          "description": "Adds an address to the firewall block list for a set time."
+        },
+        "start_capture": {
+          "name": "Start a capture",
+          "description": "Records packets to a file for up to 60 seconds."
+        },
+        "speed_test": {
+          "name": "Run a speed test",
+          "description": "Measures download and upload speed from this server."
+        },
+        "support_bundle": {
+          "name": "Build a support bundle",
+          "description": "Writes a diagnostics archive to disk; it is never uploaded."
+        },
+        "unblock_ip": {
+          "name": "Unblock an address",
+          "description": "Removes an address from the block list."
+        },
+        "set_guardian_mode": {
+          "name": "Change the Guardian mode",
+          "description": "Switches the Guardian between monitor, active and off."
+        },
+        "create_firewall_rule": {
+          "name": "Create a firewall rule",
+          "description": "Adds a rule to the PacketWard group."
+        },
+        "delete_firewall_rule": {
+          "name": "Delete a firewall rule",
+          "description": "Removes a rule from the PacketWard group."
+        }
+      },
+      "limit": {
+        "title": "Write limit",
+        "description": "How many actions an AI client may run per minute, all tools together. Calls over the limit are refused, not queued.",
+        "label": "Actions per minute",
+        "save": "Save",
+        "range": "Between 1 and 60."
+      },
+      "client": {
+        "title": "Client configuration",
+        "description": "Copy this into the client's configuration file and restart the client. The path points at the pwctl.exe installed with PacketWard.",
+        "label": "Client",
+        "claudeDesktop": "Claude Desktop",
+        "claudeCode": "Claude Code",
+        "opencode": "OpenCode",
+        "cursor": "Cursor",
+        "file": "File: {path}",
+        "copy": "Copy configuration",
+        "copied": "Copied",
+        "check": "Check pwctl.exe",
+        "checking": "Checking…",
+        "checkOk": "pwctl.exe started and exited cleanly.",
+        "checkMissing": "pwctl.exe was not found next to the app ({path}). Reinstall PacketWard.",
+        "checkTimeout": "pwctl.exe did not exit within 8 seconds. Is the PacketWard service running?",
+        "checkSpawn": "pwctl.exe could not be started: {detail}",
+        "checkExit": "pwctl.exe exited with an error ({detail}).",
+        "security": "Give the AI only the tools it needs, and deny the pwctl command in the client's shell or terminal permissions: with a shell it could call pwctl directly, outside this policy."
+      },
+      "confirm": {
+        "title": "Enable the MCP server?",
+        "body": "An AI client will be able to read this server's state. Only the tools you allow below can run, every run is written to the audit log and rate-limited, and the tools set to “Ask me first” still wait for your OK in this window.",
+        "cancel": "Cancel",
+        "enable": "Enable MCP"
+      }
     }
   },
   "about": {

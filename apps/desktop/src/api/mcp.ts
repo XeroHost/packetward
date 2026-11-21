@@ -7,10 +7,53 @@ import { listen } from '@tauri-apps/api/event'
 import type { McpActionStatusView } from '@/types/generated/McpActionStatusView'
 import type { McpPendingAction } from '@/types/generated/McpPendingAction'
 import type { McpPendingList } from '@/types/generated/McpPendingList'
+import type { McpSettingsSetRequest } from '@/types/generated/McpSettingsSetRequest'
+import type { McpSettingsView } from '@/types/generated/McpSettingsView'
 import { callAgent } from './call'
 import { isTauri } from './uiPrefs'
 
-export type { McpActionStatusView, McpPendingAction, McpPendingList }
+export type {
+  McpActionStatusView,
+  McpPendingAction,
+  McpPendingList,
+  McpSettingsSetRequest,
+  McpSettingsView,
+}
+
+/** The MCP policy (master switch, per-tool level, write limit). */
+export const fetchMcpSettings = () => callAgent<McpSettingsView>('mcp.settings.get')
+/** Saves only the fields present in `request` and returns the policy as saved. */
+export const saveMcpSettings = (request: McpSettingsSetRequest) =>
+  callAgent<McpSettingsView>('mcp.settings.set', request)
+
+/** Where the installer put `pwctl.exe` for this copy of the app. */
+export interface McpInstallInfo {
+  path: string
+  exists: boolean
+}
+
+/** How the `pwctl mcp` smoke test ended. */
+export type McpCheckOutcome = 'ok' | 'missing' | 'timeout' | 'spawn' | 'exit'
+
+export interface McpSelfCheck {
+  ok: boolean
+  path: string
+  outcome: McpCheckOutcome
+  detail: string
+}
+
+export async function fetchMcpInstallInfo(): Promise<McpInstallInfo> {
+  if (!isTauri()) return { path: '', exists: false }
+  return invoke<McpInstallInfo>('mcp_install_info')
+}
+
+/** Starts the installed `pwctl.exe mcp` with stdin closed and reports how it ended. */
+export async function runMcpSelfCheck(): Promise<McpSelfCheck> {
+  if (!isTauri()) {
+    return { ok: false, path: '', outcome: 'missing', detail: '' }
+  }
+  return invoke<McpSelfCheck>('mcp_self_check')
+}
 
 /** The whole queue; every call is a full snapshot. */
 export const fetchPendingActions = () => callAgent<McpPendingList>('mcp.pending.list')

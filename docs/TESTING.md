@@ -399,18 +399,19 @@ when you have no signing key. Output: `target\release\bundle\nsis\PacketWard_<ve
    nothing is ever downloaded or installed until the button is pressed. A `ui.json` from an older build keeps the switch OFF.
 5. **Idle CPU** (`tools\dev\measure-idle.ps1`, release agent, UI closed, 1 vCPU test VPS): target below 1 % of one core and below 60 MB.
 
-## F13. MCP server (M11) — TEST VPS ONLY (real AI client + real agent; never the working VPS)
+## F13. MCP server (M11 + Settings page M12) — TEST VPS ONLY (real AI client + real agent; never the working VPS)
 
 Automated coverage: `pw-mcp` tests (catalog, envelope, prompts, fake agent) and `pw-engine` tests (switch, allowlist, levels,
 approval queue, protected set, rate limits, audit, `mcp.pending` topic, pipe handshake kind). This section is the live half.
 
-0. **Enable MCP (interim until the Settings → MCP page of M12):** stop the PacketWard service, edit
-   `%ProgramData%\PacketWard\mcp.json` as an administrator (the folder is SYSTEM/Administrators only), e.g.
-   `{"enabled":true,"write_limit_per_min":6,"tools":[{"tool":"block_ip","level":"automatic"},{"tool":"unblock_ip","level":"approval"}]}`
-   (absent tools stay disabled), start the service. A corrupt file must fail closed: everything off.
-1. **Client configuration** (the Copy buttons arrive with M12): Claude Desktop `mcpServers` entry
-   `{"command":"<install dir>\\pwctl.exe","args":["mcp"]}`; Claude Code `claude mcp add packetward -- <install dir>\\pwctl.exe mcp`;
-   OpenCode `mcp` entry `type: "local"`; Cursor `mcp.json`. The client must run as a `PacketWard Operators` member.
+0. **Enable MCP from Settings → MCP:** turn on the master switch (it asks for confirmation; off by default) and set `block_ip` to
+   automatic, `unblock_ip` to approval and the write limit to 6. For the fail-closed check, stop the service, write a corrupt
+   `%ProgramData%\PacketWard\mcp.json` as an administrator (the folder is SYSTEM/Administrators only), start it and verify every tool
+   is off and the switch is off; then set the policy again from the page.
+1. **Client configuration from Settings → MCP:** pick each client and press **Copy configuration**; paste the snippet into
+   `claude_desktop_config.json`, `.mcp.json`, `opencode.json` or `.cursor/mcp.json`. Its path must be the installed
+   `<install dir>\pwctl.exe`. Press **Check pwctl.exe** and confirm the smoke test succeeds. The client must run as a
+   `PacketWard Operators` member.
 2. **Switch off (default):** the client connects and lists the 23 tools, but every call answers `forbidden`; the Logs page shows
    actor `mcp`, result `refused`. Nothing runs.
 3. **Reads with the switch on:** `live_stats`, `connections`, `top_remote_ips`, `alerts`, `guardian_decisions`, `captures_summary`,

@@ -5,6 +5,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod bridge;
+mod mcp;
 mod prefs;
 mod sys;
 mod tray;
@@ -224,6 +225,8 @@ fn main() -> anyhow::Result<()> {
             notify_alert,
             notify_action_request,
             bridge::agent_elevate,
+            mcp::mcp_install_info,
+            mcp::mcp_self_check,
             updater::update_info,
             updater::update_check,
             updater::update_install
