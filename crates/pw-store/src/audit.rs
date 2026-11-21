@@ -30,6 +30,8 @@ pub enum AuditActor {
     Guardian,
     RdpShield,
     Blocklist,
+    /// An AI client through the MCP server (ARCHITECTURE 6.14): every call, reads included.
+    Mcp,
 }
 
 impl AuditActor {
@@ -41,6 +43,7 @@ impl AuditActor {
             Self::Guardian => "guardian",
             Self::RdpShield => "rdp_shield",
             Self::Blocklist => "blocklist",
+            Self::Mcp => "mcp",
         }
     }
 
@@ -52,6 +55,7 @@ impl AuditActor {
             "guardian" => Self::Guardian,
             "rdp_shield" => Self::RdpShield,
             "blocklist" => Self::Blocklist,
+            "mcp" => Self::Mcp,
             other => return Err(StoreError::InvalidData(format!("audit actor {other:?}"))),
         })
     }
@@ -344,6 +348,29 @@ mod tests {
         assert_eq!(rows[0].result, AuditResult::Refused);
         assert_eq!(rows[0].detail["reason"], "protected");
         assert_eq!(rows[0].detail["n"], 3);
+    }
+
+    #[test]
+    fn the_mcp_actor_round_trips_through_the_store() {
+        let s = mem();
+        s.audit_append(&NewAudit::new(
+            1_000,
+            AuditActor::Mcp,
+            "block_ip",
+            "203.0.113.7",
+            AuditResult::Ok,
+        ))
+        .unwrap();
+        let rows = s.audit_query(&AuditQuery::recent(10)).unwrap();
+        assert_eq!(rows[0].actor, AuditActor::Mcp);
+        assert_eq!(rows[0].actor.as_str(), "mcp");
+        let filtered = s
+            .audit_query(&AuditQuery {
+                actor: Some(AuditActor::Mcp),
+                ..AuditQuery::recent(10)
+            })
+            .unwrap();
+        assert_eq!(filtered.len(), 1);
     }
 
     #[test]

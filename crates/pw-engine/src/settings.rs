@@ -53,6 +53,17 @@ fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     mutex.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
+/// Writes `bytes` to `path` atomically: a sibling `.tmp` file first, then a rename. Shared with the
+/// MCP policy (`mcp.json`), which lives in the same protected folder.
+pub(crate) fn write_json_atomic(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let tmp = path.with_extension("json.tmp");
+    fs::write(&tmp, bytes)?;
+    fs::rename(tmp, path)
+}
+
 /// Whether the live capture should start with the agent: on unless the user switched it off.
 pub fn saved_capture_on_start(dir: Option<&Path>) -> bool {
     read_saved(dir).capture_on_start.unwrap_or(true)
@@ -182,18 +193,10 @@ impl SettingsStore {
         let Some(path) = &self.path else {
             return Ok(());
         };
-        let write = || -> std::io::Result<()> {
-            if let Some(parent) = path.parent() {
-                fs::create_dir_all(parent)?;
-            }
-            let tmp = path.with_extension("json.tmp");
-            fs::write(
-                &tmp,
-                serde_json::to_vec_pretty(saved).map_err(std::io::Error::other)?,
-            )?;
-            fs::rename(tmp, path)
-        };
-        write().map_err(|e| {
+        let bytes = serde_json::to_vec_pretty(saved).map_err(|e| {
+            ErrorPayload::new(ErrorCode::Internal, format!("could not save settings: {e}"))
+        })?;
+        write_json_atomic(path, &bytes).map_err(|e| {
             ErrorPayload::new(ErrorCode::Internal, format!("could not save settings: {e}"))
         })
     }

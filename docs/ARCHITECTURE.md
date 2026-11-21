@@ -465,7 +465,7 @@ Discreet XeroHost presence: "by XeroHost" in the sidebar footer and About, a "Co
 (opens xerohost.net), XeroHost speed-test nodes and shared blocklist as defaults. No plan promotion or upsell.
 
 ### 6.14 MCP server (`pw-mcp`, `pwctl mcp`, milestone M11)
-Status: **designed, not implemented** (ROADMAP M11). It lets an AI client (Claude Desktop, Claude Code, OpenCode, Cursor) read the machine's
+Status: **implemented (M11)** in the agent (`pw-engine/src/mcp.rs`) and `pwctl mcp`. It lets an AI client (Claude Desktop, Claude Code, OpenCode, Cursor) read the machine's
 network state and, if the owner allows it, act, with every action bounded by the Guardian's safety rules and a human in the loop for the risky ones.
 
 **Process model.** `pwctl mcp` is a stdio MCP server (the official Rust SDK `rmcp`, Apache-2.0, checked with `cargo deny`). The AI client launches
@@ -536,6 +536,22 @@ approval), the write limit, and **Copy configuration** buttons that put on the c
 tools; the one-shot getter `live.stats.get` was added in the same bump because `live.stats` is a subscription topic and the MCP read tools
 need a single reply.
 
+**Integration (M11).** The agent enforces everything in `pw-engine/src/mcp.rs`; `pw-mcp` only mirrors the catalog to build
+the tool list. The IPC `Handler` receives the connection kind (`ConnCtx { client }`, captured from the hello) and an `Mcp`
+connection goes through this gate, in order: master switch off → `forbidden` (everything); method or topic outside the catalog →
+`forbidden`; execution tool level `disabled` → `forbidden`; `approval` → the pending queue; `automatic` → run. Reads run as soon as
+the switch is on. The policy lives in `mcp.json` in the same protected folder as `settings.json` (atomic write, `SYSTEM`/
+`Administrators` only); a missing file means the defaults and a corrupt one means the defaults plus a warning (fail closed).
+`mcp.settings.get|set`, `mcp.approve|reject` and `mcp.pending.list` are refused for `Mcp` connections, so the AI cannot read or
+change its own policy or approve itself. Rate limits are two sliding 60 s windows: all execution tools share the write limit
+(1..=60, default 6; an over-limit call is refused, not queued, and the limit is checked again when an approval runs) while MTR, ping,
+DNS lookup and port check share a 12/min probe budget. Approval-level calls return `McpActionStatusView { status: pending }` at once
+and wait in memory (ids from 1, five-minute expiry checked every second); the full `McpPendingList` is published on `mcp.pending` at
+every change and is not subscribable by `Mcp`. Every MCP call, refusals included, is one audit entry with actor `mcp`, the tool name,
+a bounded argument summary and the outcome (`ok`, `refused`, `pending`, `approved`, `rejected`, `expired`, `failed`, plus the
+approval id). `live.stats.get` returns the last published `LiveStats` and, before the first poll exists, runs one immediate poll;
+nothing is ever invented.
+
 **Honest limit.** Authorization on the pipe is by Windows group, not by process. An AI client that also has a shell, running as an Operator, can
 call `pwctl` (or the pipe) directly and does not need MCP at all; the MCP levels and approvals are a guardrail against mistakes and prompt
 injection **through the MCP tools**, not a sandbox. Recommendation shown in Settings → MCP: deny `pwctl` (and anything that opens the pipe) in the AI client's own
@@ -574,8 +590,12 @@ shell permissions, for example with Claude Code's permission deny rules, so the 
   major/minor). The agent always answers with its own versions; if the majors differ it then sends a
   `version_mismatch` error and closes. The desktop shows "agent outdated" or "app outdated" accordingly.
 - Client kinds in the hello: `desktop`, `pwctl` and, from milestone M11, `mcp` (the agent applies the MCP policy to those connections; §6.14).
+- The `Handler` receives the connection kind (`ConnCtx { client }`, captured from the hello) with every request and
+  subscription, so the agent enforces per-kind policy without trusting method names alone.
 - Error codes: `bad_request`, `not_handshaken`, `version_mismatch`, `unknown_method`, `unknown_topic`,
-  `frame_too_large` (the connection is closed because the stream cannot be re-aligned), `internal`.
+  `frame_too_large` (the connection is closed because the stream cannot be re-aligned), `busy`, `mode_unavailable`,
+  `forbidden` (the policy refused the request: MCP switched off, tool disabled, method not allowed for this client
+  kind), `rate_limited` (the MCP write or probe limit was reached; the call is refused, not queued), `internal`.
 - Surface: `session.hello`, `system.info`, `subscribe`/`unsubscribe`, `netstat.connections`,
   `live.stats.get` (a one-shot latest `live.stats` snapshot for the MCP read tools, which need a
   reply instead of a subscription; protocol 1.15); topics

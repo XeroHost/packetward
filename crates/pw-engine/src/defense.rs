@@ -414,6 +414,13 @@ impl Defense {
         protected_set(&self.protected())
     }
 
+    /// Why `target` may not be blocked right now, or `None`. Used by the MCP pre-check so a refused
+    /// request never even becomes a pending approval.
+    pub fn refusal_reason(&self, target: &str) -> Option<String> {
+        let cidr = target.trim().parse::<Cidr>().ok()?;
+        why_protected(&cidr, &self.protected())
+    }
+
     /// Makes the firewall batch of a blocklist hold exactly `blocks` (protected addresses are carved
     /// out by the firewall layer as well). Failures are logged: a list that cannot be applied must
     /// not stop the others.

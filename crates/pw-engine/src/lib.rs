@@ -14,6 +14,7 @@ mod defense;
 mod detect;
 mod diag;
 mod intel;
+mod mcp;
 mod poller;
 mod presence;
 mod rdp_shield;
@@ -30,14 +31,15 @@ use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
 use pw_diag::SystemPinger;
-use pw_ipc::{EventReceiver, Handler};
+use pw_ipc::{ConnCtx, EventReceiver, Handler};
 use pw_netstat::NetStat;
 use pw_proto::{
     method, topic, AbuseCheckRequest, AbuseKeyRequest, AllowlistConfig, AuditEntryView, AuditQuery,
-    AuditView, BlockRequest, CaptureFileRequest, CaptureStartRequest, ConnectionsRequest,
-    DiagJobRequest as SpeedJobRequest, DiagJobRequest, DnsLookupRequest, ErrorCode, ErrorPayload,
-    FirewallRuleAction, FirewallRuleEdit, FirewallRulesRequest, GeoLookupRequest, Heartbeat,
-    HelloResponse, ListEnableRequest, ListRefreshRequest, MtrExportRequest, MtrStartRequest,
+    AuditView, BlockRequest, CaptureFileRequest, CaptureStartRequest, ClientKind,
+    ConnectionsRequest, DiagJobRequest as SpeedJobRequest, DiagJobRequest, DnsLookupRequest,
+    ErrorCode, ErrorPayload, FirewallRuleAction, FirewallRuleEdit, FirewallRulesRequest,
+    GeoLookupRequest, Heartbeat, HelloResponse, ListEnableRequest, ListRefreshRequest,
+    McpApproveRequest, McpRejectRequest, McpSettingsSetRequest, MtrExportRequest, MtrStartRequest,
     PingStartRequest, PortCheckRequest, ProxyRequest, PurgeRequest, RdpAttempts, RdpConfirmRequest,
     RdpCountryPolicy, RdpEndSessionRequest, RdpLockoutRequest, RdpNlaRequest, RdpPortRequest,
     RdpRestrictRequest, RecordStartRequest, SetGuardianPolicy, SpeedRequest, SupportBundleRequest,
@@ -157,6 +159,10 @@ pub struct Engine {
     intel: Arc<dyn IntelApi>,
     settings: settings::SettingsStore,
     presence: Arc<presence::Presence>,
+    /// Kept to build a snapshot on demand (`live.stats.get` before the first poll).
+    netstat: Arc<dyn NetStat>,
+    trust: Arc<TrustState>,
+    mcp: Arc<mcp::Mcp>,
     _poller: AbortOnDrop,
     _detector: AbortOnDrop,
     _guardian: AbortOnDrop,
@@ -164,6 +170,7 @@ pub struct Engine {
     _shield: AbortOnDrop,
     _country: AbortOnDrop,
     _intel: AbortOnDrop,
+    _mcp: AbortOnDrop,
 }
 
 impl Engine {
@@ -376,12 +383,16 @@ impl Engine {
             Arc::clone(&alerts),
         ));
         let guardian_task = tokio::spawn(guardian_loop(Arc::clone(&defense), alerts.events()));
+        let mcp = Arc::new(mcp::Mcp::open(config.defense_dir.as_deref()));
+        let mcp_task = tokio::spawn(mcp::expiry_loop(Arc::clone(&mcp), Arc::clone(&defense)));
         let upkeep_task = tokio::spawn(upkeep_loop(
             Arc::clone(&defense),
             Arc::clone(&netstat),
             context,
             Arc::clone(&alerts),
         ));
+        let netstat_for_engine = Arc::clone(&netstat);
+        let trust_for_engine = Arc::clone(&trust);
         let task = tokio::spawn(poll_loop(
             netstat,
             publish,
@@ -438,6 +449,9 @@ impl Engine {
             intel,
             settings,
             presence,
+            netstat: netstat_for_engine,
+            trust: trust_for_engine,
+            mcp,
             _poller: AbortOnDrop(task),
             _detector: AbortOnDrop(detector_task),
             _guardian: AbortOnDrop(guardian_task),
@@ -445,6 +459,7 @@ impl Engine {
             _shield: AbortOnDrop(shield_task),
             _country: AbortOnDrop(country_task),
             _intel: AbortOnDrop(intel_task),
+            _mcp: AbortOnDrop(mcp_task),
         }
     }
 
@@ -508,6 +523,24 @@ impl Engine {
             uptime_secs: self.uptime_secs(),
             service_mode: self.config.service_mode,
         }
+    }
+
+    /// `live.stats.get`: the last published snapshot, or one immediate poll when the poller has not
+    /// produced one yet. Never invents data.
+    async fn live_stats_get(&self) -> Result<pw_proto::LiveStats, ErrorPayload> {
+        if let Some(snapshot) = self.latest.borrow().clone() {
+            return Ok(snapshot.stats.clone());
+        }
+        let netstat = Arc::clone(&self.netstat);
+        let trust = Arc::clone(&self.trust);
+        let rdp_every = self.config.rdp_refresh_every;
+        let snapshot = tokio::task::spawn_blocking(move || {
+            let mut poller = Poller::new(netstat, rdp_every, trust);
+            poller.poll(std::time::Instant::now(), poller::unix_ms())
+        })
+        .await
+        .map_err(|err| ErrorPayload::new(ErrorCode::Internal, err.to_string()))?;
+        Ok(snapshot.stats)
     }
 }
 
@@ -812,7 +845,38 @@ impl Handler for Engine {
         }
     }
 
-    async fn handle(&self, method_name: &str, payload: Value) -> Result<Value, ErrorPayload> {
+    async fn handle(
+        &self,
+        ctx: ConnCtx,
+        method_name: &str,
+        payload: Value,
+    ) -> Result<Value, ErrorPayload> {
+        if ctx.client == ClientKind::Mcp {
+            return self.handle_mcp(method_name, payload).await;
+        }
+        self.dispatch(method_name, payload).await
+    }
+
+    async fn subscribe(
+        &self,
+        ctx: ConnCtx,
+        topic_name: &str,
+    ) -> Result<EventReceiver, ErrorPayload> {
+        if ctx.client == ClientKind::Mcp {
+            return self.subscribe_mcp(topic_name).await;
+        }
+        self.dispatch_subscribe(topic_name).await
+    }
+}
+
+impl Engine {
+    /// Every method of a desktop/`pwctl` connection. MCP connections go through
+    /// [`Engine::handle_mcp`] first.
+    pub(crate) async fn dispatch(
+        &self,
+        method_name: &str,
+        payload: Value,
+    ) -> Result<Value, ErrorPayload> {
         match method_name {
             method::SYSTEM_INFO => to_value(&self.system_info()),
             method::NETSTAT_CONNECTIONS => {
@@ -1162,6 +1226,30 @@ impl Handler for Engine {
                     .await
                     .and_then(|v| to_value(&v))
             }
+            method::LIVE_STATS_GET => self.live_stats_get().await.and_then(|v| to_value(&v)),
+            method::MCP_SETTINGS_GET => to_value(&self.mcp.view()),
+            method::MCP_SETTINGS_SET => {
+                let request: McpSettingsSetRequest = parse(payload)?;
+                let view = self.mcp.set_settings(&request)?;
+                let detail = serde_json::json!({
+                    "enabled": view.enabled,
+                    "write_limit_per_min": view.write_limit_per_min,
+                })
+                .to_string();
+                self.defense
+                    .audit_entry("ui", "mcp_settings", "-", &detail, "ok");
+                to_value(&view)
+            }
+            method::MCP_PENDING_LIST => to_value(&self.mcp.pending_list()),
+            method::MCP_APPROVE => {
+                let request: McpApproveRequest = parse(payload)?;
+                self.approve_mcp_action(request.id).await
+            }
+            method::MCP_REJECT => {
+                let request: McpRejectRequest = parse(payload)?;
+                self.reject_mcp_action(request.id)
+            }
+            method::MCP_ACTION_STATUS => self.action_status(payload),
             other => Err(ErrorPayload::new(
                 ErrorCode::UnknownMethod,
                 format!("unknown method `{other}`"),
@@ -1169,7 +1257,11 @@ impl Handler for Engine {
         }
     }
 
-    async fn subscribe(&self, topic_name: &str) -> Result<EventReceiver, ErrorPayload> {
+    /// Every topic of a desktop/`pwctl` connection.
+    pub(crate) async fn dispatch_subscribe(
+        &self,
+        topic_name: &str,
+    ) -> Result<EventReceiver, ErrorPayload> {
         match topic_name {
             topic::LIVE_HEARTBEAT => {
                 let (tx, rx) = mpsc::channel(SUBSCRIPTION_QUEUE);
@@ -1234,6 +1326,34 @@ impl Handler for Engine {
                         match live.recv().await {
                             Ok(stats) => {
                                 let Ok(payload) = serde_json::to_value(&stats) else {
+                                    continue;
+                                };
+                                if tx.send(payload).await.is_err() {
+                                    break;
+                                }
+                            }
+                            Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {}
+                            Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
+                        }
+                    }
+                });
+                Ok(rx)
+            }
+            topic::MCP_PENDING => {
+                let (tx, rx) = mpsc::channel(SUBSCRIPTION_QUEUE);
+                let mut changes = self.mcp.subscribe();
+                let current = self.mcp.pending_list();
+                tokio::spawn(async move {
+                    // A new subscriber sees the queue at once, then every change.
+                    if let Ok(payload) = serde_json::to_value(&current) {
+                        if tx.send(payload).await.is_err() {
+                            return;
+                        }
+                    }
+                    loop {
+                        match changes.recv().await {
+                            Ok(list) => {
+                                let Ok(payload) = serde_json::to_value(&list) else {
                                     continue;
                                 };
                                 if tx.send(payload).await.is_err() {
@@ -1356,25 +1476,94 @@ mod tests {
     use pw_netstat::fake::FakeNetStat;
     use pw_netstat::ConnectionTable;
     use pw_proto::{
-        ClientKind, Connection, ConnectionsResponse, LiveStats, Proto, TcpState, MAX_FRAME_BYTES,
+        AuditView, BlockResult, ClientKind, Connection, ConnectionsResponse, LiveStats,
+        McpActionStatus, McpActionStatusView, McpPendingList, McpSettingsView, McpToolLevel,
+        McpToolSetting, Proto, TcpState, MAX_FRAME_BYTES,
     };
 
     use super::*;
 
-    // The connector must outlive the test: when all connectors are gone the in-memory listener
-    // reports an accept error and `serve` stops, taking its connections with it.
-    async fn connect_with(
+    /// A desktop/`pwctl`-equivalent context for the direct engine calls in these tests.
+    const UI: ConnCtx = ConnCtx {
+        client: ClientKind::Pwctl,
+    };
+    /// An MCP connection (`pwctl mcp`).
+    const MCP: ConnCtx = ConnCtx {
+        client: ClientKind::Mcp,
+    };
+
+    /// The connector must outlive the test: when all connectors are gone the in-memory listener
+    /// reports an accept error and `serve` stops, taking its connections with it.
+    async fn connect_kind(
         config: EngineConfig,
         netstat: Arc<FakeNetStat>,
+        kind: ClientKind,
     ) -> (Client, MemoryConnector) {
         let (listener, connector) = memory_pair();
         let engine = Arc::new(Engine::new(config, netstat));
         tokio::spawn(serve(listener, engine, std::future::pending()));
         let stream = connector.connect().await.unwrap();
-        let client = Client::connect(stream, ClientKind::Pwctl, "test")
-            .await
-            .unwrap();
+        let client = Client::connect(stream, kind, "test").await.unwrap();
         (client, connector)
+    }
+
+    async fn connect_with(
+        config: EngineConfig,
+        netstat: Arc<FakeNetStat>,
+    ) -> (Client, MemoryConnector) {
+        connect_kind(config, netstat, ClientKind::Pwctl).await
+    }
+
+    /// An engine whose `mcp.json` switches MCP on with the given tool levels.
+    fn mcp_config(
+        dir: &std::path::Path,
+        tools: &[(&str, McpToolLevel)],
+        write_limit_per_min: u32,
+    ) -> EngineConfig {
+        let view = McpSettingsView {
+            enabled: true,
+            write_limit_per_min,
+            tools: tools
+                .iter()
+                .map(|(tool, level)| McpToolSetting {
+                    tool: (*tool).to_owned(),
+                    level: *level,
+                })
+                .collect(),
+        };
+        std::fs::write(dir.join("mcp.json"), serde_json::to_vec(&view).unwrap()).unwrap();
+        let mut config = fast(EngineConfig::new("1", true));
+        config.defense_dir = Some(dir.to_path_buf());
+        config
+    }
+
+    async fn audit_entries(engine: &Engine) -> AuditView {
+        serde_json::from_value(
+            engine
+                .handle(UI, method::LOGS_AUDIT, Value::Null)
+                .await
+                .unwrap(),
+        )
+        .unwrap()
+    }
+
+    async fn pending_actions(engine: &Engine) -> McpPendingList {
+        serde_json::from_value(
+            engine
+                .handle(UI, method::MCP_PENDING_LIST, Value::Null)
+                .await
+                .unwrap(),
+        )
+        .unwrap()
+    }
+
+    /// The next `mcp.pending` snapshot, failing the test if the topic goes quiet.
+    async fn next_pending(events: &mut EventReceiver) -> McpPendingList {
+        let payload = tokio::time::timeout(Duration::from_secs(1), events.recv())
+            .await
+            .expect("a snapshot arrives")
+            .expect("the topic stays open");
+        serde_json::from_value(payload).unwrap()
     }
 
     async fn connect(config: EngineConfig) -> (Client, MemoryConnector) {
@@ -1633,7 +1822,7 @@ mod tests {
         let engine = Engine::new(config, Arc::new(FakeNetStat::new()));
         // Ask before the poller task has had a chance to run.
         let reply = engine
-            .handle(method::NETSTAT_CONNECTIONS, Value::Null)
+            .handle(UI, method::NETSTAT_CONNECTIONS, Value::Null)
             .await
             .unwrap();
         let response: ConnectionsResponse = serde_json::from_value(reply).unwrap();
@@ -1648,7 +1837,7 @@ mod tests {
             Arc::new(FakeNetStat::new()),
         );
         let reply = engine
-            .handle(method::RDP_COUNTRY_GET, Value::Null)
+            .handle(UI, method::RDP_COUNTRY_GET, Value::Null)
             .await
             .unwrap();
         let status: pw_proto::RdpCountryStatus = serde_json::from_value(reply).unwrap();
@@ -1657,6 +1846,7 @@ mod tests {
 
         let refused = engine
             .handle(
+                UI,
                 method::RDP_COUNTRY_SET,
                 serde_json::json!({"enabled": true, "mode": "allow", "countries": []}),
             )
@@ -1665,6 +1855,7 @@ mod tests {
         assert_eq!(refused.code, ErrorCode::BadRequest);
         let saved = engine
             .handle(
+                UI,
                 method::RDP_COUNTRY_SET,
                 serde_json::json!({"enabled": true, "mode": "deny", "countries": ["CN", "RU"]}),
             )
@@ -1683,6 +1874,7 @@ mod tests {
         );
         let unknown = engine
             .handle(
+                UI,
                 method::DIAG_MTR_EXPORT,
                 serde_json::json!({"job_id": 77, "format": "csv"}),
             )
@@ -1695,6 +1887,7 @@ mod tests {
         );
         let refused = engine
             .handle(
+                UI,
                 method::DIAG_MTR_START,
                 serde_json::json!({"target": "127.0.0.1", "mode": "tcp", "port": 443}),
             )
@@ -1808,12 +2001,13 @@ mod tests {
             Arc::new(FakeNetStat::new()),
         );
         let got = engine
-            .handle(method::SETTINGS_GET, Value::Null)
+            .handle(UI, method::SETTINGS_GET, Value::Null)
             .await
             .unwrap();
         assert_eq!(got["capture_on_start"], true);
         let off = engine
             .handle(
+                UI,
                 method::SETTINGS_SET_CAPTURE_ON_START,
                 serde_json::json!({"enabled": false}),
             )
@@ -1821,13 +2015,14 @@ mod tests {
             .unwrap();
         assert_eq!(off["capture_on_start"], false);
         let audit = engine
-            .handle(method::LOGS_AUDIT, Value::Null)
+            .handle(UI, method::LOGS_AUDIT, Value::Null)
             .await
             .unwrap()
             .to_string();
         assert!(audit.contains("set_capture_on_start"), "{audit}");
         let bad = engine
             .handle(
+                UI,
                 method::SETTINGS_SET_CAPTURE_ON_START,
                 serde_json::json!({"enabled": "yes"}),
             )
@@ -1848,7 +2043,7 @@ mod tests {
             "password": "hunter2-the-password",
         });
         let reply = engine
-            .handle(method::SETTINGS_SET_PROXY, set)
+            .handle(UI, method::SETTINGS_SET_PROXY, set)
             .await
             .unwrap();
         let text = reply.to_string();
@@ -1856,12 +2051,12 @@ mod tests {
         assert_eq!(reply["proxy_credentials"], true);
         assert_eq!(reply["restart_required"], true);
         let got = engine
-            .handle(method::SETTINGS_GET, Value::Null)
+            .handle(UI, method::SETTINGS_GET, Value::Null)
             .await
             .unwrap();
         assert!(!got.to_string().contains("hunter2"));
         let audit = engine
-            .handle(method::LOGS_AUDIT, Value::Null)
+            .handle(UI, method::LOGS_AUDIT, Value::Null)
             .await
             .unwrap();
         let audit = audit.to_string();
@@ -1869,7 +2064,7 @@ mod tests {
         assert!(!audit.contains("hunter2") && !audit.contains("alice-the-user"));
         // A refused request does not echo the password either.
         let err = engine
-            .handle(
+            .handle(UI,
                 method::SETTINGS_SET_PROXY,
                 serde_json::json!({"proxy": "http://proxy:1", "username": "", "password": "hunter2-x"}),
             )
@@ -1879,7 +2074,7 @@ mod tests {
         assert!(!err.message.contains("hunter2"));
         // Removing them is audited too, and the view forgets the user name.
         let cleared = engine
-            .handle(
+            .handle(UI,
                 method::SETTINGS_SET_PROXY,
                 serde_json::json!({"proxy": "http://proxy.example.com:3128", "clear_credentials": true}),
             )
@@ -1887,5 +2082,711 @@ mod tests {
             .unwrap();
         assert_eq!(cleared["proxy_credentials"], false);
         assert!(cleared.get("proxy_username").is_none());
+    }
+
+    // ---- MCP enforcement (milestone M11, ARCHITECTURE 6.14) -------------------------------------
+
+    #[tokio::test]
+    async fn mcp_is_refused_while_switched_off_and_reads_work_once_it_is_on() {
+        let engine = Engine::new(
+            fast(EngineConfig::new("1", true)),
+            Arc::new(FakeNetStat::new()),
+        );
+        for method_name in [
+            method::LIVE_STATS_GET,
+            method::GUARDIAN_STATUS,
+            method::FIREWALL_BLOCK,
+        ] {
+            let err = engine
+                .handle(MCP, method_name, Value::Null)
+                .await
+                .unwrap_err();
+            assert_eq!(err.code, ErrorCode::Forbidden, "{method_name}");
+        }
+        let view = engine
+            .handle(
+                UI,
+                method::MCP_SETTINGS_SET,
+                serde_json::json!({"enabled": true}),
+            )
+            .await
+            .unwrap();
+        assert_eq!(view["enabled"], true);
+
+        let stats: LiveStats = serde_json::from_value(
+            engine
+                .handle(MCP, method::LIVE_STATS_GET, Value::Null)
+                .await
+                .unwrap(),
+        )
+        .unwrap();
+        assert!(stats.seq >= 1, "live.stats.get built a snapshot");
+        let status = engine
+            .handle(MCP, method::GUARDIAN_STATUS, Value::Null)
+            .await
+            .unwrap();
+        assert!(status.get("policy").is_some());
+    }
+
+    #[tokio::test]
+    async fn mcp_never_reaches_methods_outside_the_catalog() {
+        let dir = tempfile::tempdir().unwrap();
+        let engine = Engine::new(mcp_config(dir.path(), &[], 6), Arc::new(FakeNetStat::new()));
+        for method_name in [
+            method::FIREWALL_PURGE,
+            method::FIREWALL_UNBLOCK_ALL,
+            method::FIREWALL_RULE_ENABLE,
+            method::RDP_RESTRICT,
+            method::RDP_PORT,
+            method::RDP_NLA,
+            method::RDP_END_SESSION,
+            method::RDP_UNRESTRICT,
+            method::RDP_LOCKOUT,
+            method::RDP_RESET,
+        ] {
+            let err = engine
+                .handle(MCP, method_name, Value::Null)
+                .await
+                .unwrap_err();
+            assert_eq!(err.code, ErrorCode::Forbidden, "{method_name}");
+        }
+        for (method_name, payload) in [
+            (
+                method::GUARDIAN_SET_ALLOWLIST,
+                serde_json::json!({"allowlist": []}),
+            ),
+            (method::GUARDIAN_ALLOWLIST, Value::Null),
+            (method::GUARDIAN_SET_POLICY, Value::Null),
+            (method::SETTINGS_GET, Value::Null),
+            (method::SETTINGS_SET_PROXY, serde_json::json!({})),
+            (
+                method::INTEL_LIST_ENABLE,
+                serde_json::json!({"id": "x", "enabled": true}),
+            ),
+            (method::ALERTS_CLEAR, Value::Null),
+            (method::MCP_SETTINGS_GET, Value::Null),
+            (method::MCP_SETTINGS_SET, serde_json::json!({})),
+            (method::MCP_APPROVE, serde_json::json!({"id": 1})),
+            (method::MCP_REJECT, serde_json::json!({"id": 1})),
+            (method::MCP_PENDING_LIST, Value::Null),
+        ] {
+            let err = engine.handle(MCP, method_name, payload).await.unwrap_err();
+            assert_eq!(err.code, ErrorCode::Forbidden, "{method_name}");
+        }
+        for topic_name in [
+            topic::LIVE_STATS,
+            topic::ALERTS,
+            topic::MCP_PENDING,
+            topic::LIVE_HEARTBEAT,
+        ] {
+            let err = engine.subscribe(MCP, topic_name).await.err().unwrap();
+            assert_eq!(err.code, ErrorCode::Forbidden, "{topic_name}");
+        }
+        engine
+            .subscribe(MCP, topic::DIAG_PROGRESS)
+            .await
+            .expect("diagnostics progress is allowed");
+    }
+
+    #[tokio::test]
+    async fn an_approval_tool_waits_for_the_desktop_and_the_ai_cannot_approve_itself() {
+        let dir = tempfile::tempdir().unwrap();
+        let engine = Engine::new(
+            mcp_config(dir.path(), &[("block_ip", McpToolLevel::Approval)], 6),
+            Arc::new(FakeNetStat::new()),
+        );
+        let reply = engine
+            .handle(
+                MCP,
+                method::FIREWALL_BLOCK,
+                serde_json::json!({"targets": ["203.0.113.9"], "ttl_secs": 3600}),
+            )
+            .await
+            .unwrap();
+        let pending: McpActionStatusView = serde_json::from_value(reply).unwrap();
+        assert_eq!(pending.status, McpActionStatus::Pending);
+        assert!(pending.result.is_none() && pending.error.is_none());
+        assert_eq!(pending_actions(&engine).await.actions.len(), 1);
+        // Nothing was blocked and nothing reached the firewall.
+        let blocks = engine
+            .handle(UI, method::FIREWALL_BLOCKS, Value::Null)
+            .await
+            .unwrap();
+        assert_eq!(blocks["blocks"].as_array().unwrap().len(), 0);
+
+        let err = engine
+            .handle(
+                MCP,
+                method::MCP_APPROVE,
+                serde_json::json!({"id": pending.id}),
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(err.code, ErrorCode::Forbidden, "the AI cannot approve");
+
+        let result: BlockResult = serde_json::from_value(
+            engine
+                .handle(
+                    UI,
+                    method::MCP_APPROVE,
+                    serde_json::json!({"id": pending.id}),
+                )
+                .await
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(result.blocked, ["203.0.113.9/32"]);
+        let blocks = engine
+            .handle(UI, method::FIREWALL_BLOCKS, Value::Null)
+            .await
+            .unwrap();
+        assert_eq!(blocks["blocks"].as_array().unwrap().len(), 1);
+        let status: McpActionStatusView = serde_json::from_value(
+            engine
+                .handle(
+                    MCP,
+                    method::MCP_ACTION_STATUS,
+                    serde_json::json!({"id": pending.id}),
+                )
+                .await
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(status.status, McpActionStatus::Approved);
+        assert!(status.result.is_some());
+        let audit = audit_entries(&engine).await;
+        assert!(
+            audit
+                .entries
+                .iter()
+                .any(|entry| entry.actor == "mcp" && entry.action == "block_ip"),
+            "an MCP call is audited with actor mcp"
+        );
+        assert!(
+            audit
+                .entries
+                .iter()
+                .any(|entry| entry.actor == "mcp" && entry.detail.contains("approved")),
+            "the approval outcome is in the audit detail"
+        );
+
+        // Reject works, and an unknown id is a bad request.
+        let second = engine
+            .handle(
+                MCP,
+                method::FIREWALL_BLOCK,
+                serde_json::json!({"targets": ["203.0.113.10"], "ttl_secs": 3600}),
+            )
+            .await
+            .unwrap();
+        let second: McpActionStatusView = serde_json::from_value(second).unwrap();
+        engine
+            .handle(UI, method::MCP_REJECT, serde_json::json!({"id": second.id}))
+            .await
+            .unwrap();
+        let status: McpActionStatusView = serde_json::from_value(
+            engine
+                .handle(
+                    MCP,
+                    method::MCP_ACTION_STATUS,
+                    serde_json::json!({"id": second.id}),
+                )
+                .await
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(status.status, McpActionStatus::Rejected);
+        let err = engine
+            .handle(UI, method::MCP_APPROVE, serde_json::json!({"id": 9999}))
+            .await
+            .unwrap_err();
+        assert_eq!(err.code, ErrorCode::BadRequest);
+    }
+
+    #[tokio::test]
+    async fn the_protected_set_refuses_an_mcp_block_before_anything_is_queued() {
+        let dir = tempfile::tempdir().unwrap();
+        let engine = Engine::new(
+            mcp_config(dir.path(), &[("block_ip", McpToolLevel::Approval)], 6),
+            Arc::new(FakeNetStat::new()),
+        );
+        engine
+            .defense
+            .set_allowlist(
+                pw_proto::AllowlistConfig {
+                    allowlist: vec!["203.0.113.0/24".into()],
+                    management: vec![],
+                },
+                "ui",
+            )
+            .unwrap();
+        let err = engine
+            .handle(
+                MCP,
+                method::FIREWALL_BLOCK,
+                serde_json::json!({"targets": ["203.0.113.9"], "ttl_secs": 3600}),
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(err.code, ErrorCode::Forbidden);
+        assert!(err.message.contains("protected"), "{}", err.message);
+        assert!(
+            pending_actions(&engine).await.actions.is_empty(),
+            "a refused block never becomes a pending approval"
+        );
+        let audit = audit_entries(&engine).await;
+        assert!(audit
+            .entries
+            .iter()
+            .any(|entry| entry.actor == "mcp" && entry.result == "refused"));
+    }
+
+    #[tokio::test]
+    async fn writes_and_probes_have_separate_rate_limits() {
+        let dir = tempfile::tempdir().unwrap();
+        let engine = Engine::new(
+            mcp_config(
+                dir.path(),
+                &[
+                    ("block_ip", McpToolLevel::Automatic),
+                    ("speed_test", McpToolLevel::Automatic),
+                ],
+                1,
+            ),
+            Arc::new(FakeNetStat::new()),
+        );
+        engine
+            .handle(
+                MCP,
+                method::FIREWALL_BLOCK,
+                serde_json::json!({"targets": ["203.0.113.9"], "ttl_secs": 3600}),
+            )
+            .await
+            .unwrap();
+        let err = engine
+            .handle(
+                MCP,
+                method::FIREWALL_BLOCK,
+                serde_json::json!({"targets": ["203.0.113.10"], "ttl_secs": 3600}),
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(err.code, ErrorCode::RateLimited);
+
+        // The probes have their own budget: twelve attempts, the thirteenth is refused.
+        for _ in 0..12 {
+            let err = engine
+                .handle(MCP, method::DIAG_PING_START, serde_json::json!({}))
+                .await
+                .unwrap_err();
+            assert_eq!(err.code, ErrorCode::BadRequest);
+        }
+        let err = engine
+            .handle(MCP, method::DIAG_PING_START, serde_json::json!({}))
+            .await
+            .unwrap_err();
+        assert_eq!(err.code, ErrorCode::RateLimited);
+    }
+
+    #[tokio::test]
+    async fn the_write_limit_is_checked_again_when_an_action_is_approved() {
+        let dir = tempfile::tempdir().unwrap();
+        let engine = Engine::new(
+            mcp_config(
+                dir.path(),
+                &[
+                    ("block_ip", McpToolLevel::Approval),
+                    ("speed_test", McpToolLevel::Automatic),
+                ],
+                1,
+            ),
+            Arc::new(FakeNetStat::new()),
+        );
+        let reply = engine
+            .handle(
+                MCP,
+                method::FIREWALL_BLOCK,
+                serde_json::json!({"targets": ["203.0.113.9"], "ttl_secs": 3600}),
+            )
+            .await
+            .unwrap();
+        let pending: McpActionStatusView = serde_json::from_value(reply).unwrap();
+        // Another write spends the minute's only slot (the 10 GB test is refused, but it was a
+        // write attempt and counts).
+        let err = engine
+            .handle(
+                MCP,
+                method::SPEED_START,
+                serde_json::json!({"kind": "bin10"}),
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(err.code, ErrorCode::Forbidden);
+        let err = engine
+            .handle(
+                UI,
+                method::MCP_APPROVE,
+                serde_json::json!({"id": pending.id}),
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(err.code, ErrorCode::RateLimited);
+        let status: McpActionStatusView = serde_json::from_value(
+            engine
+                .handle(
+                    MCP,
+                    method::MCP_ACTION_STATUS,
+                    serde_json::json!({"id": pending.id}),
+                )
+                .await
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(status.status, McpActionStatus::Failed);
+    }
+
+    #[tokio::test]
+    async fn mcp_tool_arguments_are_bounded() {
+        let dir = tempfile::tempdir().unwrap();
+        let engine = Engine::new(
+            mcp_config(
+                dir.path(),
+                &[
+                    ("block_ip", McpToolLevel::Automatic),
+                    ("speed_test", McpToolLevel::Automatic),
+                ],
+                60,
+            ),
+            Arc::new(FakeNetStat::new()),
+        );
+        let err = engine
+            .handle(
+                MCP,
+                method::FIREWALL_BLOCK,
+                serde_json::json!({"targets": ["203.0.113.9"]}),
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(err.code, ErrorCode::BadRequest, "a TTL is required");
+        let err = engine
+            .handle(
+                MCP,
+                method::FIREWALL_BLOCK,
+                serde_json::json!({"targets": ["203.0.113.9"], "ttl_secs": 604_801}),
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(err.code, ErrorCode::BadRequest, "at most seven days");
+        let err = engine
+            .handle(
+                MCP,
+                method::SPEED_START,
+                serde_json::json!({"kind": "bin50"}),
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(err.code, ErrorCode::Forbidden, "at most 1 GB");
+    }
+
+    #[tokio::test]
+    async fn mcp_rules_stay_in_the_packetward_group_and_foreign_ones_cannot_be_deleted() {
+        let dir = tempfile::tempdir().unwrap();
+        let engine = Engine::new(
+            mcp_config(
+                dir.path(),
+                &[
+                    ("create_firewall_rule", McpToolLevel::Approval),
+                    ("delete_firewall_rule", McpToolLevel::Approval),
+                ],
+                60,
+            ),
+            Arc::new(FakeNetStat::new()),
+        );
+        let edit = serde_json::json!({
+            "rule": {
+                "name": "MCP-Test-Allow",
+                "description": "created through MCP",
+                "group": "Remote Desktop",
+                "direction": "inbound",
+                "action": "allow",
+                "enabled": true,
+                "protocol": "tcp",
+                "local_ports": "8080",
+                "remote_ports": "*",
+                "local_addresses": "*",
+                "remote_addresses": "*",
+                "managed": false,
+                "builtin_rdp": false
+            },
+            "allow_foreign_edit": true
+        });
+        let pending: McpActionStatusView = serde_json::from_value(
+            engine
+                .handle(MCP, method::FIREWALL_RULE_ADD, edit)
+                .await
+                .unwrap(),
+        )
+        .unwrap();
+        engine
+            .handle(
+                UI,
+                method::MCP_APPROVE,
+                serde_json::json!({"id": pending.id}),
+            )
+            .await
+            .unwrap();
+        let rules: pw_proto::FirewallRules = serde_json::from_value(
+            engine
+                .handle(
+                    UI,
+                    method::FIREWALL_RULES,
+                    serde_json::json!({"text": "MCP-Test-Allow"}),
+                )
+                .await
+                .unwrap(),
+        )
+        .unwrap();
+        let created = rules
+            .rules
+            .iter()
+            .find(|rule| rule.name == "MCP-Test-Allow")
+            .expect("the rule was created");
+        assert_eq!(created.group, "PacketWard");
+        assert!(created.managed);
+
+        let pending: McpActionStatusView = serde_json::from_value(
+            engine
+                .handle(
+                    MCP,
+                    method::FIREWALL_RULE_REMOVE,
+                    serde_json::json!({"name": "File and Printer Sharing (SMB-In)"}),
+                )
+                .await
+                .unwrap(),
+        )
+        .unwrap();
+        let err = engine
+            .handle(
+                UI,
+                method::MCP_APPROVE,
+                serde_json::json!({"id": pending.id}),
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(err.code, ErrorCode::Forbidden);
+    }
+
+    #[tokio::test]
+    async fn setting_the_guardian_mode_keeps_the_rest_of_the_policy() {
+        let dir = tempfile::tempdir().unwrap();
+        let engine = Engine::new(
+            mcp_config(
+                dir.path(),
+                &[("set_guardian_mode", McpToolLevel::Approval)],
+                60,
+            ),
+            Arc::new(FakeNetStat::new()),
+        );
+        let before = engine.defense.policy();
+        let pending: McpActionStatusView = serde_json::from_value(
+            engine
+                .handle(
+                    MCP,
+                    method::GUARDIAN_SET_POLICY,
+                    serde_json::json!({"mode": "active"}),
+                )
+                .await
+                .unwrap(),
+        )
+        .unwrap();
+        engine
+            .handle(
+                UI,
+                method::MCP_APPROVE,
+                serde_json::json!({"id": pending.id}),
+            )
+            .await
+            .unwrap();
+        let after = engine.defense.policy();
+        assert_eq!(after.mode, pw_proto::GuardianMode::Active);
+        assert_eq!(after.preset, before.preset);
+        assert_eq!(after.min_severity, before.min_severity);
+        assert_eq!(after.ttl_ladder_secs, before.ttl_ladder_secs);
+        assert_eq!(after.max_blocks_per_hour, before.max_blocks_per_hour);
+    }
+
+    #[tokio::test]
+    async fn mcp_settings_are_validated_and_audited() {
+        let dir = tempfile::tempdir().unwrap();
+        let engine = Engine::new(mcp_config(dir.path(), &[], 6), Arc::new(FakeNetStat::new()));
+        let err = engine
+            .handle(
+                UI,
+                method::MCP_SETTINGS_SET,
+                serde_json::json!({"tools": [{"tool": "unblock_ip", "level": "automatic"}]}),
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(err.code, ErrorCode::BadRequest);
+        let err = engine
+            .handle(
+                UI,
+                method::MCP_SETTINGS_SET,
+                serde_json::json!({"tools": [{"tool": "firewall_purge", "level": "automatic"}]}),
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(err.code, ErrorCode::BadRequest);
+        engine
+            .handle(
+                UI,
+                method::MCP_SETTINGS_SET,
+                serde_json::json!({"tools": [{"tool": "block_ip", "level": "approval"}]}),
+            )
+            .await
+            .unwrap();
+        let view: McpSettingsView = serde_json::from_value(
+            engine
+                .handle(UI, method::MCP_SETTINGS_GET, Value::Null)
+                .await
+                .unwrap(),
+        )
+        .unwrap();
+        assert!(view
+            .tools
+            .iter()
+            .any(|tool| { tool.tool == "block_ip" && tool.level == McpToolLevel::Approval }));
+        let audit = audit_entries(&engine).await;
+        assert!(audit
+            .entries
+            .iter()
+            .any(|entry| entry.action == "mcp_settings" && entry.actor == "ui"));
+
+        // A corrupt policy file means the safe defaults, never "everything allowed".
+        std::fs::write(dir.path().join("mcp.json"), "{ not json").unwrap();
+        let corrupt = Engine::new(
+            fast({
+                let mut config = EngineConfig::new("1", true);
+                config.defense_dir = Some(dir.path().to_path_buf());
+                config
+            }),
+            Arc::new(FakeNetStat::new()),
+        );
+        let view: McpSettingsView = serde_json::from_value(
+            corrupt
+                .handle(UI, method::MCP_SETTINGS_GET, Value::Null)
+                .await
+                .unwrap(),
+        )
+        .unwrap();
+        assert!(!view.enabled);
+        assert_eq!(view.write_limit_per_min, 6);
+        assert!(view
+            .tools
+            .iter()
+            .all(|tool| tool.level == McpToolLevel::Disabled));
+    }
+
+    #[tokio::test]
+    async fn the_pending_topic_publishes_a_snapshot_on_every_change() {
+        let dir = tempfile::tempdir().unwrap();
+        let engine = Engine::new(
+            mcp_config(dir.path(), &[("block_ip", McpToolLevel::Approval)], 60),
+            Arc::new(FakeNetStat::new()),
+        );
+        let mut events = engine.subscribe(UI, topic::MCP_PENDING).await.unwrap();
+        assert_eq!(
+            next_pending(&mut events).await.actions.len(),
+            0,
+            "the initial snapshot"
+        );
+        let pending: McpActionStatusView = serde_json::from_value(
+            engine
+                .handle(
+                    MCP,
+                    method::FIREWALL_BLOCK,
+                    serde_json::json!({"targets": ["203.0.113.9"], "ttl_secs": 3600}),
+                )
+                .await
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(next_pending(&mut events).await.actions.len(), 1, "created");
+        engine
+            .handle(
+                UI,
+                method::MCP_APPROVE,
+                serde_json::json!({"id": pending.id}),
+            )
+            .await
+            .unwrap();
+        assert_eq!(next_pending(&mut events).await.actions.len(), 0, "approved");
+        let pending: McpActionStatusView = serde_json::from_value(
+            engine
+                .handle(
+                    MCP,
+                    method::FIREWALL_BLOCK,
+                    serde_json::json!({"targets": ["203.0.113.10"], "ttl_secs": 3600}),
+                )
+                .await
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            next_pending(&mut events).await.actions.len(),
+            1,
+            "created again"
+        );
+        engine
+            .handle(
+                UI,
+                method::MCP_REJECT,
+                serde_json::json!({"id": pending.id}),
+            )
+            .await
+            .unwrap();
+        assert_eq!(next_pending(&mut events).await.actions.len(), 0, "rejected");
+        let _ = engine
+            .handle(
+                MCP,
+                method::FIREWALL_BLOCK,
+                serde_json::json!({"targets": ["203.0.113.11"], "ttl_secs": 3600}),
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            next_pending(&mut events).await.actions.len(),
+            1,
+            "created for expiry"
+        );
+        engine.mcp.expire(mcp::now_ns() + mcp::APPROVAL_TTL_NS);
+        assert_eq!(next_pending(&mut events).await.actions.len(), 0, "expired");
+    }
+
+    #[tokio::test]
+    async fn an_mcp_connection_over_the_pipe_gets_the_agent_policy() {
+        let (client, _connector) = connect_kind(
+            fast(EngineConfig::new("1", true)),
+            Arc::new(FakeNetStat::new()),
+            ClientKind::Mcp,
+        )
+        .await;
+        let err = client
+            .request::<_, Value>(method::LIVE_STATS_GET, &())
+            .await
+            .unwrap_err();
+        assert!(
+            matches!(err, ClientError::Remote(ref payload) if payload.code == ErrorCode::Forbidden)
+        );
+        // The desktop connection can switch it on, then the MCP one reads.
+        let (desktop, _connector) = connect(EngineConfig::new("1", true)).await;
+        let view: McpSettingsView = desktop
+            .request(
+                method::MCP_SETTINGS_SET,
+                &serde_json::json!({"enabled": true}),
+            )
+            .await
+            .unwrap();
+        assert!(view.enabled);
     }
 }

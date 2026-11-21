@@ -42,6 +42,7 @@ fn actor_of(actor: &str) -> AuditActor {
         "guardian" => AuditActor::Guardian,
         "rdp_shield" | "rdp" => AuditActor::RdpShield,
         "blocklist" => AuditActor::Blocklist,
+        "mcp" => AuditActor::Mcp,
         "pwctl" => AuditActor::Pwctl,
         _ => AuditActor::Ui,
     }
@@ -168,6 +169,16 @@ mod tests {
             p.load().allowlist.allowlist,
             vec!["203.0.113.0/24".to_owned()]
         );
+    }
+
+    #[test]
+    fn the_mcp_actor_keeps_its_own_kind_in_the_store() {
+        let p = persistence(None);
+        p.audit(&entry("mcp", "block_ip", "ok"));
+        let rows = p.store.audit_query(&AuditQuery::recent(10)).unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].actor, AuditActor::Mcp);
+        assert_eq!(p.read_audit(10)[0].actor, "mcp");
     }
 
     #[test]
