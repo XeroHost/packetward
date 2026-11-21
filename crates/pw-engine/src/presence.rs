@@ -2,7 +2,7 @@
 //! Whether anyone is looking. The desktop UI subscribes to `live.stats` while it is open; when
 //! nobody does (the machine is protected, nobody is connected), the engine polls the network and
 //! ticks the detectors at a slower pace, which is most of the agent's idle CPU. A new viewer wakes
-//! the loops at once, so the first picture is never stale for long.
+//! the loops at once, so the first picture is never stale for long. (The first viewer costs one extra poll.)
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
