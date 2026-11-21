@@ -20,13 +20,19 @@ const EXIT_NOT_RUNNING: u8 = 2;
 const EXIT_DENIED: u8 = 3;
 const EXIT_VERSION: u8 = 4;
 
-/// Opens the pipe and does the handshake; on failure prints why and returns the exit code to use.
+/// Opens the pipe and does the handshake as `Pwctl`; on failure prints why and returns the exit code to use.
 pub async fn connect_client() -> Result<Client, ExitCode> {
+    connect_client_as(ClientKind::Pwctl).await
+}
+
+/// Opens the pipe and does the handshake as the given client kind. `pwctl mcp` uses `Mcp` so the
+/// agent applies the MCP policy to the connection (§6.14).
+pub async fn connect_client_as(kind: ClientKind) -> Result<Client, ExitCode> {
     let stream = match pipe::connect(PIPE_NAME).await {
         Ok(stream) => stream,
         Err(err) => return Err(connect_failed(&err)),
     };
-    let client = match Client::connect(stream, ClientKind::Pwctl, env!("CARGO_PKG_VERSION")).await {
+    let client = match Client::connect(stream, kind, env!("CARGO_PKG_VERSION")).await {
         Ok(client) => client,
         Err(ClientError::AgentOutdated(agent)) => {
             eprintln!(

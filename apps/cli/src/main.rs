@@ -2,7 +2,11 @@
 //! pwctl — basic command line client for emergency recovery and scripting.
 
 #[cfg(windows)]
+mod cli;
+#[cfg(windows)]
 mod defense;
+#[cfg(windows)]
+mod mcp;
 #[cfg(windows)]
 mod rdp;
 #[cfg(windows)]
@@ -12,107 +16,9 @@ mod support;
 
 #[cfg(windows)]
 fn main() -> std::process::ExitCode {
-    use clap::{Parser, Subcommand};
+    use clap::Parser;
 
-    #[derive(Parser)]
-    #[command(name = "pwctl", version, about = "PacketWard command line client")]
-    struct Cli {
-        #[command(subcommand)]
-        command: Command,
-    }
-
-    #[derive(Subcommand)]
-    enum Command {
-        /// Show whether the agent is reachable and what it reports.
-        Status,
-        /// Block addresses or CIDR blocks through the firewall (protected addresses are refused).
-        Block {
-            targets: Vec<String>,
-            /// Remove the block after this many minutes.
-            #[arg(long)]
-            minutes: Option<u64>,
-            #[arg(long, default_value = "pwctl")]
-            reason: String,
-        },
-        /// Remove blocks: the given addresses, or every block with --all (emergency recovery).
-        Unblock {
-            targets: Vec<String>,
-            #[arg(long)]
-            all: bool,
-        },
-        /// Firewall rules and blocks made by PacketWard.
-        Firewall {
-            #[command(subcommand)]
-            action: FirewallAction,
-        },
-        /// Remote Desktop: exposure audit, confirm/cancel a pending change, factory reset.
-        Rdp {
-            #[command(subcommand)]
-            action: RdpAction,
-        },
-        /// Show or set the Guardian mode (off, monitor, active).
-        Guardian {
-            #[arg(value_enum)]
-            mode: Option<GuardianArg>,
-            /// Confirm switching to Active after reviewing the Monitor report.
-            #[arg(long)]
-            yes: bool,
-        },
-        /// Build a support zip (traffic summary, adapters, logs, optional short capture) and save it
-        /// locally. Nothing is uploaded.
-        SupportBundle {
-            /// Replace this machine's own addresses and name with placeholders (the capture is left out).
-            #[arg(long)]
-            anonymize: bool,
-            /// Seconds of traffic to record into the bundle (0 = none, at most 120).
-            #[arg(long, default_value_t = 60)]
-            capture_secs: u32,
-            /// Leave the agent log out.
-            #[arg(long)]
-            no_logs: bool,
-            /// Folder to save into (default: Documents\PacketWard\support).
-            #[arg(long)]
-            out: Option<std::path::PathBuf>,
-            /// Only show what the bundle would contain.
-            #[arg(long)]
-            preview: bool,
-        },
-    }
-
-    #[derive(Subcommand)]
-    enum FirewallAction {
-        /// List the blocks PacketWard applied.
-        List,
-        /// Remove every PacketWard firewall rule (blocks included).
-        Purge {
-            /// The typed phrase, required when a PacketWard RDP rule exists.
-            #[arg(long)]
-            confirm: Option<String>,
-        },
-    }
-
-    #[derive(Subcommand)]
-    enum RdpAction {
-        /// Show how Remote Desktop is configured and exposed.
-        Status,
-        /// Keep a change that is waiting for confirmation (run it from a NEW connection).
-        Confirm { id: u64 },
-        /// Revert a change that is waiting for confirmation.
-        Cancel { id: u64 },
-        /// Restore Remote Desktop to factory state: port 3389, built-in rules, no PacketWard restriction.
-        Reset {
-            /// Do not talk to the agent; change the machine directly (elevated shell).
-            #[arg(long)]
-            offline: bool,
-        },
-    }
-
-    #[derive(Clone, Copy, clap::ValueEnum)]
-    enum GuardianArg {
-        Off,
-        Monitor,
-        Active,
-    }
+    use crate::cli::{Cli, Command, FirewallAction, GuardianArg, RdpAction};
 
     let cli = Cli::parse();
     let runtime = match tokio::runtime::Builder::new_current_thread()
@@ -164,6 +70,8 @@ fn main() -> std::process::ExitCode {
             out,
             preview_only: preview,
         })),
+        // stdout belongs to the MCP transport here: `mcp::run` only writes to stderr.
+        Command::Mcp => runtime.block_on(mcp::run()),
     }
 }
 

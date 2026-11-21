@@ -535,6 +535,7 @@ them; `prompts.rs` holds the three prompts. `server.rs` implements the rmcp stdi
 subscribe before starting, filter events by job id, wait with 30 s / 180 s / 600 s deadlines and cancel on timeout; an approval-level
 call is sent to the agent like any write and its `pending` reply is returned as `{status: "pending_approval", id, expires_in_secs: 300}`.
 `serve(client)` is the entry point, after the caller has handshaken a `pw_ipc::Client` as `ClientKind::Mcp`.
+`apps/cli` exposes it as `pwctl mcp` (stdio; the pipe client handshakes as `Mcp`, stdout stays pure JSON-RPC).
 
 **Settings → MCP (desktop, milestone M12).** Master switch (off), the level of each execution tool (approval-only tools offer disabled /
 approval), the write limit, and **Copy configuration** buttons that put on the clipboard the entry for each client, using the installed

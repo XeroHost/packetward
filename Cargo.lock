@@ -3418,6 +3418,7 @@ dependencies = [
  "clap",
  "pw-firewall",
  "pw-ipc",
+ "pw-mcp",
  "pw-netstat",
  "pw-proto",
  "serde_json",
