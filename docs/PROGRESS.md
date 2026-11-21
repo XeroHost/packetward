@@ -31,6 +31,10 @@ branch without asking). **Rules:** see the Phase 2 brief summarized below.
   and CI is green. Advisor once at the end of each milestone.
 - Unexpected decisions: pick the safest option, record it in DECISIONS.md → "Autonomous decisions — review".
 - Subagents (worktree isolation, max 3 at a time) for independent crates; integrate/verify myself.
+  Owner rules 2026-11-21: subagents run the **same model as the main session** (`opencode/deepseek-v4.1-flash-free`);
+  **never create a separate build cache** — the disk has ~27 GB free of 149 GB. Point `CARGO_TARGET_DIR` at the
+  existing `packetward\target`, or build inside each worktree's own `target/` and delete the worktree right after
+  the merge; never leave a second `*-target` folder outside the repo.
 - Live-VPS limits: **no** firewall rule changes, **no** Guardian Active, **no** RDP changes (port/rules/NLA/lockout),
   **no** network adapter changes, capture only with RawSocket (no Npcap), speed tests ≤ 1 GB. Service install/uninstall
   for tests is allowed; leave the VPS clean (verify with TESTING.md §G).
