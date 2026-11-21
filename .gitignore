@@ -9,3 +9,4 @@ apps/desktop/src-tauri/target
 !fixtures/*.pcapng
 apps/desktop/.claude/
 .claude/
+apps/desktop/.agents/
