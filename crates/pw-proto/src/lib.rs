@@ -15,6 +15,7 @@ mod firewall;
 mod handshake;
 mod intel;
 mod live;
+mod mcp;
 mod netstat;
 mod rdp;
 mod settings;
@@ -52,6 +53,11 @@ pub use intel::{
     ListStatusView,
 };
 pub use live::Heartbeat;
+pub use mcp::{
+    McpActionStatus, McpActionStatusRequest, McpActionStatusView, McpApproveRequest,
+    McpPendingAction, McpPendingList, McpRejectRequest, McpSettingsSetRequest, McpSettingsView,
+    McpToolLevel, McpToolSetting,
+};
 pub use netstat::{
     AuditState, Connection, ConnectionCounts, ConnectionsRequest, ConnectionsResponse,
     InterfaceKind, InterfaceStats, LiveStats, LogonAudit, Proto, RdpSession, RdpSessionState,
@@ -148,6 +154,20 @@ pub mod method {
     pub const SPEED_CANCEL: &str = "speed.cancel";
     pub const ALERTS_LIST: &str = "alerts.list";
     pub const ALERTS_CLEAR: &str = "alerts.clear";
+    /// One-shot latest `live.stats` snapshot, for callers that need a single reply (the MCP read
+    /// tools; `live.stats` itself is a subscription topic).
+    pub const LIVE_STATS_GET: &str = "live.stats.get";
+    pub const MCP_SETTINGS_GET: &str = "mcp.settings.get";
+    /// MCP policy update. Refused for `ClientKind::Mcp` connections (desktop and `pwctl` only).
+    pub const MCP_SETTINGS_SET: &str = "mcp.settings.set";
+    pub const MCP_PENDING_LIST: &str = "mcp.pending.list";
+    /// Approves a pending MCP action. Refused for `ClientKind::Mcp` connections (desktop and `pwctl`
+    /// only), so the AI cannot approve its own request.
+    pub const MCP_APPROVE: &str = "mcp.approve";
+    /// Rejects a pending MCP action. Refused for `ClientKind::Mcp` connections (desktop and `pwctl`
+    /// only).
+    pub const MCP_REJECT: &str = "mcp.reject";
+    pub const MCP_ACTION_STATUS: &str = "mcp.action.status";
     pub const SUBSCRIBE: &str = "subscribe";
     pub const UNSUBSCRIBE: &str = "unsubscribe";
 }
@@ -166,4 +186,6 @@ pub mod topic {
     /// Progress and result of speed tests, see [`crate::SpeedEvent`].
     pub const SPEED_PROGRESS: &str = "speed.progress";
     pub const DIAG_PROGRESS: &str = "diag.progress";
+    /// Full snapshot of the MCP approval queue on every change, see [`crate::McpPendingList`].
+    pub const MCP_PENDING: &str = "mcp.pending";
 }

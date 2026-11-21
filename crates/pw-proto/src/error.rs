@@ -19,6 +19,11 @@ pub enum ErrorCode {
     Busy,
     /// The requested probe mode cannot run on this machine (UDP/TCP MTR without a capture backend).
     ModeUnavailable,
+    /// The policy refused the request: MCP master switch off, the tool is disabled, or the method is
+    /// not allowed for this client kind.
+    Forbidden,
+    /// The MCP write or probe rate limit was exceeded; the call is refused, not queued.
+    RateLimited,
     Internal,
 }
 
@@ -47,5 +52,13 @@ mod tests {
         let json =
             serde_json::to_string(&ErrorPayload::new(ErrorCode::VersionMismatch, "x")).unwrap();
         assert_eq!(json, r#"{"code":"version_mismatch","message":"x"}"#);
+    }
+
+    #[test]
+    fn the_mcp_policy_errors_use_snake_case() {
+        let json = serde_json::to_string(&ErrorCode::RateLimited).unwrap();
+        assert_eq!(json, r#""rate_limited""#);
+        let code: ErrorCode = serde_json::from_str(r#""forbidden""#).unwrap();
+        assert_eq!(code, ErrorCode::Forbidden);
     }
 }

@@ -533,7 +533,8 @@ approval), the write limit, and **Copy configuration** buttons that put on the c
 
 **IPC (protocol minor 15; 13 is the speed-test providers, 14 the start-up capture switch).** Methods `mcp.settings.get`, `mcp.settings.set`, `mcp.pending.list`, `mcp.approve`, `mcp.reject`, `mcp.action.status`
 (the three that change state are desktop/`Pwctl` only) and the topic `mcp.pending`; `ClientKind::Mcp`. Existing methods are reused for the
-tools; a one-shot getter missing for a read tool is added in the same bump.
+tools; the one-shot getter `live.stats.get` was added in the same bump because `live.stats` is a subscription topic and the MCP read tools
+need a single reply.
 
 **Honest limit.** Authorization on the pipe is by Windows group, not by process. An AI client that also has a shell, running as an Operator, can
 call `pwctl` (or the pipe) directly and does not need MCP at all; the MCP levels and approvals are a guardrail against mistakes and prompt
@@ -575,7 +576,9 @@ shell permissions, for example with Claude Code's permission deny rules, so the 
 - Client kinds in the hello: `desktop`, `pwctl` and, from milestone M11, `mcp` (the agent applies the MCP policy to those connections; §6.14).
 - Error codes: `bad_request`, `not_handshaken`, `version_mismatch`, `unknown_method`, `unknown_topic`,
   `frame_too_large` (the connection is closed because the stream cannot be re-aligned), `internal`.
-- Surface: `session.hello`, `system.info`, `subscribe`/`unsubscribe`, `netstat.connections`; topics
+- Surface: `session.hello`, `system.info`, `subscribe`/`unsubscribe`, `netstat.connections`,
+  `live.stats.get` (a one-shot latest `live.stats` snapshot for the MCP read tools, which need a
+  reply instead of a subscription; protocol 1.15); topics
   `live.heartbeat` and `live.stats` (1 s; per-interface and total bps/pps, link speed, connection counts by state,
   top remote addresses, RDP sessions and RDP peers). Protocol 1.1 added the last two items. `netstat.connections`
   returns at most 20 000 rows and is also cut by a byte budget so it always fits one frame, with `total` and
