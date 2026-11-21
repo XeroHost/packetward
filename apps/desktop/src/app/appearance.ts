@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 // Applies Appearance settings as attributes/properties on <html> so CSS alone reacts.
 import type { AppearancePrefs, MonoFont } from '@/api/uiPrefs'
 

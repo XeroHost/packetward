@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Test doubles: a scripted [`Pinger`] and a scripted DNS backend live here so the
 //! engine can reuse them in its own tests.
 

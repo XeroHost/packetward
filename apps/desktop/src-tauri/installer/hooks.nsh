@@ -1,4 +1,4 @@
-; SPDX-License-Identifier: GPL-3.0-or-later
+; SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 ;
 ; PacketWard installer hooks for the Tauri NSIS template (docs/ARCHITECTURE.md section 9).
 ;

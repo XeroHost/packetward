@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Minisign verification of the shared blocklist against the pinned public key. Fails closed.
 
 use minisign_verify::{Error as MinisignError, PublicKey, Signature};

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Desired firewall blocks, persisted so they survive an agent restart.
 //!
 //! The firewall is reconciled from this table; the table is not the firewall. Expiry follows

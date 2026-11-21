@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! The XeroHost node list (`nodes.json`), used for speed-test and MTR defaults.
 //!
 //! The file lives in the public repository `XeroHost/packetward-blocklist`. It is **not signed**, so it is

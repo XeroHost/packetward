@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! The table of an advanced MTR: the simple [`MtrSnapshot`] plus mode, ASN / country and how the
 //! destination answered. The simple types are left untouched so nothing downstream changes;
 //! everything new is an `Option` / defaulted field here.

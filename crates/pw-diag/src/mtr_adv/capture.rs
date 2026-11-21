@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! UDP and TCP-SYN probes: send with a normal socket (given TTL), read the answers from a capture
 //! source.
 //!

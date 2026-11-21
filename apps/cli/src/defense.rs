@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! `pwctl` commands for the firewall manager and the Guardian: emergency recovery first
 //! (`unblock --all`, `firewall purge`, `guardian off`), plus manual blocks and status.
 

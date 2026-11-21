@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Per-user UI preferences stored in `%AppData%\PacketWard\ui.json`.
 //!
 //! The file is owned by the desktop app (not the agent). Loading is tolerant: a missing or

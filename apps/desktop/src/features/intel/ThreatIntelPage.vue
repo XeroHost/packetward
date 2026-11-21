@@ -1,4 +1,4 @@
-﻿<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+﻿<!-- SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 -->
 <script setup lang="ts">
 // Threat intelligence as rows of "what it is / how it is set": the local GeoIP database, where the
 // connections come from, the blocklists (each with its own switch and a confirmation before it

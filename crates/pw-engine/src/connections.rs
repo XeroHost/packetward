@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Builds the `netstat.connections` reply from the latest snapshot, within one IPC frame.
 
 use std::collections::BTreeMap;

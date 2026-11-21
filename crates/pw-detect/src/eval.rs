@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! The detectors: pure functions from window totals to findings.
 //!
 //! A *finding* is "this condition holds right now"; the incident layer in `engine.rs` turns findings

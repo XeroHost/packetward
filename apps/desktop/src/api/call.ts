@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 // One typed way to call allowlisted agent methods through the shell's `agent_call` command.
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri } from './uiPrefs'

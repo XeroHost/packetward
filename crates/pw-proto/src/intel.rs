@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Threat intelligence (M8): GeoIP/ASN, blocklists and AbuseIPDB.
 
 use serde::{Deserialize, Serialize};

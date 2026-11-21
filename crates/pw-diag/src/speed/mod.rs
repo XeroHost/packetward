@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! The speed-test client (ARCHITECTURE §6.6): latency/jitter, multi-stream download and upload, bin tests, server
 //! picker. It talks to `tools/speed-server` (`/ping`, `/download?bytes=N`, `POST /upload`, `/info`).
 //!

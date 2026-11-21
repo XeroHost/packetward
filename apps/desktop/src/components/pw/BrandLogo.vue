@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 -->
 <script setup lang="ts">
 // Official branding-kit logo, unmodified: the dark variant has light text for dark backgrounds.
 import { useI18n } from 'vue-i18n'

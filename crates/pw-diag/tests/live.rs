@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Live runs against a public host (1.1.1.1), a handful of packets each. Ignored by default and
 //! gated by environment variables so nothing leaves the machine unless asked:
 //!

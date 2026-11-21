@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Live tests of the Windows raw-socket backend. They only listen (nothing is sent) and skip themselves,
 //! without failing, when the process is not elevated or the machine has no usable adapter.
 

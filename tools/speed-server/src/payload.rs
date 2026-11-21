@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Download payload generation.
 //!
 //! A small pool of pseudo-random frames is generated once at startup. A download is a sequence of

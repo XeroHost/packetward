@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 -->
 <script setup lang="ts">
 // Capture: the state of the live capture is the headline (with its one action), the two backends
 // sit side by side as quiet wells, and recording and the support bundle follow as sections.

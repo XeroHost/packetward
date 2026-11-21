@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 // Typed wrappers for the MCP approval queue (via the shell's `agent_call`) plus the Windows
 // notification that announces a new request. This module is the only place that talks to Tauri
 // for MCP; components go through the store.

@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 -->
 <script setup lang="ts">
 // Everything PacketWard knows about one address, in one place: where it is, whether it is blocked or
 // protected, what it did (alerts), what it is connected to right now, and what AbuseIPDB says if the

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! [`mtr_with`]: the advanced entry point. The cycle engine itself is shared with the simple
 //! [`crate::mtr()`] (it lives in `mtr.rs`); this adds mode selection, validation and the ASN /
 //! country columns.

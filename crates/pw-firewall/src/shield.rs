@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Types for the RDP Shield primitives (M7b): a restricted allow rule, the built-in rules' previous
 //! state, and a serializable snapshot a caller can persist and use to revert.
 

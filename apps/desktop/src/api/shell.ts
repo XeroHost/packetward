@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 // Window-shell features owned by the desktop process: start-at-sign-in and the tray menu.
 // This module is the only place that talks to Tauri for them.
 import { invoke } from '@tauri-apps/api/core'

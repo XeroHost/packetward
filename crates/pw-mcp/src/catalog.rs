@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! The MCP tool catalog: the mirror of ARCHITECTURE §6.14.
 //!
 //! Every tool the agent can enforce is listed here, with its group, its **level class**, the IPC

@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 -->
 <script setup lang="ts">
 // The window's own title bar: brand on the left (over the sidebar), a drag area, the state of the
 // agent and the Guardian, and the Windows window controls on the right.

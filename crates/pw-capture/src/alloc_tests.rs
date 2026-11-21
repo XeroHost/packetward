@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Proves the hot-path claim: decoding, filtering and aggregating a packet allocates nothing (counted with
 //! the test-only allocator in `sys::alloc_probe`).
 

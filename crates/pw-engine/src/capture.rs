@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Capture service (M4): the live capture that feeds the traffic statistics, timed/ring recordings
 //! to `.pcapng`, and the explanation of which backend is in use. Wraps `pw-capture`.
 //!

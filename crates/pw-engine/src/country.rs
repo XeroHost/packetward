@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! RDP Shield country restriction (M7b, decision RS-2): an optional, reactive rule.
 //!
 //! The GeoIP database only knows countries (no ranges) and Windows Firewall cannot filter by country,

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Command line, Windows service entry point and service management (install / uninstall / start /
 //! stop / repair) through the service control manager API. No `sc.exe`.
 

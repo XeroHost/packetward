@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 -->
 <script setup lang="ts">
 // A Hugeicons icon with its own one-shot motion (see `.hi-a-*` in main.css): the default `draw` traces
 // the stroke when `play` changes; the others (ring, spin, sweep...) play from CSS when the row, button

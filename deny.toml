@@ -1,5 +1,6 @@
-# cargo-deny configuration. PacketWard is GPL-3.0-or-later, so every dependency must be
-# GPLv3-compatible (docs/DECISIONS.md). Add a license here only after checking compatibility.
+# cargo-deny configuration. PacketWard is source-available under PolyForm Shield 1.0.0, so every
+# dependency must be redistributable under a permissive license (docs/DECISIONS.md). Add a license
+# here only after checking compatibility.
 
 [graph]
 targets = [
@@ -28,10 +29,12 @@ allow = [
   "MPL-2.0",
   "Unicode-3.0",
   "Unicode-DFS-2016",
+  "OFL-1.1",
 ]
 
 [licenses.private]
-# Workspace crates are GPL-3.0-or-later and unpublished; only third-party crates are checked.
+# Workspace crates carry LicenseRef-PolyForm-Shield-1.0.0 and are unpublished; only third-party
+# crates are checked.
 ignore = true
 
 [bans]

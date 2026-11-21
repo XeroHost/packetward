@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! The MCP server over stdio (rmcp 3.11), forwarding every tool call to the agent.
 //!
 //! [`serve`] is the entry point the CLI calls with an already handshaken [`pw_ipc::Client`]. The tool

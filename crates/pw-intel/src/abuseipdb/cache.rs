@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Result cache for AbuseIPDB lookups. The trait is storage-agnostic: `pw-store` implements it over its
 //! `intel_cache` table later; [`MemoryAbuseCache`] is the in-process implementation (and the test fake).
 

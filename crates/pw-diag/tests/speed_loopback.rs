@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! The speed-test client against the real `pw-speed-server`, started in-process on 127.0.0.1:0 (no firewall port,
 //! no outside traffic). Every test moves at most 64 MB. Run with `--features speed`.
 

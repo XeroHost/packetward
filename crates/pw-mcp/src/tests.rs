@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Catalog, envelope, schema, prompt and end-to-end tests (fake agent over the in-memory pipe).
 
 use std::sync::atomic::{AtomicBool, Ordering};

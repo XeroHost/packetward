@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Ping (IPv4 and IPv6) on top of a [`Pinger`].
 
 use std::net::IpAddr;

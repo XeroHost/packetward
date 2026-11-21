@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! MCP server settings and the pending-action approval flow (milestone M11, ARCHITECTURE 6.14).
 
 use serde::{Deserialize, Serialize};

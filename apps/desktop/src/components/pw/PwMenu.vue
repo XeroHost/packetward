@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 -->
 <script setup lang="ts">
 // The app's action menu: a button that opens a list of commands. It is portaled to the page and places
 // itself away from the window edges and the sidebar (collision-aware), so it can never open behind

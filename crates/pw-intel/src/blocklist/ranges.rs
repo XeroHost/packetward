@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! CIDR aggregation and subtraction on inclusive `u128` address ranges.
 //!
 //! Each address family is handled on its own (IPv4 as `0..=u32::MAX`, IPv6 as `0..=u128::MAX`): inclusive ends avoid

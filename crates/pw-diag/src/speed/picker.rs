@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Server picker: measure every candidate in parallel with a short timeout and choose the lowest latency.
 
 use std::time::Duration;

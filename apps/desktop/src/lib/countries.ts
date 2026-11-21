@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 // Country names in the language of the UI, from the browser's own data (no extra dependency).
 
 /** "US" -> "United States" / "Estados Unidos" / "Estados Unidos" (pt-BR), or the code itself. */

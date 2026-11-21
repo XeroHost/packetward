@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 # Idle CPU/RAM of an agent process: starts it, waits for the warm-up, then samples CPU time over a window.
 # Example (release build, UI closed): .\tools\dev\measure-idle.ps1 -Exe .\target\release\packetward-agent.exe -ArgList run,--console
 # Add --no-capture to measure without the live capture. Do it on a machine where stopping the agent is fine.

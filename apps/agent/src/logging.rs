@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Logging: daily-rotated files in `%ProgramData%\PacketWard\logs`, plus stderr in console mode.
 
 use std::path::PathBuf;

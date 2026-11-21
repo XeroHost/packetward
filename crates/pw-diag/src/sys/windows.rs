@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Win32 ICMP helper API backend (`IcmpSendEcho2Ex` / `Icmp6SendEcho2`): no raw sockets, no
 //! administrator rights. Everything `unsafe` in `pw-diag` lives here.
 //!

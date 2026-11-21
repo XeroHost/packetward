@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Reading and changing the Remote Desktop configuration of the machine (RDP Shield, M7b).
 //!
 //! The trait is what the engine sees; [`FakeRdpControl`] is the in-memory stand-in used by every test;

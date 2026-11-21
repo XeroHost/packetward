@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Sources that need no network: a scripted replay ([`FakeSource`]) and a generator of synthetic traffic
 //! for load tests ([`SyntheticSource`]). Public so the engine and other crates can test against them.
 

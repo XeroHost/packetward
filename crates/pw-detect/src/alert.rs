@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! The alert type the engine emits and its lifecycle.
 //!
 //! One attack is one *incident* (per detector variant and source). The engine emits:

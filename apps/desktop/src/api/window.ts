@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 // The window itself: the app draws its own title bar, so minimize/maximize/close come from here.
 // Outside Tauri (browser, Vitest) every call is a no-op.
 import { invoke } from '@tauri-apps/api/core'

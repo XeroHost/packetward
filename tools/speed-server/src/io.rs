@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! An I/O wrapper that closes a connection after `idle` without any read or write progress.
 //!
 //! It covers idle keep-alive connections, slow-loris clients and readers/writers that stall mid-transfer,

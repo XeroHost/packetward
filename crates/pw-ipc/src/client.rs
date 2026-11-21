@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Client side: handshake, request/response correlation and topic subscriptions.
 
 use std::collections::HashMap;

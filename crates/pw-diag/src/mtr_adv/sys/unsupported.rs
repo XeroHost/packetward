@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Stand-in for the Windows socket sender on other platforms: the modes report why they cannot
 //! run instead of failing obscurely.
 

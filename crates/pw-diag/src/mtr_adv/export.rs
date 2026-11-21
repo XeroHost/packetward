@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Exports of an [`AdvMtrSnapshot`]: the plain-text support report ("Copy report for support"),
 //! CSV and JSON. All three are pure functions of their arguments (no clock, no locale, no
 //! dependencies), so they can be compared byte for byte in tests. The simple

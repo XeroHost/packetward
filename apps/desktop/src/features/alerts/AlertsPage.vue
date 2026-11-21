@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 -->
 <script setup lang="ts">
 // The inbox reads like a timeline: when and how bad on the left, what happened on the right. The
 // severity is a coloured rail *and* a word, never colour alone. Red is kept for what is high or critical.

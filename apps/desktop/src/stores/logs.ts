@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 import { defineStore } from 'pinia'
 import { ref, shallowRef } from 'vue'
 import * as api from '@/api/agentSettings'

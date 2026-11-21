@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 import { createI18n } from 'vue-i18n'
 import en from '@/locales/en.json'
 import es from '@/locales/es.json'

@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 -->
 <script setup lang="ts" generic="T extends string | number">
 // The app's dropdown: the themed Select (floating panel, check mark) behind a plain options list, so
 // forms never fall back to the operating system's native <select> popup.

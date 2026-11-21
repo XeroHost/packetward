@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 // Verifies a Tauri updater signature (a minisign signature, base64 wrapped) against the public key in
 // tauri.conf.json, exactly as the installed app will do. The release workflow runs it on every build before
 // anything is published, so an installer that the app would refuse never reaches a release.

@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 -->
 <script setup lang="ts" generic="T extends string">
 // A few mutually exclusive choices in a soft well; the selected one is a raised pill that slides
 // to the new option on a spring. Arrow keys move the choice (radio-group semantics).

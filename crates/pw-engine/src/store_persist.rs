@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! The defense state (blocks, Guardian policy, allowlist) and the audit log in the SQLite store
 //! (`packetward.db`), instead of `defense.json` / `audit.jsonl`. Enabled by the `store` feature.
 //!

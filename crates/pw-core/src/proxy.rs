@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Credentials for an authenticating proxy. They are never part of the proxy URL and never reach a log:
 //! `Debug` prints nothing but a marker, and there is no `Display` or `Serialize`.
 

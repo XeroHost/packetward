@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 
 /**
  * Copies text to the clipboard. Uses the async Clipboard API and falls back to a hidden textarea

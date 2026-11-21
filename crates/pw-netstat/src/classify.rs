@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Which interfaces are "real adapters" whose traffic counts toward the totals.
 //!
 //! Windows lists several rows per physical NIC (filter and QoS layers, loopback, tunnels), so

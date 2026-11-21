@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Threat intelligence service (M8): GeoIP/ASN lookups, blocklists applied through the firewall, and
 //! the optional AbuseIPDB reputation check. Wraps `pw-intel`; every download goes through a
 //! `Fetcher`, so tests never touch the network and a build without the HTTP feature simply cannot

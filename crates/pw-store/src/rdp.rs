@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Addresses with a successful RDP logon: the trust set the Guardian protects, kept beyond the
 //! Security log's size and across restarts.
 

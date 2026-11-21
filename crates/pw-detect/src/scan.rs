@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Bounded, exact distinct-destination-port / destination-host sets for scan detection.
 //!
 //! Every source starts with a tiny inline set (4 ports, 4 hosts). When a fifth live entry shows up the

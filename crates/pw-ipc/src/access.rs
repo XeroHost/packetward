@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Who may use the agent's pipe: the `PacketWard Operators` local group, plus diagnosis of why a
 //! user was refused so the UI can say what to do.
 

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Fixed-size, allocation-free sliding counters.
 //!
 //! A [`Wheel`] is a ring of `N` cells, each tagged with the epoch (`second / LEN`) it holds. Writing

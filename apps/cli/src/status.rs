@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! `pwctl status`.
 //!
 //! Exit codes (stable, for scripts): 0 reachable · 1 other failure · 2 agent not running ·

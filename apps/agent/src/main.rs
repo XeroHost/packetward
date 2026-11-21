@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! packetward-agent — Windows service host for pw-engine (install, uninstall, run).
 
 #[cfg(windows)]

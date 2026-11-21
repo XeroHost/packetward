@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Agent settings that survive restarts (`settings.json` in the agent data folder). Today: the proxy
 //! used by the agent's outbound HTTP calls (speed test, GeoIP and blocklist downloads, AbuseIPDB). The
 //! desktop updater has its own transport and uses the Windows system proxy. The proxy is read once when

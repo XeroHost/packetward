@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 -->
 <script setup lang="ts">
 // Whether the live capture starts together with the agent. It writes nothing to disk and its memory is
 // bounded, so it is on by default; turning it off is for machines where even that is unwanted.

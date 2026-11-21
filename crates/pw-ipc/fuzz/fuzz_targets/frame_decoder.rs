@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 #![no_main]
 //! Feeds arbitrary bytes to the IPC frame/envelope decoder. Run: `cargo +nightly fuzz run frame_decoder`
 //! from `crates/pw-ipc/fuzz` (see docs/TESTING.md).

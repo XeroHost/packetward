@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! A scripted [`ProbeTransport`] for tests (public so the engine and integration tests can use it).
 
 use std::collections::HashMap;

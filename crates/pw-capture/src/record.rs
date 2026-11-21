@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Capture to pcapng: a timed capture (duration and size limits) or a ring buffer bounded by total size.
 //!
 //! The recorder runs on its own thread with its **own** [`PacketSource`], independent of the live

@@ -652,7 +652,7 @@ shell permissions, for example with Claude Code's permission deny rules, so the 
   Everything release-only lives in `apps/desktop/src-tauri/tauri.release.conf.json` and is merged with
   `pnpm tauri build --config src-tauri/tauri.release.conf.json` (after `cargo build --release -p packetward-agent
   -p packetward-cli`): target `nsis`, per-machine install, languages English / Spanish / Portuguese (BR) with the
-  language selector, the GPL-3.0 text on the license page (`licenseFile`), `createUpdaterArtifacts`, and
+  language selector, the PolyForm Shield 1.0.0 text on the license page (`licenseFile`), `createUpdaterArtifacts`, and
   `resources` = `packetward-agent.exe` and `pwctl.exe` installed next to `PacketWard.exe`.
 - WebView2: **embedded bootstrapper** (silent). Many Windows Server images do not ship the runtime; the bootstrapper
   downloads it at install time, so the installer needs internet access on a machine without WebView2.
@@ -794,7 +794,7 @@ optional case-insensitive filter), newest first, read from `audit.jsonl` (+ the 
 4. **COM firewall API, batched rules** — no `netsh` parsing, no rule explosion.
 5. **Aggregates over IPC, never per-packet** — WebView and IPC are not packet-rate systems.
 6. **DB-IP Lite** — redistributable GeoIP with attribution.
-7. **GPL-3.0-or-later** — forks must stay open.
+7. **PolyForm Shield 1.0.0** — source-available: free use, modification and redistribution; no competing product.
 8. **Signed shared blocklist on GitHub** — free hosting, public audit trail, tamper-evident via minisign.
 9. **Toasts from the UI process** — services in session 0 cannot notify; the tray app is the notifier.
 

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Errors of the speed-test client.
 //!
 //! Nothing here carries a URL, a query string, a proxy address or a credential: transport errors are reduced to a

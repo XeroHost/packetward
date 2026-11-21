@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Runs the engine behind the named pipe until told to stop. Shared by the service and `--console`.
 
 use std::future::Future;

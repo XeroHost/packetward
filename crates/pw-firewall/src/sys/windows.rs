@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! The real Windows Firewall backend: COM `INetFwPolicy2` (never `netsh`).
 //!
 //! Every call enters a COM apartment, creates the policy object, does its work and drops every

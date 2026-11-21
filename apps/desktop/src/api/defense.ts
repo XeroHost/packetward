@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 // Typed wrappers for the firewall manager and the Guardian (via the shell's `agent_call`).
 import type { AllowlistConfig } from '@/types/generated/AllowlistConfig'
 import type { BlockList } from '@/types/generated/BlockList'

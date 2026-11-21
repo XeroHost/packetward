@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Advanced MTR against scripted transports: probe modes, destination detection, route changes,
 //! load balancing, silent hops, option clamping, enrichment, cancellation, IPv6.
 #![allow(clippy::unwrap_used, clippy::expect_used)]

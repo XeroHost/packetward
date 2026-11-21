@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! PacketWard desktop shell (Tauri 2). Runs unelevated; the agent service owns privileged work.
 
 // Hide the console window in release builds on Windows.

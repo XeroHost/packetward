@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! The alert inbox: incidents, one row per incident id, updated in place as it escalates and ends.
 //! Field names follow `pw_proto::AlertView`; the engine maps between the two.
 

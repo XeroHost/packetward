@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Golden outputs of the advanced MTR exports (support report, CSV, JSON). Expected texts are
 //! inline literals so they compare byte for byte whatever the checkout's line-ending settings.
 #![allow(clippy::unwrap_used, clippy::expect_used)]

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! pw-speed-server: the speed-test server deployed on XeroHost nodes.
 //!
 //! Endpoints: `GET /ping`, `GET /download?bytes=N`, `POST /upload`, `GET /info`, `GET /healthz`.

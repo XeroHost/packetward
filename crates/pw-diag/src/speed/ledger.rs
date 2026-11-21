@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Client-side accounting against the server's per-IP byte budgets.
 //!
 //! `/info` publishes `hourly_bytes_per_ip` and `daily_bytes_per_ip` but not how much of them is still free: the

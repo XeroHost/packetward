@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! pw-store — SQLite storage: audit log, blocks, alerts, settings, RDP trust set, intel cache.
 //!
 //! A small synchronous layer over `rusqlite`. [`Store`] is `Send + Sync` (one connection behind a

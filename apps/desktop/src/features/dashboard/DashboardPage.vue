@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 -->
 <script setup lang="ts">
 // The dashboard answers one question: "am I being attacked, from where, how much?". Traffic is the
 // hero (the biggest thing on the page), protection sits beside it as a quiet column, and the

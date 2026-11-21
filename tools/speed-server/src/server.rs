@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Listener, connection handling (HTTP/1.1, optional TLS), idle timeouts and graceful shutdown.
 
 use std::net::SocketAddr;

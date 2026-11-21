@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! The three MCP prompts of ARCHITECTURE §6.14.
 //!
 //! Each prompt names the tools to read, says what conclusion to draw, and ends with the

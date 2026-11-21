@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 import { beforeEach, describe, expect, it } from 'vitest'
 import { DEFAULT_UI_PREFS, type AppearancePrefs } from '@/api/uiPrefs'
 import { applyAppearance, MONO_STACKS, resolveTheme } from './appearance'

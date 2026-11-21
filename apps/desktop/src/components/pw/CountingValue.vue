@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 -->
 <script setup lang="ts">
 // A live number that eases to its new value with a spring instead of jumping. The first value is
 // shown as it is (no count-up from zero on load), and nothing animates under "Reduce animations".

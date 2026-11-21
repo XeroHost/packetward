@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Small typed key/value store (JSON text) for settings and state: the allowlist, config, the
 //! Guardian policy, the original RDP firewall snapshot.
 

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Windows sockets for UDP / TCP-SYN probes: ordinary (non-raw) sockets whose TTL / hop limit is
 //! set before the first packet. Replies are *not* read here (Windows delivers neither ICMP
 //! time-exceeded nor a SYN's fate to the socket); the capture side reads them. The only `unsafe`

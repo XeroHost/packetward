@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 -->
 # pw-speed-server
 
 The speed-test server that XeroHost deploys on its nodes (Miami, Dallas, São Paulo, ...) and that anyone can run
@@ -6,7 +6,7 @@ as a *custom server* in PacketWard. A small axum/hyper service: it generates dow
 uploads away, answers pings and tells each client its own public IP. No files, no database, no telemetry, no
 outbound connections.
 
-License: GPL-3.0-or-later (part of the PacketWard repository).
+License: PolyForm Shield 1.0.0 (part of the PacketWard repository).
 
 ## Endpoints
 

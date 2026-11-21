@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Parsing and arithmetic for the address and port strings Windows Firewall uses.
 //!
 //! Windows reads IPv4 addresses back as `a.b.c.d/255.255.255.255` (mask form) even when they were

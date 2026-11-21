@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! MTR (simple): ICMP echo with an incrementing TTL, repeated for N cycles, with per-hop
 //! statistics streamed once per cycle.
 //!

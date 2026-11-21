@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 // Who is attacking, by country: the sources of alerts and the addresses that were blocked, placed
 // with the local GeoIP database. Pure, so it is tested without a map.
 import type { GeoPlace } from '@/stores/geo'

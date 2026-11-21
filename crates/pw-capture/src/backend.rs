@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! The two traits every capture backend implements, and the plain types they exchange.
 
 use std::net::IpAddr;

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! MTR (advanced): ICMP, UDP and TCP-SYN probe modes, IPv4 and IPv6, ASN + country per hop and
 //! plain-text / CSV / JSON export.
 //!

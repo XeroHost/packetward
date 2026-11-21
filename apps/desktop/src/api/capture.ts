@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 // Typed wrappers for packet capture and the support bundle (via the shell's `agent_call`).
 import { invoke } from '@tauri-apps/api/core'
 import type { CaptureFiles } from '@/types/generated/CaptureFiles'

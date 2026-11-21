@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! The Npcap backend: best fidelity (Ethernet frames, BPF filters in the kernel, both directions).
 //!
 //! Npcap is **never bundled** (its free license forbids redistribution) and is not needed to start: this

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! In-memory [`FirewallBackend`] for tests (here and in the engine). It behaves like Windows where
 //! it matters: names are case-insensitive and unique, address lists are stored the way Windows reads
 //! them back (`a.b.c.d/255.255.255.255`), and a batch block rule with no/any remote address is

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! RDP Shield (M7b): the exposure audit and the guarded changes to Remote Desktop.
 //!
 //! Every change is a **transaction**: the previous state is saved (to disk, so it survives an agent

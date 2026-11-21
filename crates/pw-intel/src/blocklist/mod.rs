@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Blocklists: the signed XeroHost shared list and opt-in public lists.
 //!
 //! Pipeline: download (size-capped while streaming) → for the XeroHost list, minisign verification against the

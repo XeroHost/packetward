@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 // The camera controls of the attack map, against a real ECharts instance (server-side rendering,
 // no canvas): the zoom action must change the zoom, and the limits must hold.
 import { MapChart } from 'echarts/charts'

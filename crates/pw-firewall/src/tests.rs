@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Behaviour tests of the guarded manager against the in-memory fake.
 
 use std::collections::HashSet;

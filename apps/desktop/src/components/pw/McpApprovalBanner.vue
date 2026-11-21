@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 -->
 <script setup lang="ts">
 // A global banner: an AI client (through the MCP server) is asking for something that needs the
 // owner's decision. It sits above every page, next to the RDP confirmation banner.

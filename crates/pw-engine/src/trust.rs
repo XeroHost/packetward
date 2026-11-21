@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! The set of addresses with a successful RDP logon, shared between the event-log feed (which adds
 //! to it from callback threads) and the poller (which publishes it).
 

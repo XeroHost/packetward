@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Remote port check: one TCP connect test or one best-effort UDP probe against one port.
 //!
 //! This is a diagnostic ("is my service reachable from here?"), not a scanner, so the guardrails

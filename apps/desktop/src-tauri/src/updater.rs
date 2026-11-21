@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! In-app updates (Tauri updater against GitHub Releases), with two channels.
 //!
 //! * `stable`: `stable.json` in the orphan `updates` branch (raw.githubusercontent.com), written by the release

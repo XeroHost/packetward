@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! pw-intel — GeoIP/ASN, AbuseIPDB client, reputation cache and blocklists.
 //!
 //! Everything here is platform-agnostic and network-free by construction: HTTP goes through the

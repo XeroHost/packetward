@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! pw-capture — Capture backends (Npcap, raw socket), packet decode, pcapng writer, ring buffer.
 //!
 //! * [`select_backend`] picks Npcap (if installed, loaded lazily) or the built-in raw-socket backend and

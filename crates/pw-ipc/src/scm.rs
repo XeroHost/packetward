@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Read-only view of the agent's Windows service registration, so a client that cannot reach the
 //! pipe can tell "not installed" from "stopped".
 

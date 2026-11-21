@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 // Guards the inbound capture rule in the installer hooks and its development equivalent: they must
 // stay one program-scoped INBOUND ALLOW rule in the PacketWard group, removed again on uninstall.
 import assert from 'node:assert/strict'

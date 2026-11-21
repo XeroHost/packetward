@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! The built-in fallback backend: a Windows raw socket bound to the interface's IPv4 address with
 //! `SIO_RCVALL` (`RCVALL_IPLEVEL`, so the adapter is not put in promiscuous mode).
 //!

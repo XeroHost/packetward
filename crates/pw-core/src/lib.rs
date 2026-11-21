@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! pw-core — Config model, IP/CIDR sets, allowlist, time windows, errors. No OS dependencies.
 
 mod cidr;

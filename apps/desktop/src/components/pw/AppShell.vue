@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 -->
 <script setup lang="ts">
 // Floating-panel layout: title bar on top, the sidebar melts into the window, and the page lives
 // in one rounded panel inset from the window edge. Pages change with a short spring.

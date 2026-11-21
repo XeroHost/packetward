@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Diagnostics service (M3): long jobs (ping, MTR) that stream progress on the `diag.progress` topic,
 //! and short requests (DNS lookup, port check, local ports). Wraps `pw-diag`.
 

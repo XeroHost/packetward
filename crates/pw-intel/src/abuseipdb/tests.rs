@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Client behaviour with a fake fetcher, fake clock and in-memory secret store: no network is ever touched.
 
 use std::net::IpAddr;

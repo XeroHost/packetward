@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Firewall manager and Guardian (M6, M7): the persisted set of blocks, the protected set, the
 //! reconcile loop that applies them to Windows Firewall, and the Guardian that turns alerts into
 //! blocks (or, in Monitor mode, into a report of what it would have blocked).

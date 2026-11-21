@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! pw-proto — IPC and shared DTOs (serde + ts-rs). Versioned, no logic.
 //!
 //! Every type that crosses the agent ⇄ UI/CLI boundary lives here. With the `ts-export`

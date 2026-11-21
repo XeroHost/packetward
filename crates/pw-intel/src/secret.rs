@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Secret handling. Secrets (the AbuseIPDB key, the proxy credentials) live in the OS credential store, never in plain config, and
 //! never reach a log line: [`Secret`] redacts itself in `Debug` and has no `Display` or `Serialize`.
 

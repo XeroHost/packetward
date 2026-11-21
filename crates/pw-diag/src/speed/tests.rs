@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Behaviour tests of the speed-test client against the scripted fake transport. No sockets; the duration logic
 //! runs on tokio's paused clock, the cancellation test on the real one.
 

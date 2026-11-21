@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Bin tests: download a fixed amount of data (1, 10 or 50 GiB) split over the streams.
 //!
 //! Sizes are binary (1 GiB = 2^30 bytes): the server's default `max_download_bytes` is exactly 50 GiB. The 50 GiB

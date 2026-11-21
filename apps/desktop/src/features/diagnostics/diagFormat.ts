@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 import type { MtrHopView } from '@/types/generated/MtrHopView'
 
 /** 12.345 -> "12.3 ms", 0.42 -> "0.42 ms", undefined -> "—". */

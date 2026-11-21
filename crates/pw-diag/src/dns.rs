@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! DNS lookups: typed records, resolver choice, and the logic around a [`DnsBackend`]
 //! (`ALL` aggregation, PTR from an IP, per-query timeout, error semantics).
 //!

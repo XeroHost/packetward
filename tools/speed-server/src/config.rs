@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Configuration: TOML file, `PW_SPEED_*` environment overrides, CLI overrides, validation.
 //!
 //! Precedence (lowest to highest): built-in defaults < TOML file < environment < command line.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! A small packet filter language, evaluated in Rust on decoded [`PacketMeta`] and, when it can be
 //! expressed exactly, mapped to a BPF string for the Npcap backend.
 //!

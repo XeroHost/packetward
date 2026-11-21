@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Monthly GeoIP database update: pure scheduling helpers plus a download-validate-replace step.
 //!
 //! DB-IP publishes Lite databases once a month as `dbip-<kind>-lite-YYYY-MM.mmdb.gz`. A download is decompressed with

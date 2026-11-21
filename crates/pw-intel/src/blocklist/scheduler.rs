@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Pure refresh scheduling: no clock reads, no I/O. Time is always passed in.
 
 use serde::{Deserialize, Serialize};

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Launching the agent executable with administrator rights (UAC prompt).
 #![allow(unsafe_code)]
 

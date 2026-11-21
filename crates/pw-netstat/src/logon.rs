@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Successful RDP logons learned from the Windows event log, and the set of addresses they build.
 //!
 //! Pure and platform-agnostic: the Win32 side only hands over rendered event XML. Two events count:

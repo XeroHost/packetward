@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 import { createRouter, createWebHashHistory, type RouteRecordRaw } from 'vue-router'
 import { NAV_ITEMS } from './nav'
 

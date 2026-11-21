@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Turns raw network state into the once-a-second snapshot the clients see.
 
 use std::cmp::Reverse;

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 // Motion vocabulary of the UI (docs/DESIGN.md "Motion"). Springs for things that move with the
 // user, short ease-out tweens for things that appear. Transform and opacity only: it has to be
 // smooth over RDP on a VPS without a GPU.

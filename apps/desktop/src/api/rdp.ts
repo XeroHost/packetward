@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 // Typed wrappers for the RDP Shield (via the shell's `agent_call`).
 import type { RdpAttempts } from '@/types/generated/RdpAttempts'
 import type { RdpAudit } from '@/types/generated/RdpAudit'

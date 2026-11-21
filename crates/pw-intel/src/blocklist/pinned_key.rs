@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! The minisign public key the XeroHost shared blocklist must be signed with.
 //!
 //! **Placeholder.** The real key does not exist yet; it is generated on the owner's own PC (never on a development

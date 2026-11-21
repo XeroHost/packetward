@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 use serde::{Deserialize, Serialize};
 
 /// Bumped on breaking protocol changes. A different major means the two sides cannot talk.

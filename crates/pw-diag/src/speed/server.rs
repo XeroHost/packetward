@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Speed-test servers: the node list entries, custom server URLs, the `/info` document and test ids.
 //!
 //! Hostnames are never invented: a node's host comes verbatim from the node list, a custom server's from the user.

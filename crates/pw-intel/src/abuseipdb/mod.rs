@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! AbuseIPDB client: the `check` endpoint (only when the user stored a key) and an explicit manual `report`.
 //!
 //! * The key comes from a [`SecretStore`] on every call, is placed only in the `Key` header and is never logged.

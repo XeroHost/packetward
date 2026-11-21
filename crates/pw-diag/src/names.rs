@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Reverse-DNS names for MTR hops: a bounded, expiring cache in front of any [`ReverseLookup`].
 
 use std::collections::{HashMap, VecDeque};

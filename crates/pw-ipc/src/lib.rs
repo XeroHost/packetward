@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! pw-ipc — IPC transport (named pipe and in-memory), framing, client/server, subscriptions.
 //!
 //! Layers, bottom to top:

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 // Helpers of .github/workflows/release.yml, kept in a script so they can be run and tested locally.
 //
 //   node .github/scripts/release.mjs guard            check the tag shape

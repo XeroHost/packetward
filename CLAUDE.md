@@ -1,12 +1,12 @@
 # PacketWard — instructions for Claude Code
 
-PacketWard is an open-source network defense and diagnostics toolkit for **Windows Server VPS / RDP machines**,
+PacketWard is a source-available network defense and diagnostics toolkit for **Windows Server VPS / RDP machines**,
 built by XeroHost for its customers. It helps a non-expert answer, in minutes:
 *"Am I being attacked? From where? How much? Is it my network or the route? Block it."*
 
 Stack: **Rust** (Cargo workspace) + **Tauri 2** desktop shell + **Vue 3 / TypeScript** UI.
 Target OS: Windows Server 2019/2022/2025 and Windows 10 1809+/11 (x64). Core logic must also build and test on Linux.
-License: GPL-3.0-or-later.
+License: PolyForm Shield 1.0.0 (source-available; see `LICENSE`).
 
 ## Read these first (in order)
 1. `docs/DECISIONS.md` — settled product decisions. Do not re-open them.
@@ -74,8 +74,9 @@ A change is done only when fmt, clippy, tests, lint and typecheck all pass.
   raw-socket backend. The app must start fine without Npcap installed.
 - GeoIP: DB-IP Lite (CC BY 4.0) with attribution in About. Do not ship MaxMind GeoLite2 files.
 - Public blocklists are downloaded at runtime by the user's choice, never committed or bundled.
-- The project is GPL-3.0-or-later: new dependencies must be GPLv3-compatible and pass `cargo deny`
-  (see `deny.toml`). Fonts are OFL. Add `// SPDX-License-Identifier: GPL-3.0-or-later` to new source files.
+- The project is source-available under PolyForm Shield 1.0.0: new dependencies must be redistributable under
+  permissive licenses (MIT, Apache-2.0, BSD, ISC, Zlib, MPL-2.0, Unicode; OFL for fonts) and pass `cargo deny`
+  (see `deny.toml`). Add `// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0` to new source files.
 
 ## Git
 - Conventional Commits (`feat(capture): …`, `fix(guardian): …`). One milestone item per commit when practical.

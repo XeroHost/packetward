@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 -->
 <script setup lang="ts">
 // The Guardian: three stages to choose from (Off, Monitor, Active), each explained where you pick it;
 // the chosen one is outlined, and Active is green: protected and acting.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Connection to the agent: a supervisor task that keeps (re)connecting to the pipe and tells the
 //! webview what is going on, plus the elevated Start/Repair action.
 

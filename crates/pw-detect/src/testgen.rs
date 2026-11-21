@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Deterministic synthetic traffic for tests of this crate and of its users (Guardian, engine).
 //!
 //! Available to this crate's own tests and, for other crates, behind the `testgen` feature. Every

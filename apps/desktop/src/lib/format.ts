@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 
 /** 93784 -> "1d 2h 3m 4s"; drops leading zero units, always shows seconds. */
 export function formatUptime(totalSeconds: number): string {

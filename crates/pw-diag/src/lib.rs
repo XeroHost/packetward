@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! pw-diag — ping, MTR, DNS lookup and remote port checks (the speed-test client is a later
 //! milestone).
 //!

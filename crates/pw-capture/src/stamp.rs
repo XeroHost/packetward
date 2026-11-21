@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Cheap packet timestamps for sources that have no hardware or driver timestamp (raw sockets).
 //!
 //! The precise wall clock (`SystemTime::now`) is backed by the performance counter on Windows, and on

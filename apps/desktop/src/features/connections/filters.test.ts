@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 import { describe, expect, it } from 'vitest'
 import { endpointText, type ConnectionRow } from '@/stores/live'
 import { applyFilters } from './filters'

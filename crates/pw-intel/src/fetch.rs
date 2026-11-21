@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! HTTP behind a trait, so no test (and no pure logic) ever touches the network.
 
 use std::future::Future;

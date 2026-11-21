@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Platform-specific helpers. Everything `unsafe` in `pw-engine` lives under this module.
 
 #[cfg(windows)]

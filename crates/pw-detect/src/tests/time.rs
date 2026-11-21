@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Odd clocks: epoch zero, time going backwards, huge jumps, extreme values. None may panic or
 //! poison the engine.
 

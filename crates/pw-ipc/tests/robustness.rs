@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! The IPC decoder must survive any byte stream a hostile local process can write to the pipe: it may
 //! return an error, never panic, hang or allocate more than the frame limit. This is a deterministic,
 //! seeded stand-in that runs in CI; the coverage-guided target lives in `crates/pw-ipc/fuzz`.

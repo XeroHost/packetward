@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! pw-detect — pure detection engine: per-source sliding windows and detectors. No OS dependencies,
 //! no I/O, deterministic: every time value is passed in.
 //!

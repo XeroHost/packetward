@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! The live pipeline: one dedicated OS thread reads a [`PacketSource`], decodes each frame to a
 //! [`PacketMeta`] and hands consumers **batches** through a **bounded** channel.
 //!

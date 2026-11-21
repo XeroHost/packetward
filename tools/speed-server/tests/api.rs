@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! End-to-end tests against a real server bound to 127.0.0.1:0. No test moves more than ~64 MB; "huge"
 //! downloads are requested but only a few MB are read before the client disconnects.
 

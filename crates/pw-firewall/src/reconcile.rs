@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Pure planning of block batches: which rules to create, rewrite or delete so that the batch
 //! holds exactly the desired addresses, touching as few rules as possible.
 //!

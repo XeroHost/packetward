@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 // Synthetic agent data for a plain browser (UI development, screenshots, performance checks).
 // Never used inside the Tauri app, where the real agent answers.
 import type { Connection } from '@/types/generated/Connection'

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Exact-threshold behaviour, window edges, clamping and presets.
 //!
 //! Window recap (see `Window`): at tick time `cur` (the whole second of the clock) a counter window of

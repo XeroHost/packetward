@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! The real HTTPS fetcher: reqwest over rustls (ring provider, OS certificate verifier). No OpenSSL.
 //!
 //! Proxy: the system proxy settings are honoured by default; `HttpFetcherConfig::proxy` overrides them with an

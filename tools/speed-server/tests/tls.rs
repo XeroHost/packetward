@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Native TLS termination (`--features tls`). Uses the throwaway self-signed certificate in
 //! `tests/fixtures` (EC P-256, CN=localhost, SAN localhost/127.0.0.1, valid 100 years); the key protects
 //! nothing and must never be used anywhere else.

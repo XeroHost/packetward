@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 -->
 <script setup lang="ts">
 // Where the attackers are: a world map with the countries shaded by how many addresses are behind
 // alerts and blocks, and the top countries beside it. Placement is local (the GeoIP database).

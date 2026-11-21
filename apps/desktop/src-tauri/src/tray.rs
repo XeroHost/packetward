@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! System tray icon and the "close hides to tray" behaviour.
 //!
 //! The desktop app is a viewer: closing the window hides it, and quitting the UI leaves the agent

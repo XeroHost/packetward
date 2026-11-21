@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Runtime binding to Npcap's `wpcap.dll`. Nothing links against Npcap: the DLL is loaded with
 //! `LoadLibraryExW` from its absolute path when a capture is opened, so the executable starts (and the
 //! rest of PacketWard works) without Npcap installed. Npcap is never bundled (CLAUDE.md, licensing).

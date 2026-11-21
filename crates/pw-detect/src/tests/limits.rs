@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Bounded memory under hostile input, and a throughput smoke test. Streams are generated lazily and
 //! the engine is ticked every simulated second, so eviction really runs.
 

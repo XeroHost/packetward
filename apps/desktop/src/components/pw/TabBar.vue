@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 -->
 <script setup lang="ts" generic="T extends string">
 // Tabs over a hairline; the selected tab's underline slides between tabs on a spring. Arrow keys
 // move between tabs and focus follows (WAI-ARIA tabs). The panel is the caller's, labelled by

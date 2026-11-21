@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Detection service (M5): feeds `pw-detect` from every input that exists, ticks it once a second
 //! and keeps the resulting alerts (bounded, persisted as JSON lines, pushed to subscribers).
 //!

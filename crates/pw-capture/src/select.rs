@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Backend selection: Npcap if it is installed, otherwise the raw-socket backend, and a plain description
 //! of what is missing for the UI to show. Nothing here fails: an absent Npcap is a normal state.
 

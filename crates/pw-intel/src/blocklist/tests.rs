@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Manager-level tests: signed list end to end, fail-closed behaviour, keep-last-good, scheduling.
 
 use std::net::IpAddr;

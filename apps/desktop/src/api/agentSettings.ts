@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 // Typed wrappers for the agent settings and the audit log (via the shell's `agent_call`).
 import type { AgentSettingsView } from '@/types/generated/AgentSettingsView'
 import type { AuditView } from '@/types/generated/AuditView'

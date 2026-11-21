@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Per-client and global protection: request rate, concurrent tests, byte budgets, connection caps.
 //!
 //! All state lives behind one `Mutex`; every operation is O(1) and never awaits, so contention is

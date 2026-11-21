@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! `pwctl mcp` — the stdio MCP server (milestone M11, ARCHITECTURE §6.14).
 //!
 //! An AI client (Claude Desktop, Claude Code, OpenCode, Cursor) launches this command and speaks

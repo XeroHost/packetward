@@ -336,7 +336,7 @@ the artifact) or locally: `cargo build --release -p packetward-agent -p packetwa
 when you have no signing key. Output: `target\release\bundle\nsis\PacketWard_<version>_x64-setup.exe`.
 
 1. **Clean install, GUI** (a machine without WebView2 if possible): the language selector appears (English / Español /
-   Português) and the GPL-3.0 license page; the WebView2 bootstrapper runs. After finishing:
+   Português) and the PolyForm Shield 1.0.0 license page; the WebView2 bootstrapper runs. After finishing:
    `Get-Service PacketWard` is *Running* and *Automatic*; `Get-LocalGroupMember 'PacketWard Operators'` lists the installing
    user; `Get-NetFirewallRule -Group PacketWard` lists exactly one rule, `PacketWard agent (raw capture)` (inbound, allow,
    program `…\packetward-agent.exe`); `pwctl status` answers; the files are in `C:\Program Files\PacketWard`

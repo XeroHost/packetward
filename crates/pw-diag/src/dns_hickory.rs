@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! The real [`DnsBackend`], built on `hickory-resolver` (plain UDP with TCP fallback, no TLS).
 //! No hickory type appears in this crate's public API.
 

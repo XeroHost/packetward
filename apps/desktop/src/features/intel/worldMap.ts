@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 // The world for the attack map: Natural Earth countries (public domain) from `world-atlas`, turned
 // into GeoJSON whose region names are ISO alpha-2 codes, so GeoIP answers match them directly.
 // Loaded on demand: the map page pulls this in, nothing else does.

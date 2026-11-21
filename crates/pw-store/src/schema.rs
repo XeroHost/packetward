@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Schema and the forward-only migration list.
 //!
 //! `PRAGMA user_version` is the number of migrations applied. Never edit or reorder an entry that

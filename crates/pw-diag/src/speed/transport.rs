@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! The seam between the speed-test logic and the network.
 //!
 //! Everything in this module tree is written against [`SpeedTransport`]; the real implementation (reqwest, feature

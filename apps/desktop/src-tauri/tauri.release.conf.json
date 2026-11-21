@@ -5,10 +5,10 @@
     "targets": ["nsis"],
     "createUpdaterArtifacts": true,
     "publisher": "XeroHost",
-    "license": "GPL-3.0-or-later",
+    "license": "LicenseRef-PolyForm-Shield-1.0.0",
     "licenseFile": "../../../LICENSE",
     "homepage": "https://xerohost.net",
-    "copyright": "Copyright (C) XeroHost. Licensed under GPL-3.0-or-later.",
+    "copyright": "Copyright (c) 2026 XeroGroup LLC (XeroHost). Licensed under PolyForm Shield 1.0.0.",
     "shortDescription": "PacketWard network defense and diagnostics",
     "resources": {
       "../../../target/release/packetward-agent.exe": "packetward-agent.exe",

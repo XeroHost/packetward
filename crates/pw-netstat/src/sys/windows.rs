@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Win32 backend: IP Helper tables, interface counters, WTS sessions and process names.
 //! Everything `unsafe` in `pw-netstat` lives here.
 #![allow(unsafe_code)]

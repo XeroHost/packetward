@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! RDP Shield (M7b): exposure audit and the guarded changes to Remote Desktop.
 
 use serde::{Deserialize, Serialize};

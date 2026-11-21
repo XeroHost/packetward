@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Types the desktop shell sends to its webview (not part of the agent protocol).
 //!
 //! They live here so every type crossing a process boundary is exported to TypeScript from one

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Speed test service (M9): one run at a time, streamed on the `speed.progress` topic. Wraps the
 //! `pw-diag` speed client; the HTTP transport only exists with the `speed-http` feature (the agent
 //! enables it), tests use the fake transport.

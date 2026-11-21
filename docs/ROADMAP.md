@@ -6,8 +6,9 @@ Product decisions are fixed in `docs/DECISIONS.md`.
 
 ## M0 — Scaffold
 - [x] Cargo workspace with all crates from ARCHITECTURE §3 (empty but compiling), shared lints, `deny.toml`
-      allowing only GPLv3-compatible licenses.
-- [x] `LICENSE` (GPL-3.0 full text from gnu.org), SPDX header `GPL-3.0-or-later` policy in CONTRIBUTING.
+      allowing only permissive, redistributable licenses.
+- [x] `LICENSE` (PolyForm Shield 1.0.0 since 2026-11-21; GPL-3.0-or-later before), SPDX header policy in
+      CONTRIBUTING.
 - [x] `apps/desktop`: Tauri 2 + Vue 3 + TS + Vite + Pinia + Router + Tailwind v4 + shadcn-vue + vue-i18n.
 - [x] i18n: `en` base/fallback, `es`, `pt-BR`; locale auto-detection + override.
 - [x] Fonts self-hosted: Bricolage Grotesque (headings), Geist Sans (body), JetBrains Mono + Geist Mono.

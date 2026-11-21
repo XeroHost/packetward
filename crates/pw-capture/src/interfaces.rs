@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Network interface listing (read-only) and resolution of an [`InterfaceId`] to an adapter.
 
 use std::net::IpAddr;

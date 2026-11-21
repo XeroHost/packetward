@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Test-only MaxMind DB writer: builds tiny `.mmdb` fixtures programmatically, so no real database (and no
 //! MaxMind or DB-IP data) is ever committed. IPv6 search tree (IPv4 lives under `::/96`), 24-bit records.
 

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! The one definition of reserved address space.
 //!
 //! Used in three places, so they can never disagree: addresses that are never sent to an external service

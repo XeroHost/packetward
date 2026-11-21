@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 -->
 <script setup lang="ts">
 // The flag of an address's country (or of a country code), as an SVG image from country-flag-icons
 // (MIT). Emoji flags are not used: Windows draws them as two letters. Each flag is a tiny lazy

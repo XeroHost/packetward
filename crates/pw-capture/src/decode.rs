@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Frame to [`PacketMeta`]. Nothing here allocates per packet: etherparse hands back borrowed slices and
 //! the result is a `Copy` struct. Truncated captures (snaplen 128) decode as far as they go; garbage never
 //! panics, it is reported as a [`DecodeError`] for the pipeline to count.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! One attack, one alert: dedup, escalation, ending, cooldown, protection flag and caps on alerts.
 
 use pw_core::CidrSet;

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Public speed-test providers built into the client, so the speed test works without any XeroHost node and
 //! the user is not tied to one provider. All of them are free, need no account and no key, and are reached
 //! over `https` only.

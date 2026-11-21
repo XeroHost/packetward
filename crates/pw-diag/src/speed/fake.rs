@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! A scripted [`SpeedTransport`] for tests: no sockets, a constant byte rate on the (tokio) clock, recorded calls.
 //! With `tokio::time::pause` a 12-second speed test runs in microseconds and is exactly reproducible.
 

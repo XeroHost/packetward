@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Whether anyone is looking. The desktop UI subscribes to `live.stats` while it is open; when
 //! nobody does (the machine is protected, nobody is connected), the engine polls the network and
 //! ticks the detectors at a slower pace, which is most of the agent's idle CPU. A new viewer wakes

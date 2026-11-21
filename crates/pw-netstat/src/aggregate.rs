@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Counts and rankings computed from the **full** connection table, before any row cap.
 
 use std::collections::HashMap;

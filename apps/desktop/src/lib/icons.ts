@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 // The icons the UI uses, from Hugeicons' free set (MIT, @hugeicons/core-free-icons). One place, so
 // the bundle only carries these and a page never imports an icon package directly.
 export {

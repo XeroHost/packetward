@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Detector configuration, severities, windows and the `Gentle` / `Balanced` / `Strict` presets.
 //!
 //! Every threshold in this module is a **count inside the detector's window** (not a rate), so a

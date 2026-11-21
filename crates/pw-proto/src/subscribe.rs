@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 use serde::{Deserialize, Serialize};
 
 /// Payload of `subscribe`. One subscription per topic per connection; subscribing twice is a no-op.

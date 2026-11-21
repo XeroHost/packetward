@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 import type { EChartsCoreOption } from 'echarts/core'
 import { formatBitrate } from '@/lib/format'
 import type { History } from '@/stores/live'

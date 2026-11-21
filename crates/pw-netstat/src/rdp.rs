@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Decoding of `WTS_CLIENT_ADDRESS`: the address an RDP **client reports for itself**.
 //!
 //! That is not the address the server sees. On a live session the client reported `100.102.180.59`

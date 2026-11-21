@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Multi-stream transfers: the engine shared by the duration-based download/upload and the bin tests.
 //!
 //! One run = N parallel streams, each a loop of bounded `/download` or `/upload` requests that all carry the same

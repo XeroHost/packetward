@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! `pwctl rdp`: look at Remote Desktop exposure and, above all, get it back to factory state when a
 //! change went wrong. `reset` works through the agent when it is running and on its own when it is
 //! not (it needs an elevated shell then).

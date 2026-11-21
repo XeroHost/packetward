@@ -4,7 +4,7 @@
 - Vue 3 `<script setup lang="ts">`, Vite, TypeScript strict, Pinia, Vue Router, pnpm.
 - Tailwind CSS v4 with tokens from `docs/DESIGN.md` (`src/styles/tokens.css`). No raw hex in components.
 - **shadcn-vue** components live in `src/components/ui/` (generated, then themed to Warm Sentinel; edit freely).
-- Icons: Hugeicons free (MIT) through `src/lib/icons.ts` + `HIcon.vue` (`components/pw/icons.ts` keeps the old lucide-style names). Motion: `motion-v` (MIT), always on (`<MotionConfig reduced-motion="never">`); vocabulary in `src/lib/motion.ts`. **Animate UI is not used** (Commons Clause, incompatible with GPL-3.0). Utilities: VueUse.
+- Icons: Hugeicons free (MIT) through `src/lib/icons.ts` + `HIcon.vue` (`components/pw/icons.ts` keeps the old lucide-style names). Motion: `motion-v` (MIT), always on (`<MotionConfig reduced-motion="never">`); vocabulary in `src/lib/motion.ts`. **Animate UI is not used** (Commons Clause, incompatible with the project's license). Utilities: VueUse.
 - Fonts (self-hosted via `@fontsource`): Bricolage Grotesque (headings), Geist Sans (body),
   JetBrains Mono (default mono) + Geist Mono. Mono is user-selectable through `--font-mono`.
 - Charts + world map: ECharts via `vue-echarts` (tree-shaken imports). World GeoJSON bundled (Natural Earth).

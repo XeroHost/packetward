@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 -->
 <script setup lang="ts">
 // RDP Shield: the optional country restriction (decision RS-2, option A). It is reactive: when an
 // address from a refused country connects to the RDP port, the Guardian blocks it, but only in Active

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Pure safety checks applied before anything is written to the firewall.
 //!
 //! * protected set: never block loopback, the gateway, DNS, the allowlist, RDP clients, ...

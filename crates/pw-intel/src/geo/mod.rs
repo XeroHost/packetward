@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! GeoIP / ASN lookup over DB-IP Lite `.mmdb` files (country + ASN), fully offline.
 //!
 //! The databases are downloaded at runtime by the user's choice (never bundled in the repository, see

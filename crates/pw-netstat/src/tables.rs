@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Parsers for the raw buffers returned by `GetExtendedTcpTable` / `GetExtendedUdpTable`
 //! (`TCP_TABLE_OWNER_PID_ALL` / `UDP_TABLE_OWNER_PID`), for IPv4 and IPv6.
 //!

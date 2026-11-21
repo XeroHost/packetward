@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 // The fixtures hold a throwaway keypair's PUBLIC half, a file and its signature (the private half was
 // discarded when they were made): no secret lives in this repository.
 import assert from 'node:assert/strict'

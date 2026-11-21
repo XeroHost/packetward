@@ -1,21 +1,21 @@
 # Contributing to PacketWard
 
-PacketWard is licensed under **GPL-3.0-or-later**. By contributing you agree that your contribution is
-released under the same license.
+PacketWard is licensed under **PolyForm Shield 1.0.0**, a source-available license. By contributing you
+agree that your contribution is released under the same license.
 
 ## License and SPDX headers
 
 - Every new source file (`.rs`, `.ts`, `.vue`, `.css`, `.toml` scripts, workflows) starts with an SPDX line:
-  - Rust / TypeScript: `// SPDX-License-Identifier: GPL-3.0-or-later`
-  - Vue: `<!-- SPDX-License-Identifier: GPL-3.0-or-later -->`
-  - CSS / shell / YAML: `/* ... */` or `# SPDX-License-Identifier: GPL-3.0-or-later` as the file type allows.
+  - Rust / TypeScript: `// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0`
+  - Vue: `<!-- SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 -->`
+  - CSS / shell / YAML: `/* ... */` or `# SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0` as the file type allows.
   - Generated files are exempt: `apps/desktop/src/types/generated/` (written by `cargo test -p pw-proto
     --features ts-export`; CI fails if it is stale, so commit the regenerated files).
 - Generated shadcn-vue components in `apps/desktop/src/components/ui/` keep their upstream MIT attribution
   (see the `NOTICE.md` there) instead of a per-file header.
-- New dependencies must be GPLv3-compatible (MIT, Apache-2.0, BSD, ISC, Zlib, MPL-2.0, Unicode; OFL for
-  fonts) and pass `cargo deny check`. Do not add a dependency that is not listed in
-  `docs/ARCHITECTURE.md` without discussing it first.
+- New dependencies must be redistributable under a permissive license (MIT, Apache-2.0, BSD, ISC, Zlib,
+  MPL-2.0, Unicode; OFL for fonts) and pass `cargo deny check`. Do not add a dependency that is not listed
+  in `docs/ARCHITECTURE.md` without discussing it first.
 - Do not bundle Npcap, MaxMind GeoLite2 files or public blocklists.
 
 ## Before you open a pull request

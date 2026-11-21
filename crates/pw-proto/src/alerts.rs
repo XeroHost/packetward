@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Alerts (M5): what the detectors raise, as the inbox and the notifications see it.
 
 use serde::{Deserialize, Serialize};

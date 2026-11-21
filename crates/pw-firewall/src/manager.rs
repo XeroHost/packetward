@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! The [`Firewall`] trait and the guarded manager that implements it on top of a raw
 //! [`FirewallBackend`] (the COM implementation on Windows, an in-memory fake in tests).
 //!

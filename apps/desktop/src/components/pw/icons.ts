@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 // Icon components under the names the pages already use, drawn from Hugeicons (MIT) through HIcon.
 // A page writes <Play class="size-4" /> and gets an icon that draws itself when its parent asks.
 import { defineComponent, h, type Component } from 'vue'

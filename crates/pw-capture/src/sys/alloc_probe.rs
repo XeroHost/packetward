@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Test-only counting allocator: tallies allocations made by the *current thread* while a probe is
 //! active, so tests running in parallel do not disturb each other. Lives in `sys` because it needs `unsafe`.
 #![allow(unsafe_code)]

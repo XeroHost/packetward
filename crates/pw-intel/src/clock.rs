@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Seconds since the Unix epoch. Plain integers keep persisted state and tests trivial.

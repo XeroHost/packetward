@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 // Typed wrappers for the updater commands of the desktop shell (src-tauri/src/updater.rs).
 // This module is the only place that talks to Tauri for updates. Keep both sides in sync.
 import { Channel, invoke } from '@tauri-apps/api/core'

@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 -->
 <script setup lang="ts">
 // Minimize / maximize / close, drawn like the Windows ones (the window has no native frame).
 import { onBeforeUnmount, onMounted, ref } from 'vue'

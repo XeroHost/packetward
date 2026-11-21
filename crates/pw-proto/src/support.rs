@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Support bundle (M4): a local zip the user attaches to a ticket. Built by the agent, previewed
 //! first, then handed to the client in chunks so the client saves it in its own folder.
 

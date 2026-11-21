@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 import { describe, expect, it } from 'vitest'
 import type { AlertView } from '@/types/generated/AlertView'
 import type { BlockView } from '@/types/generated/BlockView'

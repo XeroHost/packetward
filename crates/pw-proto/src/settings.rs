@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Agent settings (M12) and the audit log viewer.
 
 use serde::{Deserialize, Serialize};

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 // Where an address is, for flags and the attack map. The lookup is local to the agent (the GeoIP
 // database), never a web service; addresses are asked for in batches and remembered. Without a
 // database nothing is asked and nothing is shown.

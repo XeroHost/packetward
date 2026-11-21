@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! MCP enforcement inside the agent (ARCHITECTURE 6.14, milestone M11).
 //!
 //! `pwctl mcp` connects through the named pipe with `ClientKind::Mcp`; this module holds the

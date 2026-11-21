@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Default gateways and DNS servers of the adapters that are up (`GetAdaptersAddresses`, read-only).
 //! These addresses must never be blocked: cutting the gateway or the resolver cuts the server off.
 #![allow(unsafe_code)]

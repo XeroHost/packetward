@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! One ICMP echo probe: the [`Pinger`] trait plus the platform-neutral request/reply types.
 //!
 //! The Windows implementation (`IcmpSendEcho2Ex` / `Icmp6SendEcho2`) lives in `sys/windows.rs`;

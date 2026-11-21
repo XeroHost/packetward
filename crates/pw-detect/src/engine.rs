@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! The detection engine: ingest, observations, tick and the incident (dedup) layer.
 
 use std::cmp::Reverse;

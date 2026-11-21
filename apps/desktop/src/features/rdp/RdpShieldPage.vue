@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 -->
 <script setup lang="ts">
 // RDP Shield: first what is exposed (a readout and the findings), then each protection as a row
 // (what it does on the left, its controls on the right), then the way back. This page can cut Remote

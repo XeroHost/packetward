@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 -->
 <script setup lang="ts">
 // One setting or action: what it is and why on the left, the controls on the right. Rows are
 // separated by hairlines, so a long page of controls reads as a list, not a wall of boxes.

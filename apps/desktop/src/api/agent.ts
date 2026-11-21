@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 // Typed wrappers for the agent connection owned by the desktop shell (src-tauri/src/bridge.rs).
 // This module is the only place that talks to Tauri for the agent.
 import { Channel, invoke } from '@tauri-apps/api/core'

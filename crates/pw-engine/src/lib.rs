@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! pw-engine — orchestrator: wires every crate together, owns tasks and state, exposes the API.
 //!
 //! Answers `system.info` and `netstat.connections`, and publishes the `live.heartbeat` and

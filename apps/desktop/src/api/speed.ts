@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 // Typed wrappers for the speed test (via the shell's `agent_call`).
 import type { SpeedEvent } from '@/types/generated/SpeedEvent'
 import type { SpeedRequest } from '@/types/generated/SpeedRequest'

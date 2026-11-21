@@ -23,3 +23,5 @@ A dedicated security email address will be added here once it exists.
   security boundary. Bypasses of that ACL, of the Guardian's protected set, of the signature check on blocklists or
   of the updater signature are in scope and high severity.
 - PacketWard cannot stop a volumetric DDoS that saturates the uplink; that is a documented limitation, not a bug.
+- PacketWard is source-available under PolyForm Shield 1.0.0 (see `LICENSE`). Good-faith security research on
+  PacketWard itself is welcome and is not a competing product under those terms.

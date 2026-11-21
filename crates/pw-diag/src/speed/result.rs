@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Result and progress types of the speed test. Plain serde types; the IPC mapping lives in `pw-proto`.
 //!
 //! Units: throughput in megabits per second (1 Mbps = 1 000 000 bit/s), sizes in bytes, times in milliseconds.

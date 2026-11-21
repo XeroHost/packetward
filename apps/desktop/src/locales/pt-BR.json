@@ -138,8 +138,8 @@
     "tagline": "Defesa e diagnóstico de rede para VPS e máquinas RDP com Windows Server.",
     "version": "Versão",
     "license": "Licença",
-    "licenseValue": "GPL-3.0-or-later",
-    "madeBy": "Criado pela XeroHost e publicado como código aberto.",
+    "licenseValue": "PolyForm Shield 1.0.0",
+    "madeBy": "Criado pela XeroHost e publicado como código disponível (source-available).",
     "credits": {
       "title": "Créditos e licenças",
       "geoip": "Dados GeoIP: DB-IP Lite, CC BY 4.0 (db-ip.com).",
@@ -147,7 +147,7 @@
       "icons": "Ícones: o conjunto gratuito do Hugeicons, MIT.",
       "fonts": "Fontes: Bricolage Grotesque, Geist e JetBrains Mono, SIL OFL 1.1.",
       "ui": "Componentes: Reka UI e shadcn-vue, MIT. Gráficos: Apache ECharts, Apache-2.0.",
-      "note": "Cada dependência é verificada quanto à compatibilidade com a licença GPL-3.0 do PacketWard. O Animate UI não foi usado: sua licença com Commons Clause não é compatível.",
+      "note": "Cada dependência é verificada para ser redistribuível com o PacketWard sob sua licença PolyForm Shield. O Animate UI não foi usado: sua licença com Commons Clause adiciona uma restrição que não repassamos.",
       "maps": "Bandeiras: country-flag-icons, MIT. Mapa-múndi: Natural Earth (domínio público) com world-atlas e topojson-client, ISC; códigos de país: i18n-iso-countries, MIT."
     }
   },

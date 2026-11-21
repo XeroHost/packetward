@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 -->
 <script setup lang="ts">
 // Speed test: what to measure against (provider, streams) and the start buttons in one card, the steps
 // and the live rate while it runs (the number is the page), and the latest result as a hero with the

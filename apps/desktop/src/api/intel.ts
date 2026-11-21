@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 // Typed wrappers for the threat intelligence methods (via the shell's `agent_call`).
 import type { AbuseCheckView } from '@/types/generated/AbuseCheckView'
 import type { AbuseStatusView } from '@/types/generated/AbuseStatusView'

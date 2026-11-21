@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 -->
 <script setup lang="ts">
 // The confirmation for MCP actions: every waiting request with its complete arguments, the
 // consequence in one line, a live countdown and Approve / Reject. The dialog itself is the

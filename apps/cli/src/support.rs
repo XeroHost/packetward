@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! `pwctl support-bundle`: builds the support zip through the agent and saves it on this machine.
 //! Nothing is uploaded; the person attaches the file to their ticket.
 

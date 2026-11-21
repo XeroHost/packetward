@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Windows event log access: a bounded initial load plus live `EvtSubscribe` subscriptions for
 //! successful RDP logons, and the "Audit Logon" policy. No searching of the whole log, no `wevtutil`.
 #![allow(unsafe_code)]

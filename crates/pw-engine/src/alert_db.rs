@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! The alert inbox in the SQLite store (`packetward.db`), instead of `alerts.jsonl`. Enabled by the
 //! `store` feature. Every failure here is logged and reported to the caller as "not written", so the
 //! [`crate::detect::AlertStore`] can fall back to the JSON-lines file: a broken database must never

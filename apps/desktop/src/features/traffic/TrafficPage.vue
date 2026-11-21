@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 -->
 <script setup lang="ts">
 // Live capture, as a console: a readout line, one wide chart, the protocol mix as a single bar,
 // and the loudest sources as rows with a share bar. Nothing here is a card.

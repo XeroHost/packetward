@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! The one result envelope every tool uses (ARCHITECTURE §6.14, "Untrusted data").
 //!
 //! Network- and program-derived strings can carry prompt injection, so every tool result is

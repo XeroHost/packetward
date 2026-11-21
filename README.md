@@ -4,7 +4,7 @@
 
 # PacketWard
 
-**Open-source network defense and diagnostics for Windows Server VPS / RDP machines.**
+**Source-available network defense and diagnostics for Windows Server VPS / RDP machines.**
 
 PacketWard is built by [XeroHost](https://xerohost.net) to help a non-expert answer, in minutes:
 *Am I being attacked? From where? How much? Is it my network or the route? Block it.*
@@ -124,7 +124,8 @@ installed and running; for development you can run the agent in a terminal inste
 
 ## License
 
-[GPL-3.0-or-later](LICENSE). Forks must stay open.
+[PolyForm Shield 1.0.0](LICENSE). Source-available: you can use, modify and redistribute it freely,
+including commercially, but you may not sell it as a product or offer a product that competes with it.
 
 ---
 

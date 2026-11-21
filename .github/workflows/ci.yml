@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 #
 # CI. Also a reusable workflow: release.yml calls it (with `full: true`) as the first job, and nothing is built
 # or published unless every job here passes.

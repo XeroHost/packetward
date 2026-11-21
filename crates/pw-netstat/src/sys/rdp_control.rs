@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Windows implementation of [`RdpControl`]: registry, account policy, service control manager and
 //! terminal services. Reads are safe anywhere; **every write is only meant to run on a test VPS**.
 #![allow(unsafe_code)]

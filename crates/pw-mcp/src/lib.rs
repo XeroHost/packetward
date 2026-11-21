@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! pw-mcp — the MCP server library behind `pwctl mcp` (milestone M11, ARCHITECTURE §6.14).
 //!
 //! The crate has no engine dependency. It mirrors the agent's tool catalog ([`catalog`]), builds the

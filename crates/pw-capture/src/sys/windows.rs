@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Win32 helpers: adapter listing (read-only), the elevation check and the `SIO_RCVALL` switch of the
 //! raw-socket backend. Everything `unsafe` for those lives here.
 #![allow(unsafe_code)]

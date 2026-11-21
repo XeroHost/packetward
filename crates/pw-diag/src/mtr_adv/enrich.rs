@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! ASN + country per hop. The data comes from a *local* database behind [`HopEnricher`] (the
 //! engine adapts `pw-intel`'s GeoIP reader); nothing is ever sent over the network for a hop, and
 //! private / reserved addresses are not even handed to the enricher.

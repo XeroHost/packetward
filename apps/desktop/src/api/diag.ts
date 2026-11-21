@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 // Typed wrappers for the diagnostics methods of the agent (via the shell's `agent_call` command).
 import type { DiagEvent } from '@/types/generated/DiagEvent'
 import type { DiagStartResponse } from '@/types/generated/DiagStartResponse'

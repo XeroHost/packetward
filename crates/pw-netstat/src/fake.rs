@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! In-memory [`NetStat`] for tests of the engine and anything built on it.
 
 use std::io;

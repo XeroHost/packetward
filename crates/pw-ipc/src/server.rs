@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Server side: accept connections, run the version handshake, dispatch requests to a [`Handler`]
 //! and forward topic subscriptions as events.
 

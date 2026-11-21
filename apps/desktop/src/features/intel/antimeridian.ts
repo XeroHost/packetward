@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 // Polygons that cross the 180th meridian (Russia, Fiji) jump from +180 to -180 between two
 // consecutive points; drawn as they are, they smear a band across the whole map. This splits them
 // at the meridian into two polygons that each stay on their own side.

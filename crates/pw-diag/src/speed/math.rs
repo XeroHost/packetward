@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! The arithmetic of a speed test, as pure functions: warm-up exclusion, bucketing, peak, latency statistics.
 
 use std::time::Duration;

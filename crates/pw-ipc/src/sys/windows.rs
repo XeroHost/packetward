@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Win32 plumbing for the named pipe: security descriptors, account/SID lookups and group
 //! membership. Everything `unsafe` in `pw-ipc` lives here.
 #![allow(unsafe_code)]

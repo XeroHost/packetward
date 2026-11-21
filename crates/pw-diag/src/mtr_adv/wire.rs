@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Reading the answers to UDP and TCP-SYN probes from captured frames.
 //!
 //! Pure and platform independent: [`parse_frame`] takes the bytes of one frame (Ethernet, raw IP

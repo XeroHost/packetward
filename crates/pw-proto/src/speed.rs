@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 //! Speed test (M9): runs against XeroHost nodes or the user's own `speed-server`.
 
 use serde::{Deserialize, Serialize};

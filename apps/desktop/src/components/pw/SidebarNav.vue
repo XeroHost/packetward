@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 -->
 <script setup lang="ts">
 // The sidebar is part of the window, not a card: no background, no divider. The active page is a
 // soft pill that slides between rows on a spring; each icon draws itself when its row is hovered.
