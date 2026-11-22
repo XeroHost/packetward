@@ -180,11 +180,16 @@ pub async fn update_check(
         .endpoints(vec![endpoint])?
         .timeout(std::time::Duration::from_secs(30))
         .build()?;
-    // A pre-release on the stable channel is ignored, not offered.
-    let found = updater
-        .check()
-        .await?
-        .filter(|update| channel.accepts(&update.version));
+    // A pre-release on the stable channel is ignored, not offered. `ReleaseNotFound` means the
+    // channel file answered without success (in practice 404): nothing has been published on this
+    // channel yet (e.g. `stable.json` before the first stable release), so there is nothing newer.
+    // Network and parse failures are other errors and still reach the UI.
+    let found = match updater.check().await {
+        Ok(found) => found,
+        Err(tauri_plugin_updater::Error::ReleaseNotFound) => None,
+        Err(err) => return Err(err.into()),
+    }
+    .filter(|update| channel.accepts(&update.version));
     let current_version = app.package_info().version.to_string();
     let result = match &found {
         Some(update) => UpdateCheck::Available {
