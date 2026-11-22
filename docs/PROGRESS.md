@@ -14,15 +14,19 @@ Read this first when resuming after a stop or a context compaction.
 - **Releases (public):** `v0.1.0-beta.1` (pre-release, only its installer left), `v0.1.0-beta.2` (pre-release, published by the new
   workflow, only `PacketWard_0.1.0-beta.2_x64-setup.exe`) and **`v0.1.0-beta.3`** (pre-release, published 2026-11-21 from `0fdc172`,
   `PacketWard_0.1.0-beta.3_x64-setup.exe`; first release with the PolyForm Shield license, the MCP server and the Settings → MCP page).
-  The old `updater-beta` release/tag is **deleted** (owner approved). Do not create or delete public releases, tags or the `updates` branch without asking the owner first.
-- **Release pipeline is DONE and proven by beta.2 and beta.3** (`.github/workflows/release.yml`, `.github/scripts/release.mjs`): tag-only, guard (tag on main),
+  and **`v0.1.0`** (stable, published 2026-11-22, `PacketWard_0.1.0_x64-setup.exe`; GitHub marks it Latest). The old `updater-beta` release/tag is **deleted** (owner approved). Do not create or delete public releases, tags or the `updates` branch without asking the owner first.
+- **Release pipeline is DONE and proven by beta.2, beta.3 and v0.1.0** (`.github/workflows/release.yml`, `.github/scripts/release.mjs`): tag-only, guard (tag on main),
   full CI, draft with only the installer, private `release-proof` artifact (hash, `.sig`, manifest), verify against the public key, publish,
-  then commit `beta.json` / `stable.json` to the orphan **`updates`** branch (exists now; has README + `beta.json` pointing at 0.1.0-beta.3;
-  `stable.json` 404 until the first stable tag). Endpoints in `tauri.conf.json` / `updater.rs` = raw.githubusercontent.com `updates/*.json`.
+  then commit `beta.json` / `stable.json` to the orphan **`updates`** branch (exists now; has README + `beta.json` pointing at 0.1.0 (stable channel `stable.json` also exists now, signed);
+  `stable.json` exists since the first stable tag). Endpoints in `tauri.conf.json` / `updater.rs` = raw.githubusercontent.com `updates/*.json`.
 - **Updater signing key:** generated, public key in `tauri.conf.json`, secrets `TAURI_SIGNING_PRIVATE_KEY(_PASSWORD)` set in GitHub; private
   key backed up by the owner and deleted from the VPS. Never print/log it; change secrets only with `gh secret set` from a file.
-- beta.1 has the old endpoint compiled in → cannot auto-update; users install beta.2 by hand. beta.3 is published and `beta.json` points at it:
-  the first real auto-update test (beta.2 offers beta.3, installs it and verifies the signature) is now possible and still pending (TESTING §F11).
+- beta.1 has the old endpoint compiled in → cannot auto-update; users install beta.2 by hand. beta.3 and stable v0.1.0 are published, both channels
+  are signed and point at 0.1.0. The real auto-update checks (beta.2 → beta.3 and a beta → stable switch, verifying the signature) are still
+  pending on a test machine (TESTING §F11).
+- **First v0.1.0 attempt failed (2026-11-22):** RUSTSEC-2026-0592 (stack overflow in `Url::origin()` on nested `blob:` URLs) appeared after beta.3
+  and CI rejected commit `0279fab` (`url` 2.5.8, reached via hickory/reqwest/tauri-updater). Fixed with `cargo update -p url` → 2.5.9 (`5879ae0`);
+  the owner approved moving the tag, and the rerun `45032758378` was green. No release or channel file was published by the failed run.
 - **Pipe ACL fix (`fa25739`)**: the agent adds each `PacketWard Operators` member's own SID to the pipe ACL, so the installing user connects
   without signing out (owner hit the "Cierra sesión" screen on a desktop PC). Unit-tested only; **not yet verified on a real install of beta.2**.
 - SECURITY.md: GitHub private vulnerability reporting is the only channel; owner will provide a security email later.
